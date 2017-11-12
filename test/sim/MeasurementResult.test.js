@@ -12,13 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import {Suite, assertThat, assertThrows, assertTrue, assertFalse} from "test/TestUtil.js"
-import {ObservableProduct} from "src/sim/ObservableProduct.js"
-import {MeasurementResult} from "src/sim/MeasurementResult.js"
+import {Suite, assertThat, assertThrows, assertTrue, assertFalse} from 'test/TestUtil.js'
+import {ObservableProduct} from 'src/sim/ObservableProduct.js'
+import {MeasurementResult} from 'src/sim/MeasurementResult.js'
 
-let suite = new Suite("MeasurementResult");
+let suite = new Suite('MeasurementResult');
 
-suite.test("construct", () => {
+suite.test('construct', () => {
 
     let o1 = new ObservableProduct(new Set(['b', 'a']), -1);
     let m1 = new MeasurementResult(o1, +1);
@@ -50,7 +50,7 @@ suite.test("construct", () => {
     assertThrows(() => new MeasurementResult(new ObservableProduct(), 'a'));
 });
 
-suite.test("isEqualTo", () => {
+suite.test('isEqualTo', () => {
     let t = new MeasurementResult(new ObservableProduct(), +1);
     let a = new MeasurementResult(new ObservableProduct(new Set(['a'])), +1);
     assertTrue(t.isEqualTo(t));
@@ -69,7 +69,7 @@ suite.test("isEqualTo", () => {
     assertThat(a).isNotEqualTo(undefined);
 });
 
-suite.test("rewriteObservableProduct", () => {
+suite.test('rewriteObservableProduct', () => {
     let a = new ObservableProduct(new Set(['a']));
     let b = new ObservableProduct(new Set(['b']));
     let c = new ObservableProduct(new Set(['c']));
@@ -100,7 +100,7 @@ suite.test("rewriteObservableProduct", () => {
     assertThat(m4.rewriteObservableProduct(t)).isEqualTo(t);
 });
 
-suite.test("toString", () => {
+suite.test('toString', () => {
     assertThat(new MeasurementResult(new ObservableProduct(new Set(['a', 'b'])), -1).toString()).isEqualTo(
         'a*b == -1 causing a ==> -b');
     assertThat(new MeasurementResult(new ObservableProduct(new Set(['a', 'b'])), +1).toString()).isEqualTo(

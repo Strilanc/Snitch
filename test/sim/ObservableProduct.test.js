@@ -12,12 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import {Suite, assertThat, assertThrows, assertTrue, assertFalse} from "test/TestUtil.js"
-import {ObservableProduct} from "src/sim/ObservableProduct.js"
+import {Suite, assertThat, assertThrows, assertTrue, assertFalse} from 'test/TestUtil.js'
+import {ObservableProduct} from 'src/sim/ObservableProduct.js'
 
-let suite = new Suite("ObservableProduct");
+let suite = new Suite('ObservableProduct');
 
-suite.test("construct", () => {
+suite.test('construct', () => {
     let r = new ObservableProduct(new Set(['a']), +1);
     assertThat(r.ids).isEqualTo(new Set(['a']));
     assertThat(r.sign).isEqualTo(+1);
@@ -40,7 +40,7 @@ suite.test("construct", () => {
     assertThrows(() => new ObservableProduct(new Set(['a']), '1'));
 });
 
-suite.test("isEqualTo", () => {
+suite.test('isEqualTo', () => {
     let a = new ObservableProduct(new Set(['a']), +1);
 
     assertTrue(new ObservableProduct().isEqualTo(new ObservableProduct()));
@@ -58,7 +58,7 @@ suite.test("isEqualTo", () => {
     assertThat(a).isNotEqualTo(undefined);
 });
 
-suite.test("times", () => {
+suite.test('times', () => {
     let e = new ObservableProduct();
     let n = new ObservableProduct(new Set(), -1);
     let a = new ObservableProduct(new Set(['a']));
@@ -84,7 +84,7 @@ suite.test("times", () => {
     assertThat(ab.times(-1)).isEqualTo(ab.times(n));
 });
 
-suite.test("toString", () => {
+suite.test('toString', () => {
     assertThat(new ObservableProduct(new Set(), +1).toString()).isEqualTo('1');
     assertThat(new ObservableProduct(new Set(), -1).toString()).isEqualTo('-1');
     assertThat(new ObservableProduct(new Set(['b']), +1).toString()).isEqualTo('b');

@@ -12,9 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import {DetailedError} from "src/base/DetailedError.js"
-import {ObservableProduct} from "src/sim/ObservableProduct.js"
-import {seq} from "src/base/Seq.js"
+import {DetailedError} from 'src/base/DetailedError.js'
+import {ObservableProduct} from 'src/sim/ObservableProduct.js'
+import {seq} from 'src/base/Seq.js'
 
 /**
  * Records what measurement was done, what the result was, and how to use the result to eliminate a variable.
@@ -26,7 +26,7 @@ class MeasurementResult {
      */
     constructor(measuredObservable, result) {
         if (!(measuredObservable instanceof  ObservableProduct) || (result !== -1 && result !== 1)) {
-            throw new DetailedError("Bad args.", {measuredObservable, result});
+            throw new DetailedError('Bad args.', {measuredObservable, result});
         }
         this.result = result;
         this.measuredObservable = measuredObservable;
@@ -35,7 +35,7 @@ class MeasurementResult {
             this.eliminationUnit = measuredObservable.times(result);
         } else {
             if (result !== measuredObservable.sign) {
-                throw new DetailedError("Contradiction.", {measuredObservable, result});
+                throw new DetailedError('Contradiction.', {measuredObservable, result});
             }
             this.eliminatedId = undefined;
             this.eliminationUnit = new ObservableProduct();
