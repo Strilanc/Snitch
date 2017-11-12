@@ -92,7 +92,7 @@ class StabilizerCircuitState {
     _apply2(index1, index2, action) {
         let a = this.qubit_map.get(index1);
         let b = this.qubit_map.get(index2);
-        if (a === undefined || b === undefined) {
+        if (a === undefined || b === undefined || a === b) {
             throw new DetailedError('Bad qubit index.', {index1, index2});
         }
         let [c, d] = action(a, b);
@@ -132,7 +132,7 @@ class StabilizerCircuitState {
             let p = this.qubit_map.get(k);
             this.qubit_map.set(k, p.rewriteWithMeasurementResult(m));
         }
-        if (reset && m.result) {
+        if (reset && m.result === -1) {
             this.x(index);
         }
         return m.result === -1;
