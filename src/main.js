@@ -74,7 +74,7 @@ canvas.height = diam * height;
 function error() {
     for (let i = 0; i < width; i++) {
         for (let j = 0; j < height; j++) {
-            if (Math.random() < 0.01) {
+            if (Math.random() < 0.001) {
                 if (Math.random() < 0.5) {
                     state.x(qubits[i][j]);
                 }
@@ -115,7 +115,7 @@ setInterval(() => {
     error();
     cycle();
     draw();
-}, 100);
+}, 1000);
 
 canvas.onmousedown = ev => {
     let i = Math.floor(ev.x / diam);
