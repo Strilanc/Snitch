@@ -1,0 +1,36 @@
+{
+  "name": "snitch-quantum-surface-code-simulator",
+  "title": "Snitch",
+  "description": "A surface code simulator.",
+  "license": "Apache-2.0",
+  "version": "0.0.1",
+  "homepage": "https://github.com/Strilanc/Snitch",
+  "bugs": {
+    "url": "https://github.com/Strilanc/Snitch/issues"
+  },
+  "devDependencies": {
+    "grunt": "~1.0.1",
+    "grunt-cli": "~1.2.0",
+    "grunt-contrib-clean": "~1.0.0",
+    "grunt-contrib-concat": "~1.0.1",
+    "grunt-contrib-copy": "~1.0.0",
+    "grunt-contrib-uglify": "~3.1.0",
+    "grunt-karma": "~2.0.0",
+    "grunt-traceur": "~0.5.5",
+    "karma": "~1.7.0",
+    "karma-chrome-launcher": "~2.2.0",
+    "karma-firefox-launcher": "~1.0.1",
+    "traceur": "0.0.111"
+  },
+  "scripts": {
+    "build": "grunt build-src",
+    "test": "grunt test",
+    "test-chrome": "grunt test-chrome",
+    "test-firefox": "grunt test-firefox",
+    "test-travis": "grunt test-travis"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Strilanc/Snitch.git"
+  }
+}
