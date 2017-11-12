@@ -71,16 +71,39 @@ let diam = 20;
 canvas.width = diam * width;
 canvas.height = diam * height;
 
-function error() {
+function error(p = 0.01) {
     for (let i = 0; i < width; i++) {
         for (let j = 0; j < height; j++) {
-            if (Math.random() < 0.001) {
+            if (Math.random() < p) {
                 if (Math.random() < 0.5) {
                     state.x(qubits[i][j]);
                 }
                 if (Math.random() < 0.5) {
                     state.z(qubits[i][j]);
                 }
+            }
+        }
+    }
+}
+
+function zero() {
+    for (let i = 0; i < width; i += 2) {
+        let b = false;
+        for (let j = 0; j < height; j += 2) {
+            b ^= last_result[i][j] === true;
+            if (b && j < height - 1) {
+                state.x(qubits[i][j+1]);
+            }
+        }
+    }
+
+    let max_i = (width - (width % 1)) - 1;
+    for (let j = 1; j < height; j += 2) {
+        let b = false;
+        for (let i = max_i; i >= 0; i -= 2) {
+            b ^= last_result[i][j] === true;
+            if (b && i > 0) {
+                state.z(qubits[i-1][j]);
             }
         }
     }
@@ -93,29 +116,31 @@ function draw() {
             let x = i*diam;
             let y = j*diam;
             if ((i & 1) !== (j & 1)) {
-                ctx.fillStyle = '#88F';
+                ctx.fillStyle = '#FFF';
             } else if ((i & 1) === 0) {
-                ctx.fillStyle = '#8F8';
+                if (last_result[i][j] === true) {
+                    ctx.fillStyle = '#A62';
+                } else if (last_result[i][j] === false) {
+                    ctx.fillStyle = '#DFD';
+                }
             } else {
-                ctx.fillStyle = '#F88';
+                if (last_result[i][j] === true) {
+                    ctx.fillStyle = '#F6F';
+                } else if (last_result[i][j] === false) {
+                    ctx.fillStyle = '#DDF';
+                }
             }
             ctx.fillRect(x, y, diam, diam);
-            if (last_result[i][j] === true) {
-                ctx.fillStyle = '#FFF';
-                ctx.fillRect(x+diam/3, y + diam/3, diam/3, diam/3);
-            } else if (last_result[i][j] === false) {
-                ctx.fillStyle = '#000';
-                ctx.fillRect(x+diam/3, y + diam/3, diam/3, diam/3);
-            }
         }
     }
 }
 
 setInterval(() => {
+    zero();
     error();
     cycle();
     draw();
-}, 1000);
+}, 100);
 
 canvas.onmousedown = ev => {
     let i = Math.floor(ev.x / diam);
