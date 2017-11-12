@@ -41,16 +41,21 @@ suite.test("construct", () => {
 });
 
 suite.test("isEqualTo", () => {
+    let a = new ObservableProduct(new Set(['a']), +1);
+
     assertTrue(new ObservableProduct().isEqualTo(new ObservableProduct()));
-    assertFalse(new ObservableProduct().isEqualTo(new ObservableProduct(new Set(['a']))));
+    assertFalse(new ObservableProduct().isEqualTo(a));
 
     assertThat(new ObservableProduct()).isEqualTo(new ObservableProduct(new Set(), +1));
-    assertThat(new ObservableProduct()).isNotEqualTo(new ObservableProduct(new Set(['a']), +1));
+    assertThat(new ObservableProduct()).isNotEqualTo(a);
     assertThat(new ObservableProduct()).isNotEqualTo(new ObservableProduct(new Set(['a']), -1));
     assertThat(new ObservableProduct()).isNotEqualTo(new ObservableProduct(new Set(), -1));
 
-    assertThat(new ObservableProduct(new Set(['a']), +1)).isEqualTo(new ObservableProduct(new Set(['a'])));
-    assertThat(new ObservableProduct(new Set(['a']), +1)).isNotEqualTo(new ObservableProduct(new Set(['b'])));
+    assertThat(a).isEqualTo(new ObservableProduct(new Set(['a'])));
+    assertThat(a).isNotEqualTo(new ObservableProduct(new Set(['b'])));
+
+    assertThat(a).isNotEqualTo('');
+    assertThat(a).isNotEqualTo(undefined);
 });
 
 suite.test("times", () => {

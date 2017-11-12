@@ -41,7 +41,7 @@ function set_xor(a, b) {
 class ObservableProduct {
     /**
      * Creates an observable product using the given ids and constant sign.
-     * @param {!Set.<!String>=} observableIds The set of +1/-1 observables multiplied together to make this product.
+     * @param {!Set.<!string>=} observableIds The set of +1/-1 observables multiplied together to make this product.
      * @param {!int=} sign A constant +1 or -1 factor.
      */
     constructor(observableIds = new Set(), sign = +1) {
@@ -64,14 +64,12 @@ class ObservableProduct {
         if (other === -1) {
             return new ObservableProduct(this.ids, -this.sign);
         }
-        let ids = set_xor(this.ids, other.ids);
-        let sign = this.sign * other.sign;
-        return new ObservableProduct(ids, sign);
+        return new ObservableProduct(set_xor(this.ids, other.ids), this.sign * other.sign);
     }
 
     /**
      * Describes the observable product.
-     * @returns {!String}
+     * @returns {!string}
      */
     toString() {
         if (this.ids.size === 0) {
