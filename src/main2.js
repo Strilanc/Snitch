@@ -8,6 +8,8 @@ import {init, createFragProgram, drawProgramToCanvas, drawToTexture, allocTextur
 let canvas = /** @type {!HTMLCanvasElement} */ document.getElementById('main-canvas');
 let gl = init(canvas);
 
+import {GpuBinaryMat} from 'src/sim/GpuMat.js'
+
 let program = createFragProgram(`#version 300 es
     precision highp float;
     precision highp int;
