@@ -1,6 +1,6 @@
-setTimeout(() => location.reload(), 1000);
+setTimeout(() => location.reload(), 4000);
 
-import {seq} from 'src/base/Seq.js'
+import {seq, Seq} from 'src/base/Seq.js'
 import {DetailedError} from 'src/base/DetailedError.js'
 import {ObservableProduct} from 'src/sim/ObservableProduct.js'
 import {MeasurementResult} from 'src/sim/MeasurementResult.js'
@@ -126,45 +126,81 @@ let applyCzOperationShader = createFragProgram(`#version 300 es
 let tex_width = 64 * 2;
 let tex_height = 64 * 2;
 
-let {texture: tex, frameBuffer: fb1} = allocTexture(tex_width, tex_height);
-gl.useProgram(showShader);
-gl.uniform2f(gl.getUniformLocation(prepareCleanStateShader, 'size'), tex_width, tex_height);
-drawToTexture(prepareCleanStateShader, tex, fb1, tex_width, tex_height);
+let {texture: tex_dst, frameBuffer: fb_dst} = allocTexture(tex_width, tex_height);
+let {texture: tex_src, frameBuffer: fb_src} = allocTexture(tex_width, tex_height);
 
-let {texture: tex2, frameBuffer: fb2} = allocTexture(tex_width, tex_height);
-gl.useProgram(applyXOperationShader);
-gl.uniform1i(gl.getUniformLocation(applyXOperationShader, 'tex'), 0);
-gl.activeTexture(gl.TEXTURE0);
-gl.bindTexture(gl.TEXTURE_2D, tex);
-gl.uniform1i(gl.getUniformLocation(applyXOperationShader, 'target'), 5);
-gl.uniform2f(gl.getUniformLocation(applyXOperationShader, 'size'), tex_width, tex_height);
-drawToTexture(applyXOperationShader, tex2, fb2, tex_width, tex_height);
+function swap_tex() {
+    let tex_tmp = tex_src;
+    let fb_tmp = fb_src;
+    tex_src = tex_dst;
+    fb_src = fb_dst;
+    tex_dst = tex_tmp;
+    fb_dst = fb_tmp;
+}
 
-let {texture: tex3, frameBuffer: fb3} = allocTexture(tex_width, tex_height);
-gl.useProgram(applyHOperationShader);
-gl.uniform1i(gl.getUniformLocation(applyHOperationShader, 'tex'), 0);
-gl.activeTexture(gl.TEXTURE0);
-gl.bindTexture(gl.TEXTURE_2D, tex2);
-gl.uniform1i(gl.getUniformLocation(applyHOperationShader, 'target'), 8);
-gl.uniform2f(gl.getUniformLocation(applyHOperationShader, 'size'), tex_width, tex_height);
-drawToTexture(applyHOperationShader, tex3, fb3, tex_width, tex_height);
+function run(program, ...combos) {
+    gl.useProgram(program);
+    for (let [action, key, ...vals] of combos) {
+        let loc = gl.getUniformLocation(program, key);
+        if (action === '1i_tex') {
+            gl.uniform1i(loc, ...vals);
+            gl.activeTexture(gl.TEXTURE0);
+            gl.bindTexture(gl.TEXTURE_2D, tex_src);
+        } else {
+            gl['uniform' + action](loc, ...vals);
+        }
+    }
+    drawToTexture(program, tex_dst, fb_dst, tex_width, tex_height);
+    swap_tex();
+}
 
-let {texture: tex4, frameBuffer: fb4} = allocTexture(tex_width, tex_height);
-gl.useProgram(applyCzOperationShader);
-gl.uniform1i(gl.getUniformLocation(applyCzOperationShader, 'tex'), 0);
-gl.activeTexture(gl.TEXTURE0);
-gl.bindTexture(gl.TEXTURE_2D, tex3);
-gl.uniform1i(gl.getUniformLocation(applyCzOperationShader, 'target1'), 8);
-gl.uniform1i(gl.getUniformLocation(applyCzOperationShader, 'target2'), 15);
-gl.uniform2f(gl.getUniformLocation(applyCzOperationShader, 'size'), tex_width, tex_height);
-drawToTexture(applyCzOperationShader, tex4, fb4, tex_width, tex_height);
+function h(a) {
+    return () => run(applyHOperationShader,
+        ['1i_tex', 'tex', 0],
+        ['1i', 'target', a],
+        ['2f', 'size', tex_width, tex_height]);
+}
 
+function cz(a, b) {
+    return () => run(applyCzOperationShader,
+        ['1i_tex', 'tex', 0],
+        ['1i', 'target1', a],
+        ['1i', 'target2', b],
+        ['2f', 'size', tex_width, tex_height]);
+}
+
+let steps = [
+    () => run(prepareCleanStateShader,
+        ['2f', 'size', tex_width, tex_height]),
+
+    () => run(applyXOperationShader,
+        ['1i_tex', 'tex', 0],
+        ['1i', 'target', 5],
+        ['2f', 'size', tex_width, tex_height]),
+
+    ...Seq.range(20).map(h),
+    ...Seq.range(10).map(i => cz(i, i + 10)),
+    ...Seq.range(10).map(h),
+];
+
+let step_index = 0;
 canvas.width = tex_width*4;
 canvas.height = tex_height*4;
-gl.useProgram(showShader);
-gl.uniform1i(gl.getUniformLocation(showShader, 'tex'), 0);
-gl.activeTexture(gl.TEXTURE0);
-gl.bindTexture(gl.TEXTURE_2D, tex4);
-gl.uniform2f(gl.getUniformLocation(showShader, 'tex_size'), tex_width, tex_height);
-gl.uniform2f(gl.getUniformLocation(showShader, 'out_size'), canvas.width, canvas.height);
-drawProgramToCanvas();
+setInterval(() => {
+    if (step_index < steps.length) {
+        steps[step_index]();
+    }
+    step_index++;
+    if (step_index >= steps.length + 10) {
+        step_index = 0;
+    }
+
+    gl.useProgram(showShader);
+    gl.uniform1i(gl.getUniformLocation(showShader, 'tex'), 0);
+    gl.activeTexture(gl.TEXTURE0);
+    gl.bindTexture(gl.TEXTURE_2D, tex_src);
+    gl.uniform2f(gl.getUniformLocation(showShader, 'tex_size'), tex_width, tex_height);
+    gl.uniform2f(gl.getUniformLocation(showShader, 'out_size'), canvas.width, canvas.height);
+    drawProgramToCanvas();
+}, 20);
+
