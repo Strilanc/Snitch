@@ -43,30 +43,39 @@ function init(canvas) {
     return gl;
 }
 
-function allocTexture(w, h) {
-    let tex = gl.createTexture();
-    let frameBuffer = gl.createFramebuffer();
-    //noinspection JSUnresolvedVariable
-
-    gl.bindTexture(gl.TEXTURE_2D, tex);
-    gl.bindFramebuffer(gl.FRAMEBUFFER, frameBuffer);
-    try {
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-        //noinspection JSUnresolvedVariable
-        gl.texImage2D(gl.TEXTURE_2D, 0, gl.R8, w, h, 0, gl.RED, gl.UNSIGNED_BYTE, null);
-        checkGetErrorResult(gl, "texImage2D");
-        gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, tex, 0);
-        checkGetErrorResult(gl, "framebufferTexture2D");
-        checkFrameBufferStatusResult(gl);
-    } finally {
-        gl.bindTexture(gl.TEXTURE_2D, null);
-        gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+class Tex {
+    constructor(width, height) {
+        let {texture, frameBuffer} = Tex.allocTexture(width, height);
+        this.width = width;
+        this.height = height;
+        this.texture = texture;
+        this.frameBuffer = frameBuffer;
     }
 
-    return {texture: tex, frameBuffer};
+    static allocTexture(w, h) {
+        let texture = gl.createTexture();
+        let frameBuffer = gl.createFramebuffer();
+
+        gl.bindTexture(gl.TEXTURE_2D, texture);
+        gl.bindFramebuffer(gl.FRAMEBUFFER, frameBuffer);
+        try {
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+            //noinspection JSUnresolvedVariable
+            gl.texImage2D(gl.TEXTURE_2D, 0, gl.R8, w, h, 0, gl.RED, gl.UNSIGNED_BYTE, null);
+            checkGetErrorResult(gl, "texImage2D");
+            gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, texture, 0);
+            checkGetErrorResult(gl, "framebufferTexture2D");
+            checkFrameBufferStatusResult(gl);
+        } finally {
+            gl.bindTexture(gl.TEXTURE_2D, null);
+            gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+        }
+
+        return {texture, frameBuffer};
+    }
 }
 
 /**
@@ -110,6 +119,7 @@ function checkGetErrorResult(gl, previousOperationDescription) {
 function checkFrameBufferStatusResult(gl) {
     //noinspection JSUnresolvedFunction,JSUnresolvedVariable
     let code = gl.checkFramebufferStatus(gl.FRAMEBUFFER);
+    const GL = WebGLRenderingContext;
     //noinspection JSUnresolvedVariable
     if (code === gl.FRAMEBUFFER_COMPLETE) {
         return;
@@ -123,11 +133,11 @@ function checkFrameBufferStatusResult(gl) {
         [0x8CD9]: "FRAMEBUFFER_INCOMPLETE_DIMENSIONS [+constant not found]",
         [0x8CDD]: "FRAMEBUFFER_UNSUPPORTED [+constant not found]",
 
-        [gl.INVALID_ENUM]: "INVALID_ENUM",
-        [gl.FRAMEBUFFER_INCOMPLETE_ATTACHMENT]: "FRAMEBUFFER_INCOMPLETE_ATTACHMENT",
-        [gl.FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT]: "FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT",
-        [gl.FRAMEBUFFER_INCOMPLETE_DIMENSIONS]: "FRAMEBUFFER_INCOMPLETE_DIMENSIONS",
-        [gl.FRAMEBUFFER_UNSUPPORTED]: "FRAMEBUFFER_UNSUPPORTED"
+        [GL.INVALID_ENUM]: "INVALID_ENUM",
+        [GL.FRAMEBUFFER_INCOMPLETE_ATTACHMENT]: "FRAMEBUFFER_INCOMPLETE_ATTACHMENT",
+        [GL.FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT]: "FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT",
+        [GL.FRAMEBUFFER_INCOMPLETE_DIMENSIONS]: "FRAMEBUFFER_INCOMPLETE_DIMENSIONS",
+        [GL.FRAMEBUFFER_UNSUPPORTED]: "FRAMEBUFFER_UNSUPPORTED"
     };
     let d = msgs[code] !== undefined ? msgs[code] : "?";
     throw new Error(`gl.checkFramebufferStatus() returned 0x${code.toString(16)} (${d}).`);
@@ -138,10 +148,10 @@ function checkFrameBufferStatusResult(gl) {
  * @param {!WebGLProgram} program
  * @param {!int} w
  * @param {!int} h
- * @param {!WebGLFramebuffer} fb
+ * @param {!Tex} tex
  */
-function drawToTexture(program, fb, w, h) {
-    gl.bindFramebuffer(gl.FRAMEBUFFER, fb);
+function drawToTexture(program, tex, w, h) {
+    gl.bindFramebuffer(gl.FRAMEBUFFER, tex.frameBuffer);
     try {
         checkGetErrorResult(gl, "drawToTexture:bindFrameBuffer");
         checkFrameBufferStatusResult(gl);
@@ -175,12 +185,6 @@ function readTexture(t, w, h, fb) {
     } finally {
         gl.bindFramebuffer(gl.FRAMEBUFFER, null);
     }
-}
-
-function drawProgramToCanvas() {
-    gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
-    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-    gl.drawArrays(gl.TRIANGLES, 0, 6);
 }
 
 function createShader(type, source) {
@@ -217,4 +221,17 @@ function createFragProgram(fragmentShaderSource) {
     return program;
 }
 
-export {init, createFragProgram, drawProgramToCanvas, drawToTexture, allocTexture, readTexture}
+class TexPair {
+    constructor(width, height) {
+        this.src = new Tex(width, height);
+        this.dst = new Tex(width, height);
+    }
+
+    swap() {
+        let t = this.src;
+        this.src = this.dst;
+        this.dst = t;
+    }
+}
+
+export {init, createFragProgram, drawToTexture, readTexture, Tex, TexPair}
