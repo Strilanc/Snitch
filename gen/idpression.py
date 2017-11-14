@@ -1,4 +1,4 @@
-from typing import List, Optional, Union
+from typing import List, Optional, Union, Dict
 
 _next_id = 0
 
@@ -30,9 +30,33 @@ class Idpression(object):
     def uniform_lines(self):
         return []
 
+    def collect_ascending_deps(self,
+                               seen: Dict['Idpression', int] = None,
+                               out: List['Idpression'] = None,
+                               include_uniforms: bool = True):
+        if seen is None:
+            seen = dict()
+        if out is None:
+            out = []
+        if self in seen:
+            seen[self] += 1
+            return out
+        seen[self] = 1
+
+        for r in self.dependencies:
+            r.collect_ascending_deps(seen, out, include_uniforms)
+        if include_uniforms:
+            for r in self.uniform_dependencies:
+                r.collect_ascending_deps(seen, out, include_uniforms)
+        out.append(self)
+        return out
+
     def formula(self) -> Optional[str]:
         """An expression for this value, or None if the var_name works fine."""
         return None
+
+    def if_then(self, true_result) -> 'PartialMatcherBeforeElse':
+        return PartialMatcherBeforeElse([[self, true_result]])
 
     def __or__(self, other):
         return BinaryOp(self, other, 'bitwise_or', '|')
@@ -40,7 +64,13 @@ class Idpression(object):
     def __and__(self, other):
         return BinaryOp(self, other, 'bitwise_and', '&')
 
-    def __xor__(self, other):
+    def __invert__(self):
+        return UnaryOp(self, 'not', '!')
+
+    def __neg__(self):
+        return UnaryOp(self, 'neg', '-')
+
+    def __xor__(self, other) -> 'Idpression':
         return BinaryOp(self, other, 'bitwise_xor', '^')
 
     def __lshift__(self, other):
@@ -93,22 +123,52 @@ class Idpression(object):
     def wrap(val: Union[bool, int, float, 'Idpression']) -> 'Idpression':
         if isinstance(val, Idpression):
             return val
-        if isinstance(val, (int, float)):
-            return Literal(repr(val))
         if isinstance(val, bool):
-            return Literal('true' if val else 'false')
+            return Literal('true' if val else 'false', -1 if val else 0)
+        if isinstance(val, (int, float)):
+            return Literal(repr(val), val)
         raise ValueError('Unrecognized val: {}'.format(val))
 
 
+class PartialMatcherBeforeElse(object):
+    def __init__(self, clauses):
+        self.clauses = clauses
+
+    def else_if(self, condition) -> 'PartialMatcherBeforeThen':
+        return PartialMatcherBeforeThen(self.clauses, condition)
+
+    def else_end(self, result) -> Idpression:
+        clauses, else_result = Matcher.simplify(self.clauses, result)
+        if not clauses:
+            return else_result
+        return Matcher(clauses, else_result)
+
+
+class PartialMatcherBeforeThen(object):
+    def __init__(self, clauses, condition):
+        self.condition = condition
+        self.clauses = clauses
+
+    def then(self, result) -> PartialMatcherBeforeElse:
+        return PartialMatcherBeforeElse(
+            self.clauses + [[self.condition, result]])
+
+
 class Literal(Idpression):
-    def __init__(self, literal_text: str):
+    def __init__(self, literal_text: str, python_equivalent):
         super().__init__(literal_text, [], [], False)
+        self.python_equivalent = python_equivalent
 
     def __getitem__(self, item):
         return ValueError()
 
     def uniform_lines(self):
         return []
+
+    def __invert__(self):
+        if self.python_equivalent is None:
+            return Idpression.__invert__(self)
+        return Idpression.wrap(~self.python_equivalent)
 
 
 class Uniform(Idpression):
@@ -123,6 +183,30 @@ class Uniform(Idpression):
         return [
             'uniform {} {};'.format(self.type, self.var_name),
         ]
+
+
+class UniformVec2(Uniform):
+    def __init__(self):
+        super().__init__('vec2', 'tex_size')
+
+    def uniform_lines(self):
+        return [
+            'uniform vec2 {};'.format(self.var_name)
+        ]
+
+
+class UnaryOp(Idpression):
+    def __init__(self, val, prefix, op_char):
+        val = Idpression.wrap(val)
+        super().__init__(prefix, [val])
+        self.val = val
+        self.op_char = op_char
+
+    def formula(self):
+        return 'int({}({}))'.format(
+            self.op_char,
+            self.val.var_name)
+
 
 class BinaryOp(Idpression):
     def __init__(self, lhs, rhs, prefix, op_char):
@@ -157,6 +241,40 @@ class PseudoSlice(Idpression):
             # Oh man is this ever hacky.
             line = line.replace(dep.var_name, sliced_dep.var_name)
         return line
+
+
+class Matcher(Idpression):
+    def __init__(self, clauses, else_result):
+        terms = []
+        for a, b in clauses:
+            terms.append(a)
+            terms.append(b)
+        terms.append(else_result)
+        terms = [t for t in terms if isinstance(t, Idpression)]
+        super().__init__('match', terms)
+        self.clauses = clauses
+        self.else_result = else_result
+
+    @staticmethod
+    def simplify(clauses, else_result):
+        result = []
+        for i in range(len(clauses)):
+            if isinstance(clauses[i][0], Literal) and clauses[i][0].python_equivalent is not None:
+                if clauses[i][0].python_equivalent:
+                    return clauses[:i], clauses[i][1]
+                continue
+            result.append(clauses[i])
+
+        return result, else_result
+
+    def formula(self):
+        lines = ['']
+        for a, b in self.clauses:
+            lines.append('({}) ? ({}) :'.format(
+                Idpression.wrap(a).var_name,
+                Idpression.wrap(b).var_name))
+        lines.append('({})'.format(Idpression.wrap(self.else_result).var_name))
+        return '\n                '.join(lines)
 
 
 def slice_deps(s):
