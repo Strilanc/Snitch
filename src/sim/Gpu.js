@@ -136,12 +136,11 @@ function checkFrameBufferStatusResult(gl) {
 //noinspection JSValidateJSDoc
 /**
  * @param {!WebGLProgram} program
- * @param {!WebGLTexture} t
  * @param {!int} w
  * @param {!int} h
  * @param {!WebGLFramebuffer} fb
  */
-function drawToTexture(program, t, fb, w, h) {
+function drawToTexture(program, fb, w, h) {
     gl.bindFramebuffer(gl.FRAMEBUFFER, fb);
     try {
         checkGetErrorResult(gl, "drawToTexture:bindFrameBuffer");
