@@ -3,6 +3,7 @@ import {DetailedError} from 'src/base/DetailedError.js'
 
 import {initGpu, createFragProgram, ParametrizedShader, readTexture, TexPair, Tex} from 'src/sim/Gpu.js'
 import {orFoldRowsShader} from 'src/gen/orFoldRowsShader.js'
+import {singleHadamard} from 'src/gen/singleHadamard.js'
 
 let canvas = /** @type {!HTMLCanvasElement} */ document.getElementById('main-canvas');
 initGpu(canvas);
@@ -79,36 +80,6 @@ let applyXOperationShader = createFragProgram(`#version 300 es
             outColor = 0.5;
         }
     }`);
-
-/**
- * @param {!Tex} tex
- * @param {!int} target
- */
-let applyHOperationShader = new ParametrizedShader(`#version 300 es
-    precision highp float;
-    precision highp int;
-    out float outColor;
-    uniform vec2 size;
-    uniform sampler2D tex;
-    uniform int target;
-    void main() {
-        int x = int(gl_FragCoord.x);
-        int y = int(gl_FragCoord.y);
-        vec2 xy = gl_FragCoord.xy / size;
-        bool prev = texture(tex, xy).x > 0.5;
-        int other_index = y ^ 1;
-        vec2 other_loc = vec2(xy.x, float(other_index) / size.y);
-        bool other_val = texture(tex, other_loc).x > 0.5;
-        outColor = float(target * 2 == y || target * 2 + 1 == y ? other_val : prev);
-        if (x == 0 && target * 2 == y) {
-            outColor = float(!prev);
-        }
-        if (x == 0 && (y & 1) == 1) {
-            outColor = 0.5;
-        }
-    }`,
-    ['tex', 'tex', 'size'],
-    ['1i', 'target']);
 
 /**
  * @param {!Tex} tex
@@ -256,7 +227,7 @@ function measure_set_result(target) {
 }
 
 function h(a) {
-    return () => applyHOperationShader.withArgs(sim_state.src, a).renderIntoTexPair(sim_state);
+    return () => singleHadamard.withArgs(a, sim_state.src).renderIntoTexPair(sim_state);
 }
 
 function cz(a, b) {

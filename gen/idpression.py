@@ -68,7 +68,7 @@ class Idpression(object):
         return BinaryOp(self, other, 'bitwise_and', '&')
 
     def __invert__(self):
-        return UnaryOp(self, 'not', '!')
+        return UnaryOp(self, 'not', '~')
 
     def __neg__(self):
         return UnaryOp(self, 'neg', '-')
@@ -191,7 +191,7 @@ class Uniform(Idpression):
 
     def uniform_args(self):
         return {
-            "['{}', {}, {}]".format(self.set_key,
+            "['{}', '{}', {}]".format(self.set_key,
                                     self.var_name,
                                     'true' if self.spread else 'false')
         }
@@ -289,7 +289,7 @@ class Matcher(Idpression):
     def formula(self):
         lines = ['']
         for a, b in self.clauses:
-            lines.append('({}) ? ({}) :'.format(
+            lines.append('bool({}) ? ({}) :'.format(
                 Idpression.wrap(a).var_name,
                 Idpression.wrap(b).var_name))
         lines.append('({})'.format(Idpression.wrap(self.else_result).var_name))

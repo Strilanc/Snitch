@@ -115,9 +115,8 @@ class Tex(Idpression):
         return self.var_name[2:]
 
     def formula(self):
-        line = 'int(texture({}, gl_FragCoord.xy / {}).x * 255.0 + 0.5)'
+        line = 'int(texture(({}), gl_FragCoord.xy / ({})).x * 255.0 + 0.5)'
         return line.format(
-            self.var_name,
             self.tex_name(),
             self.size.var_name)
 

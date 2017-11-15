@@ -28,7 +28,7 @@ def generate_shader(final_value: Idpression):
             int x = int(gl_FragCoord.x);
             int y = int(gl_FragCoord.y);
             {}
-            outColor = float({}) / 255.0;
+            outColor = float((({}) & 0xFF)) / 255.0;
         }}""".format(uniform_block, init_block, final_value.var_name)
 
     return '\n'.join(code.split('\n        '))
@@ -38,11 +38,11 @@ def generate_shader_construction(name: str,
                                  final_value: Idpression):
     shader_source = generate_shader(final_value).replace('\n', '\n    ')
     uniform_deps = final_value.collect_ascending_deps(include_uniforms=True)
-    uniform_args = [
+    uniform_args = sorted([
         ',\n    ' + b
         for e in uniform_deps
         for b in e.uniform_args()
-    ]
+    ])
     return """////// AUTO-GENERATED CODE //////
 
 import {{ParametrizedShader}} from 'src/sim/Gpu.js'
@@ -73,27 +73,25 @@ def apply_cz() -> Idpression:
 
 
 def apply_x() -> Idpression:
-    tex = Tex()
-    target = Uniform('int', 'target')
-    prev = tex > 0.5
-    update_sign_y = (X == 0) & (Y == target * 2)
-    update_sign_z = (X == 1) & (Y == target * 2 + 1)
-    update = update_sign_y | update_sign_z
-    return prev != update
-
-
-def apply_find_one():
-    tex = Tex()
-    a = tex[::2, :]
-    b = tex[1::2, :]
-    return ((a != 0).if_then(a + X)
-            .else_if(b != 0).then(b + X + 1)
-            .else_end(0))
-
-
-def apply_or():
     tex = Tex(name='state')
-    return tex[::2, :] | tex[1::2, :]
+    target = Uniform('int', '1i', False, 'target', add_id_suffix_to_name=False)
+    # Flip const bit of Z observable and Y sign bit.
+    flip = (X < 2) & (Y == target * 2 + X)
+    result = tex ^ flip
+    return generate_shader_construction(
+        'applyXOperationShader',
+        result)
+
+
+def apply_h() -> Idpression:
+    state = Tex(name='state')
+    target = Uniform('int', '1i', False, 'target', add_id_suffix_to_name=False)
+    result = (((Y >> 1) != target).if_then(state)  # do nothing
+              .else_if((X == 0) & ((Y & 1) == 0)).then(~state)  # flip sign bit
+              .else_end(state[X, Y ^ 1]))  # swap row pair
+    return generate_shader_construction(
+        'singleHadamard',
+        result)
 
 
 def apply_hadamards(src: Idpression, affected: Union[bool, Idpression]) -> Idpression:
@@ -101,6 +99,26 @@ def apply_hadamards(src: Idpression, affected: Union[bool, Idpression]) -> Idpre
     return ((~affected).if_then(src)
             .else_if(X == Y & 1).then(~src)
             .else_end(src[X, Y ^ 1]))
+
+
+def find_one_fold():
+    tex = Tex(name='state')
+    a = tex[::2, :]
+    b = tex[1::2, :]
+    result =  ((a != 0).if_then(a + X)
+               .else_if(b != 0).then(b + X + 1)
+               .else_end(0))
+    return generate_shader_construction(
+        'findOneFoldRowsShader',
+        result)
+
+
+def or_fold():
+    tex = Tex(name='state')
+    result = tex[-2::2, :] | tex[-1::2, :]
+    return generate_shader_construction(
+        'orFoldRowsShader',
+        result)
 
 
 def apply_czs(src: Idpression,
@@ -170,7 +188,9 @@ def main():
     # print(generate_shader(apply_find_one()))
     # print()
     # print("apply_or")
-    print(generate_shader_construction('orFoldRowsShader', apply_or()))
+    print(find_one_fold())
+    print(apply_x())
+    print(apply_h())
     # print()
     # print()
     # print("assign")
