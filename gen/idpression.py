@@ -175,7 +175,8 @@ class Literal(Idpression):
 
 
 class Uniform(Idpression):
-    def __init__(self, type, set_key, spread, name, add_id_suffix_to_name=True):
+    def __init__(self, type, set_key, spread, name,
+                 add_id_suffix_to_name=False):
         super().__init__(name, [], add_id_suffix_to_name=add_id_suffix_to_name)
         self.type = type
         self.set_key = set_key

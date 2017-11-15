@@ -4,6 +4,7 @@ import {DetailedError} from 'src/base/DetailedError.js'
 import {initGpu, createFragProgram, ParametrizedShader, readTexture, TexPair, Tex} from 'src/sim/Gpu.js'
 import {orFoldRowsShader} from 'src/gen/orFoldRowsShader.js'
 import {singleHadamard} from 'src/gen/singleHadamard.js'
+import {singleCZ} from 'src/gen/singleCZ.js'
 
 let canvas = /** @type {!HTMLCanvasElement} */ document.getElementById('main-canvas');
 initGpu(canvas);
@@ -35,7 +36,7 @@ let prepareCleanStateShader = new ParametrizedShader(`#version 300 es
         int y = int(gl_FragCoord.y);
         outColor = float(x*2 == y + 4);
         if (x == 0 && (y & 1) == 1) {
-            outColor = 0.5;
+            outColor = 127.0/255.0;
         }
     }`,
     ['2f', 'size', true]);
@@ -77,41 +78,9 @@ let applyXOperationShader = createFragProgram(`#version 300 es
         bool update = update_sign_y || update_sign_z;
         outColor = float(prev != update);
         if (x == 0 && (y & 1) == 1) {
-            outColor = 0.5;
+            outColor = 127.0/255.0;
         }
     }`);
-
-/**
- * @param {!Tex} tex
- * @param {!int} target1
- * @param {!int} target2
- */
-let applyCzOperationShader = new ParametrizedShader(`#version 300 es
-    precision highp float;
-    precision highp int;
-    out float outColor;
-    uniform vec2 size;
-    uniform sampler2D tex;
-    uniform int target1;
-    uniform int target2;
-    void main() {
-        int x = int(gl_FragCoord.x);
-        int y = int(gl_FragCoord.y);
-        vec2 xy = gl_FragCoord.xy / size;
-        bool prev = texture(tex, xy).x > 0.5;
-        int other_index = (target1 + target2) * 2 - y + 1;
-        vec2 other_loc = vec2(xy.x, float(other_index) / size.y);
-        bool other_val = texture(tex, other_loc).x > 0.5;
-        bool is_target_x_obs = y == target1 * 2 || y == target2 * 2;
-        bool flip = other_val && is_target_x_obs && x > 0;
-        outColor = float(prev != flip);
-        if (x == 0 && (y & 1) == 1) {
-            outColor = 0.5;
-        }
-    }`,
-    ['tex', 'tex', 'size'],
-    ['1i', 'target1'],
-    ['1i', 'target2']);
 
 let findOneFoldRowsShader = new ParametrizedShader(`#version 300 es
     precision highp float;
@@ -231,7 +200,7 @@ function h(a) {
 }
 
 function cz(a, b) {
-    return () => applyCzOperationShader.withArgs(sim_state.src, a, b).renderIntoTexPair(sim_state);
+    return () => singleCZ.withArgs(a, b, sim_state.src).renderIntoTexPair(sim_state);
 }
 
 function neighbors(i, j) {
