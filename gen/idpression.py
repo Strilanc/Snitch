@@ -30,6 +30,9 @@ class Idpression(object):
     def uniform_lines(self):
         return []
 
+    def uniform_args(self):
+        return []
+
     def collect_ascending_deps(self,
                                seen: Dict['Idpression', int] = None,
                                out: List['Idpression'] = None,
@@ -172,9 +175,11 @@ class Literal(Idpression):
 
 
 class Uniform(Idpression):
-    def __init__(self, type, name):
-        super().__init__(name, [])
+    def __init__(self, type, set_key, spread, name, add_id_suffix_to_name=True):
+        super().__init__(name, [], add_id_suffix_to_name=add_id_suffix_to_name)
         self.type = type
+        self.set_key = set_key
+        self.spread = spread
 
     def __getitem__(self, item):
         return ValueError()
@@ -184,15 +189,29 @@ class Uniform(Idpression):
             'uniform {} {};'.format(self.type, self.var_name),
         ]
 
+    def uniform_args(self):
+        return {
+            "['{}', {}, {}]".format(self.set_key,
+                                    self.var_name,
+                                    'true' if self.spread else 'false')
+        }
 
-class UniformVec2(Uniform):
-    def __init__(self):
-        super().__init__('vec2', 'tex_size')
+
+class UniformTexSize(Uniform):
+    def __init__(self, name, add_id_suffix_to_name=True):
+        super().__init__('vec2',
+                         '2f',
+                         True,
+                         name,
+                         add_id_suffix_to_name=add_id_suffix_to_name)
 
     def uniform_lines(self):
         return [
             'uniform vec2 {};'.format(self.var_name)
         ]
+
+    def uniform_args(self):
+        return []
 
 
 class UnaryOp(Idpression):

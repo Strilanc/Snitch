@@ -1,12 +1,11 @@
 import {seq} from 'src/base/Seq.js'
 import {DetailedError} from 'src/base/DetailedError.js'
 
-import {init, createFragProgram, drawToTexture, readTexture, TexPair, Tex} from 'src/sim/Gpu.js'
+import {initGpu, createFragProgram, ParametrizedShader, readTexture, TexPair, Tex} from 'src/sim/Gpu.js'
+import {orFoldRowsShader} from 'src/gen/orFoldRowsShader.js'
+
 let canvas = /** @type {!HTMLCanvasElement} */ document.getElementById('main-canvas');
-let gl = init(canvas);
-
-// import {GpuBinaryMat} from 'src/sim/GpuMat.js'
-
+initGpu(canvas);
 
 //noinspection JSUnusedLocalSymbols
 function read(t, w, h, fb) {
@@ -20,70 +19,6 @@ function read(t, w, h, fb) {
         r.push(seq(s).join(''));
     }
     return seq(r).join('\n');
-}
-
-class ParametrizedShader {
-    constructor(fragmentShaderSource, ...params) {
-        this.program = createFragProgram(fragmentShaderSource);
-        this.params = params;
-    }
-
-    withArgs(...args) {
-        return new ParametrizedShaderWithArgs(this, args);
-    }
-
-    useArgs(...args) {
-        let params = this.params;
-        let program = this.program;
-        gl.useProgram(program);
-        if (args.length !== params.length) {
-            throw new DetailedError('Shader arg mismatch.', {args, params});
-        }
-        let texture_unit = 0;
-        for (let i = 0; i < args.length; i++) {
-            let param = params[i];
-            let action = param[0];
-            let key = param[1];
-            let arg = args[i];
-            let spread = param.length >= 2 && param[2];
-            let loc = gl.getUniformLocation(program, key);
-            if (action === 'tex') {
-                gl.uniform1i(loc, texture_unit);
-                gl.activeTexture(gl.TEXTURE0 + texture_unit);
-                gl.bindTexture(gl.TEXTURE_2D, arg.texture);
-                texture_unit++;
-                if (param.length >= 2 && param[2] !== undefined) {
-                    gl.uniform2f(gl.getUniformLocation(program, param[2]), arg.width, arg.height);
-                }
-            } else if (spread) {
-                gl['uniform' + action](loc, ...arg);
-            } else {
-                gl['uniform' + action](loc, arg);
-            }
-        }
-    }
-}
-
-class ParametrizedShaderWithArgs {
-    constructor(parametrizedShader, args) {
-        this.parametrizedShader = parametrizedShader;
-        this.args = args;
-    }
-
-    renderIntoTexPair(texPair) {
-        this.parametrizedShader.useArgs(...this.args);
-        drawToTexture(this.parametrizedShader.program, texPair.dst, texPair.dst.width, texPair.dst.height);
-        texPair.swap();
-    }
-
-    drawToCanvas() {
-        this.parametrizedShader.useArgs(...this.args);
-        gl.useProgram(this.parametrizedShader.program);
-        gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
-        gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-        gl.drawArrays(gl.TRIANGLES, 0, 6);
-    }
-
 }
 
 /**
@@ -206,23 +141,6 @@ let applyCzOperationShader = new ParametrizedShader(`#version 300 es
     ['tex', 'tex', 'size'],
     ['1i', 'target1'],
     ['1i', 'target2']);
-
-let orFoldRowsShader = new ParametrizedShader(`#version 300 es
-    precision highp float;
-    precision highp int;
-    out float outColor;
-    uniform vec2 size;
-    uniform sampler2D tex;
-    void main() {
-        float x = gl_FragCoord.x - 0.5;
-        float y = gl_FragCoord.y - 0.5;
-        vec2 loc1 = vec2(x*2.0 + 0.5 - 2.0, y) / size;
-        vec2 loc2 = vec2(x*2.0 + 1.5 - 2.0, y) / size;
-        bool val1 = texture(tex, loc1).x > 0.5;
-        bool val2 = texture(tex, loc2).x > 0.5;
-        outColor = float(val1 || val2);
-    }`,
-    ['tex', 'tex', 'size']);
 
 let findOneFoldRowsShader = new ParametrizedShader(`#version 300 es
     precision highp float;

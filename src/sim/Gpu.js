@@ -19,7 +19,7 @@ let gl = /** @type {!WebGL2RenderingContext} */  undefined;
 //noinspection JSValidateJSDoc
 let vertexShader = /** @type {!WebGLShader} */ undefined;
 
-function init(canvas) {
+function initGpu(canvas) {
     gl = canvas.getContext('webgl2');
 
     gl.bindBuffer(gl.ARRAY_BUFFER, gl.createBuffer());
@@ -143,6 +143,75 @@ function checkFrameBufferStatusResult(gl) {
     throw new Error(`gl.checkFramebufferStatus() returned 0x${code.toString(16)} (${d}).`);
 }
 
+class ParametrizedShader {
+    constructor(fragmentShaderSource, ...params) {
+        this.fragmentShaderSource = fragmentShaderSource;
+        this.program = undefined;
+        this.params = params;
+    }
+
+    withArgs(...args) {
+        return new ParametrizedShaderWithArgs(this, args);
+    }
+
+    useArgs(...args) {
+        if (this.program === undefined) {
+            this.program = createFragProgram(this.fragmentShaderSource);
+        }
+
+        let params = this.params;
+        let program = this.program;
+        gl.useProgram(program);
+        if (args.length !== params.length) {
+            throw new DetailedError('Shader arg mismatch.', {args, params});
+        }
+        let texture_unit = 0;
+        for (let i = 0; i < args.length; i++) {
+            let param = params[i];
+            let action = param[0];
+            let key = param[1];
+            let arg = args[i];
+            let spread = param.length >= 2 && param[2];
+            let loc = gl.getUniformLocation(program, key);
+            if (action === 'tex') {
+                gl.uniform1i(loc, texture_unit);
+                gl.activeTexture(gl.TEXTURE0 + texture_unit);
+                gl.bindTexture(gl.TEXTURE_2D, arg.texture);
+                texture_unit++;
+                if (param.length >= 2 && param[2] !== undefined) {
+                    gl.uniform2f(gl.getUniformLocation(program, param[2]), arg.width, arg.height);
+                }
+            } else if (spread) {
+                gl['uniform' + action](loc, ...arg);
+            } else {
+                gl['uniform' + action](loc, arg);
+            }
+        }
+    }
+}
+
+class ParametrizedShaderWithArgs {
+    constructor(parametrizedShader, args) {
+        this.parametrizedShader = parametrizedShader;
+        this.args = args;
+    }
+
+    renderIntoTexPair(texPair) {
+        this.parametrizedShader.useArgs(...this.args);
+        drawToTexture(this.parametrizedShader.program, texPair.dst, texPair.dst.width, texPair.dst.height);
+        texPair.swap();
+    }
+
+    drawToCanvas() {
+        this.parametrizedShader.useArgs(...this.args);
+        gl.useProgram(this.parametrizedShader.program);
+        gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
+        gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+        gl.drawArrays(gl.TRIANGLES, 0, 6);
+    }
+
+}
+
 //noinspection JSValidateJSDoc
 /**
  * @param {!WebGLProgram} program
@@ -234,4 +303,13 @@ class TexPair {
     }
 }
 
-export {init, createFragProgram, drawToTexture, readTexture, Tex, TexPair}
+export {
+    initGpu,
+    createFragProgram,
+    drawToTexture,
+    readTexture,
+    Tex,
+    TexPair,
+    ParametrizedShader,
+    ParametrizedShaderWithArgs,
+}

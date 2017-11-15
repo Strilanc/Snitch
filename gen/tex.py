@@ -1,5 +1,5 @@
-from typing import Tuple, Union, Dict, List
-from idpression import Idpression, Literal, slice_deps, UniformVec2
+from typing import Tuple, Union, Dict, List, Optional
+from idpression import Idpression, Literal, slice_deps, UniformTexSize
 
 
 def coalesce_slice(s: Union[slice, Idpression, int]) -> slice:
@@ -85,12 +85,26 @@ class TexSlice(Idpression):
 
 class Tex(Idpression):
 
-    def __init__(self, steps=None, size=None):
+    def __init__(self,
+                 steps: Optional[List[str]] = None,
+                 size: Optional[Idpression] = None,
+                 name: Optional[str] = None):
         if size is None:
-            size = UniformVec2()
-        super().__init__('tex', [size])
+            if name is None:
+                size = UniformTexSize('tex_size')
+            else:
+                size = UniformTexSize('{}_size'.format(name),
+                                   add_id_suffix_to_name=False)
+        super().__init__('v_' + (name or 'tex'),
+                         [size],
+                         add_id_suffix_to_name=name is None)
         self.steps = steps
         self.size = size
+
+    def uniform_args(self):
+        return {
+            "['tex', '{}', '{}']".format(self.tex_name(), self.size.var_name)
+        }
 
     def uniform_lines(self):
         return [
@@ -98,7 +112,7 @@ class Tex(Idpression):
         ]
 
     def tex_name(self):
-        return 'sampler_{}'.format(self.var_name)
+        return self.var_name[2:]
 
     def formula(self):
         line = 'int(texture({}, gl_FragCoord.xy / {}).x * 255.0 + 0.5)'

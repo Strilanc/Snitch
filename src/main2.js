@@ -4,9 +4,9 @@ import {MeasurementResult} from 'src/sim/MeasurementResult.js'
 import {StabilizerQubit} from 'src/sim/StabilizerQubit.js'
 import {StabilizerCircuitState} from 'src/sim/StabilizerCircuitState.js'
 
-import {init, createFragProgram, drawProgramToCanvas, drawToTexture, allocTexture, readTexture} from 'src/sim/Gpu.js'
+import {initGpu, createFragProgram, drawProgramToCanvas, drawToTexture, allocTexture, readTexture} from 'src/sim/Gpu.js'
 let canvas = /** @type {!HTMLCanvasElement} */ document.getElementById('main-canvas');
-let gl = init(canvas);
+let gl = initGpu(canvas);
 
 import {GpuBinaryMat} from 'src/sim/GpuMat.js'
 

@@ -34,6 +34,27 @@ def generate_shader(final_value: Idpression):
     return '\n'.join(code.split('\n        '))
 
 
+def generate_shader_construction(name: str,
+                                 final_value: Idpression):
+    shader_source = generate_shader(final_value).replace('\n', '\n    ')
+    uniform_deps = final_value.collect_ascending_deps(include_uniforms=True)
+    uniform_args = [
+        ',\n    ' + b
+        for e in uniform_deps
+        for b in e.uniform_args()
+    ]
+    return """////// AUTO-GENERATED CODE //////
+
+import {{ParametrizedShader}} from 'src/sim/Gpu.js'
+
+let {} = new ParametrizedShader(`{}`{});
+
+export {{{}}}""".format(
+        name,
+        shader_source,
+        ''.join(uniform_args),
+        name)
+
 X = Literal('x', None)
 Y = Literal('y', None)
 
@@ -71,7 +92,7 @@ def apply_find_one():
 
 
 def apply_or():
-    tex = Tex()
+    tex = Tex(name='state')
     return tex[::2, :] | tex[1::2, :]
 
 
@@ -149,17 +170,17 @@ def main():
     # print(generate_shader(apply_find_one()))
     # print()
     # print("apply_or")
-    # print(generate_shader(apply_or()))
+    print(generate_shader_construction('orFoldRowsShader', apply_or()))
     # print()
     # print()
     # print("assign")
 
-    steps = []
-    tex = Tex(steps)
-    apply_cycle(tex)
-    for s in steps:
-        print(generate_shader(s.src))
-        print(s.generate_js())
+    # steps = []
+    # tex = Tex(steps)
+    # apply_cycle(tex)
+    # for s in steps:
+    #     print(generate_shader(s.src))
+    #     print(s.generate_js())
 
 
 main()
