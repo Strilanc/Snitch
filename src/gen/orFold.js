@@ -2,7 +2,7 @@
 
 import {ParametrizedShader} from 'src/sim/Gpu.js'
 
-let orFoldRowsShader = new ParametrizedShader(`#version 300 es
+let orFold = new ParametrizedShader(`#version 300 es
     precision highp float;
     precision highp int;
     uniform vec2 state_size;
@@ -18,4 +18,4 @@ let orFoldRowsShader = new ParametrizedShader(`#version 300 es
     }`,
     ['tex', 'state', 'state_size']);
 
-export {orFoldRowsShader}
+export {orFold}

@@ -2,9 +2,10 @@ import {seq} from 'src/base/Seq.js'
 import {DetailedError} from 'src/base/DetailedError.js'
 
 import {initGpu, createFragProgram, ParametrizedShader, readTexture, TexPair, Tex} from 'src/sim/Gpu.js'
-import {orFoldRowsShader} from 'src/gen/orFoldRowsShader.js'
+import {orFold} from 'src/gen/orFold.js'
 import {singleHadamard} from 'src/gen/singleHadamard.js'
 import {singleCZ} from 'src/gen/singleCZ.js'
+import {prepareCleanState} from 'src/gen/prepareCleanState.js'
 
 let canvas = /** @type {!HTMLCanvasElement} */ document.getElementById('main-canvas');
 initGpu(canvas);
@@ -24,24 +25,6 @@ function read(t, w, h, fb) {
 }
 
 /**
- * @param {!Array.<!int>} size
- */
-let prepareCleanStateShader = new ParametrizedShader(`#version 300 es
-    precision highp float;
-    precision highp int;
-    out float outColor;
-    uniform vec2 size;
-    void main() {
-        int x = int(gl_FragCoord.x);
-        int y = int(gl_FragCoord.y);
-        outColor = float(x*2 == y + 4);
-        if (x == 0 && (y & 1) == 1) {
-            outColor = 127.0/255.0;
-        }
-    }`,
-    ['2f', 'size', true]);
-
-/**
  * @param {!Tex} tex
  * @param {!Array.<!int>} out_size
  */
@@ -59,52 +42,6 @@ let showShader = new ParametrizedShader(`#version 300 es
     }`,
     ['tex', 'tex', 'tex_size'],
     ['2f', 'out_size', true]);
-
-//noinspection JSUnusedLocalSymbols
-let applyXOperationShader = createFragProgram(`#version 300 es
-    precision highp float;
-    precision highp int;
-    out float outColor;
-    uniform vec2 size;
-    uniform sampler2D tex;
-    uniform int target;
-    void main() {
-        int x = int(gl_FragCoord.x);
-        int y = int(gl_FragCoord.y);
-        vec2 xy = gl_FragCoord.xy / size;
-        bool prev = texture(tex, xy).x > 0.5;
-        bool update_sign_y = x == 0 && y == target * 2;
-        bool update_sign_z = x == 1 && y == target * 2 + 1;
-        bool update = update_sign_y || update_sign_z;
-        outColor = float(prev != update);
-        if (x == 0 && (y & 1) == 1) {
-            outColor = 127.0/255.0;
-        }
-    }`);
-
-let findOneFoldRowsShader = new ParametrizedShader(`#version 300 es
-    precision highp float;
-    precision highp int;
-    out float outColor;
-    uniform vec2 size;
-    uniform sampler2D tex;
-    void main() {
-        int x = int(gl_FragCoord.x);
-        float fx = gl_FragCoord.x - 0.5;
-        float y = gl_FragCoord.y - 0.5;
-        vec2 loc1 = vec2(fx*2.0 + 0.5 - 2.0, y) / size;
-        vec2 loc2 = vec2(fx*2.0 + 1.5 - 2.0, y) / size;
-        int val1 = int(texture(tex, loc1).x * 255.0 + 0.5);
-        int val2 = int(texture(tex, loc2).x * 255.0 + 0.5);
-        if (val1 != 0) {
-            outColor = float(val1 + x - 2) / 255.0;
-        } else if (val2 != 0) {
-            outColor = float(val2 + x + 1 - 2) / 255.0;
-        } else {
-            outColor = 0.0;
-        }
-    }`,
-    ['tex', 'tex', 'size']);
 
 //noinspection JSUnusedLocalSymbols
 let killColShader = createFragProgram(`#version 300 es
@@ -171,11 +108,11 @@ let sim_state = new TexPair(tex_width, tex_height);
 let fold_state = new TexPair(tex_width, tex_height);
 
 function* compute_or() {
-    yield () => orFoldRowsShader.withArgs(sim_state.src).renderIntoTexPair(fold_state);
+    yield () => orFold.withArgs(sim_state.src).renderIntoTexPair(fold_state);
 
     let w = Math.ceil(sim_state.src.width / 2);
     while (w > 1) {
-        yield () => orFoldRowsShader.withArgs(fold_state.src).renderIntoTexPair(fold_state);
+        yield () => orFold.withArgs(fold_state.src).renderIntoTexPair(fold_state);
         w = Math.ceil(w / 2);
     }
 }
@@ -250,7 +187,7 @@ function* cycle() {
 }
 
 let steps = [
-    () => prepareCleanStateShader.withArgs([tex_width, tex_height]).renderIntoTexPair(sim_state),
+    () => prepareCleanState.withArgs().renderIntoTexPair(sim_state),
     ...cycle()
 ];
 
