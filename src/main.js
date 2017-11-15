@@ -6,6 +6,8 @@ import {orFold} from 'src/gen/orFold.js'
 import {singleHadamard} from 'src/gen/singleHadamard.js'
 import {singleCZ} from 'src/gen/singleCZ.js'
 import {prepareCleanState} from 'src/gen/prepareCleanState.js'
+import {measureSetResult} from 'src/gen/measureSetResult.js'
+import {findOneFold} from 'src/gen/findOneFold.js'
 
 let canvas = /** @type {!HTMLCanvasElement} */ document.getElementById('main-canvas');
 initGpu(canvas);
@@ -36,76 +38,15 @@ let showShader = new ParametrizedShader(`#version 300 es
     uniform vec2 tex_size;
     uniform vec2 out_size;
     void main() {
-        vec4 v = texture(tex, vec2(gl_FragCoord.x, out_size.y-gl_FragCoord.y) / out_size);
-        float r = v.x;
+        float r = texture(tex, vec2(gl_FragCoord.x, out_size.y-gl_FragCoord.y) / out_size).x;
         outColor = vec4(r, r, r, 1.0);
     }`,
     ['tex', 'tex', 'tex_size'],
     ['2f', 'out_size', true]);
 
-//noinspection JSUnusedLocalSymbols
-let killColShader = createFragProgram(`#version 300 es
-    precision highp float;
-    precision highp int;
-    out float outColor;
-    uniform vec2 size;
-    uniform sampler2D state;
-    uniform sampler2D mux;
-    uniform int target;
-    void main() {
-        int x = int(gl_FragCoord.x);
-        int y = int(gl_FragCoord.y);
-        vec2 xy = gl_FragCoord.xy / size;
-        float ty = (float(target)*2.0+1.0+0.5)/ size.y;
-        float prev_f = texture(state, xy).x;
-        bool prev = prev_f > 0.5;
-        bool mask = texture(state, vec2(xy.x, ty)).x > 0.5;
-        int index = int(texture(mux, vec2(2.5/size.x, xy.y)).x * 255.0 + 0.5);
-        index += 1;
-        bool fix = texture(state, vec2((float(index) + 0.5) / size.x, ty)).x > 0.5;
-        outColor = prev_f;
-        if (x >= 1 && index >= 2) {
-            // there was a variable present
-            outColor = float((fix && mask) != prev);
-        }
-    }`);
-
-let measureSetResultShader = new ParametrizedShader(`#version 300 es
-    precision highp float;
-    precision highp int;
-    out float outColor;
-    uniform vec2 size;
-    uniform sampler2D state;
-    uniform sampler2D ors;
-    uniform int target;
-    void main() {
-        int x = int(gl_FragCoord.x);
-        int y = int(gl_FragCoord.y);
-        vec2 xy = gl_FragCoord.xy / size;
-        float prev_f = texture(state, xy).x;
-        bool prev = prev_f > 0.5;
-        outColor = prev_f;
-        bool any = texture(ors, vec2(2.5 / size.x, xy.y)).x > 0.5;
-        if (y == target*2 + 1) {
-            bool rand = sin(xy.y * xy.y * 432.3) > 0.0;  // TODO: actually make it random.
-            if (x == 0) {
-                outColor = float(rand);
-            } else if (x == 1) {
-                outColor = float(prev != rand);
-            }
-        }
-    }`,
-    ['tex', 'state', 'size'],
-    ['tex', 'ors'],
-    ['1i', 'target']);
-
-let tex_width = 64 * 2;
-let tex_height = 64 * 2;
-let width = 5;
-let height = 5;
-
-let sim_state = new TexPair(tex_width, tex_height);
-let fold_state = new TexPair(tex_width, tex_height);
+let sim_state = new TexPair(128, 128);
+let fold_state = new TexPair(sim_state.src.width, sim_state.src.height);
+let rng_state = new TexPair(4, sim_state.src.height);
 
 function* compute_or() {
     yield () => orFold.withArgs(sim_state.src).renderIntoTexPair(fold_state);
@@ -119,17 +60,17 @@ function* compute_or() {
 
 //noinspection JSUnusedLocalSymbols
 function* compute_find() {
-    yield () => findOneFoldRowsShader.withArgs(sim_state.src).renderIntoTexPair(fold_state);
+    yield () => findOneFold.withArgs(sim_state.src).renderIntoTexPair(fold_state);
 
     let w = Math.ceil(sim_state.src.width / 2);
     while (w > 1) {
-        yield () => findOneFoldRowsShader.withArgs(fold_state.src).renderIntoTexPair(fold_state);
+        yield () => findOneFold.withArgs(fold_state.src).renderIntoTexPair(fold_state);
         w = Math.ceil(w / 2);
     }
 }
 
 function measure_set_result(target) {
-    return () => measureSetResultShader.withArgs(sim_state.src, fold_state.src, target).renderIntoTexPair(sim_state);
+    return () => measureSetResult.withArgs(target, fold_state.src, rng_state.src, sim_state.src).renderIntoTexPair(sim_state);
 }
 
 function h(a) {
@@ -140,10 +81,13 @@ function cz(a, b) {
     return () => singleCZ.withArgs(a, b, sim_state.src).renderIntoTexPair(sim_state);
 }
 
+let surface_width = 5;
+let surface_height = 5;
+
 function neighbors(i, j) {
     let result = [];
     for (let [x, y] of [[i-1, j], [i+1, j], [i, j-1], [i, j+1]]) {
-        if (x >= 0 && x < width && y >= 0 && y < height) {
+        if (x >= 0 && x < surface_width && y >= 0 && y < surface_height) {
             result.push([x, y]);
         }
     }
@@ -151,13 +95,13 @@ function neighbors(i, j) {
 }
 
 function q(x, y) {
-    return x + y*width;
+    return x + y*surface_width;
 }
 
 // eslint-disable-next-line
 function* cycle() {
-    for (let i = 0; i < width; i++) {
-        for (let j = 0; j < height; j++) {
+    for (let i = 0; i < surface_width; i++) {
+        for (let j = 0; j < surface_height; j++) {
             if ((i & 1) === (j & 1)) {
                 continue; // Data qubit.
             }
@@ -177,8 +121,8 @@ function* cycle() {
 
     yield* compute_or();
 
-    for (let i = 0; i < width; i++) {
-        for (let j = 0; j < height; j++) {
+    for (let i = 0; i < surface_width; i++) {
+        for (let j = 0; j < surface_height; j++) {
             if ((i & 1) !== (j & 1)) {
                 yield measure_set_result(q(i, j));
             }
@@ -186,8 +130,20 @@ function* cycle() {
     }
 }
 
+let initRngShader = new ParametrizedShader(`#version 300 es
+    precision highp float;
+    precision highp int;
+    out float outColor;
+    void main() {
+        vec2 xy = gl_FragCoord.xy;
+        bool rand = bool(sin((xy.x * xy.x + xy.y * xy.y) * 432.3) > 0.0);  // TODO: actually make it random.
+        outColor = float(rand);
+    }`);
+
+
 let steps = [
     () => prepareCleanState.withArgs().renderIntoTexPair(sim_state),
+    () => initRngShader.withArgs().renderIntoTexPair(rng_state),
     ...cycle()
 ];
 

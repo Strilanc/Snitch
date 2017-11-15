@@ -299,12 +299,14 @@ class Matcher(Idpression):
 
 def slice_deps(s):
     result = []
-    if isinstance(s, Idpression):
-        result.append(s)
-    elif isinstance(s, slice):
+    if isinstance(s, slice):
         result.append(s.step)
         result.append(s.stop)
         result.append(s.start)
+    elif isinstance(s, Idpression):
+        result.append(s)
+    elif isinstance(s, (int, float, bool)):
+        pass
     else:
-        raise NotImplementedError()
+        raise NotImplementedError(type(s))
     return [r for r in result if isinstance(r, Idpression)]

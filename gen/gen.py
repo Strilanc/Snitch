@@ -73,6 +73,47 @@ def prepare_clean_state():
         result)
 
 
+def eliminate_column():
+    state = Tex(name='state')
+    mux = Tex(name='found_ones')
+    measured = Uniform('int', '1i', False, 'target')
+
+    unit_row = measured*2 + 1
+    victim_col = mux[2, unit_row] + 1
+    toggles = state[:, unit_row] & state[victim_col, :] & (victim_col >= 2)
+    result = toggles ^ state
+    return generate_shader_construction('eliminateCol', result)
+
+
+def random_advance():
+    state = Tex(name='state')
+    x1 = state[0, :]
+    x2 = state[1, :]
+    x3 = state[2, :]
+    x4 = state[3, :]
+    u = x1 | (x2 << 8) | (x3 << 16) | (x4 << 24)
+
+    # xorshift32 prng
+    u ^= u << 13
+    u ^= u >> 17
+    u ^= u << 5
+
+    result = u >> (X*8)
+    return generate_shader_construction('randomAdvance', result)
+
+
+def measure_set_result():
+    state = Tex(name='state')
+    mux = Tex(name='found_ones')
+    rand = Tex(name='rand')
+    target = Uniform('int', '1i', False, 'target')
+    rand_bit = rand[0, :] & 1
+    is_random_result = mux[2, :] != 0
+    toggle = (is_random_result & rand_bit & (Y == target*2 + 1) & (X == 1) & 1) * 0xFF
+    result = state ^ toggle
+    return generate_shader_construction('measureSetResult', result)
+
+
 def apply_cycle(src):
     qX = (Y >> 1) & 15
     qY = (Y >> 5) & 15
@@ -119,11 +160,14 @@ def apply_cycle(src):
 
 
 def main():
-    print(find_one_fold())
+    # print(find_one_fold())
     # print(single_x())
     # print(single_hadamard())
     # print(single_cz())
     # print(prepare_clean_state())
+    # print(eliminate_column())
+    # print(random_advance())
+    print(measure_set_result())
 
 
 main()
