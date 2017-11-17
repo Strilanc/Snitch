@@ -1,9 +1,9 @@
-import {Suite, assertThat, assertThrows, assertTrue, assertFalse} from "test/TestUtil.js"
+import {GpuSuite, assertThat, assertThrows, assertTrue, assertFalse} from "test/TestUtil.js"
 import {assertShaderOutputs, texture_diagram} from "test/GpuTestUtil.js"
 
 import {ParametrizedShader} from 'src/sim/Gpu.js'
 
-let suite = new Suite('gpu');
+let suite = new GpuSuite('gpu');
 
 suite.test('texture', () => {
     assertThat(texture_diagram('5').read()).isEqualTo(new Uint8Array([5]));
