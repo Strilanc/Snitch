@@ -81,6 +81,8 @@ class TexSlice(Idpression):
             return 'gl_FragCoord.x'
         if index is shader.Y:
             return 'gl_FragCoord.y'
+        if isinstance(index, int):
+            return '{}.5'.format(index)
         if (isinstance(index, slice) and
                 index.step is None and
                 index.stop is None and

@@ -17,9 +17,9 @@ let measureSetResult = new ParametrizedShader(`#version 300 es
         int x = int(gl_FragCoord.x);
         int y = int(gl_FragCoord.y);
         bool v_state = (texture(state, gl_FragCoord.xy / state_size)).x > 0.5;
-        int slice_3 = int((texture(found_ones, vec2(float(0) + 0.5, gl_FragCoord.y) / found_ones_size)).x*255.0 + 0.5);
+        int slice_3 = int((texture(found_ones, vec2(0.5, gl_FragCoord.y) / found_ones_size)).x*255.0 + 0.5);
         bool ne_4 = slice_3 != 0;
-        int slice_0 = int((texture(rand, vec2(float(0) + 0.5, gl_FragCoord.y) / rand_size)).x*255.0 + 0.5);
+        int slice_0 = int((texture(rand, vec2(0.5, gl_FragCoord.y) / rand_size)).x*255.0 + 0.5);
         int bitwise_and_1 = slice_0 & 1;
         bool func_bool_2 = bool(bitwise_and_1);
         bool bit_and_5 = ne_4 && func_bool_2;

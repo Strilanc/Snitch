@@ -5,7 +5,7 @@ import {orFold} from "src/gen/orFold.js"
 
 let suite = new Suite("orFold");
 
-suite.test("sweep_step1", () => {
+suite.test("sweep", () => {
     let shader = orFold.withArgs(texture_diagram(
         '       #',
         '      # ',
@@ -39,34 +39,34 @@ suite.test("sweep_step2", () => {
         '    '));
 
     assertShaderOutputs(shader,
-        ' ###',
-        ' ###',
-        ' #  ',
-        ' #  ',
-        '#   ',
-        '#   ',
-        '#   ',
-        '    ');
+        ' #',
+        ' #',
+        ' #',
+        ' #',
+        '# ',
+        '# ',
+        '# ',
+        '  ');
 });
 
 suite.test("sweep_step3", () => {
     let shader = orFold.withArgs(texture_diagram(
-        ' #######',
-        ' #      ',
-        ' #      ',
-        ' #      ',
-        '#       ',
-        '#       ',
-        '#       ',
-        '#       '));
+        ' #',
+        ' #',
+        ' #',
+        ' #',
+        '# ',
+        '# ',
+        '# ',
+        '# '));
 
     assertShaderOutputs(shader,
-        '########',
-        '#       ',
-        '#       ',
-        '#       ',
-        '#       ',
-        '#       ',
-        '#       ',
-        '#       ');
+        '#',
+        '#',
+        '#',
+        '#',
+        '#',
+        '#',
+        '#',
+        '#');
 });

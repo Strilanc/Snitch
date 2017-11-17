@@ -43,6 +43,55 @@ function initGpu(canvas) {
     return gl;
 }
 
+/**
+ * @param {!Uint8Array} buf
+ * @param {!int} w_in
+ * @param {!int} w_out
+ * @returns {!Uint8Array}
+ */
+function realign_buffer(buf, w_in, w_out) {
+    if (w_in === w_out) {
+        return buf;
+    }
+
+    let h = buf.length / w_in;
+    let w = Math.min(w_in, w_out);
+    let result = new Uint8Array(w_out * h);
+    for (let y = 0; y < h; y++) {
+        for (let x = 0; x < w; x++) {
+            result[y*w_out + x] = buf[y*w_in + x];
+        }
+    }
+    return result;
+}
+
+/**
+ * @param {!int} w
+ * @returns {!int}
+ */
+function aligned_length(w) {
+    return Math.ceil(w / 4) * 4;
+}
+
+/**
+ * @param {!Uint8Array} buf
+ * @param {!int} w
+ * @returns {!Uint8Array}
+ */
+function align_buffer(buf, w) {
+    return realign_buffer(buf, w, aligned_length(w));
+}
+
+
+/**
+ * @param {!Uint8Array} buf
+ * @param {!int} w
+ * @returns {!Uint8Array}
+ */
+function unalign_buffer(buf, w) {
+    return realign_buffer(buf, aligned_length(w), w);
+}
+
 class Tex {
     constructor(width, height, data=undefined) {
         let {texture, frameBuffer} = Tex.allocTexture(width, height, data);
@@ -60,11 +109,11 @@ class Tex {
         try {
             checkGetErrorResult(gl, "Tex.read:bindFramebuffer");
             checkFrameBufferStatusResult(gl);
-            let outputBuffer = new Uint8Array(this.width * this.height);
+            let outputBuffer = align_buffer(new Uint8Array(this.width * this.height), this.width);
             //noinspection JSUnresolvedVariable
             gl.readPixels(0, 0, this.width, this.height, gl.RED, gl.UNSIGNED_BYTE, outputBuffer);
             checkGetErrorResult(gl, "Tex.read:readPixels");
-            return outputBuffer;
+            return unalign_buffer(outputBuffer, this.width);
         } finally {
             gl.bindFramebuffer(gl.FRAMEBUFFER, null);
         }
@@ -88,7 +137,8 @@ class Tex {
             gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
             gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
             //noinspection JSUnresolvedVariable
-            gl.texImage2D(gl.TEXTURE_2D, 0, gl.R8, w, h, 0, gl.RED, gl.UNSIGNED_BYTE, data === undefined ? null : data);
+            gl.texImage2D(gl.TEXTURE_2D, 0, gl.R8, w, h, 0, gl.RED, gl.UNSIGNED_BYTE,
+                data === undefined ? null : align_buffer(data, w));
             checkGetErrorResult(gl, "texImage2D");
             gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, texture, 0);
             checkGetErrorResult(gl, "framebufferTexture2D");

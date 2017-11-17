@@ -1,5 +1,6 @@
-.idea/*
+**/.idea/*
 node_modules/*
 out/*
 .eslintrc
 *.git_ignore.js
+*/__pycache__/*

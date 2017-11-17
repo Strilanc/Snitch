@@ -76,16 +76,20 @@ def or_fold():
 def shifter():
     state = Tex(name='state', val_type=Int32)
     offset = Uniform(name='offset', val_type=Vec2)
-    result = state[X - offset.x().int(), Y - offset.y().int()]
+    read_x = X - offset.x().int()
+    read_y = Y - offset.y().int()
+    in_bounds = ((read_x >= 0) &
+                 (read_y >= 0) &
+                 (read_x < state.size.x().int()) &
+                 (read_y < state.size.y().int()))
+    result = in_bounds.if_then(state[read_x, read_y]).else_end(0)
     return generate_shader_construction(
         'shifter',
         result)
 
 
 def prepare_clean_state():
-    result = ((X*2 == Y + 4).if_then(255)
-              .else_if((X == 0) & ((Y & 1) == 1)).then(127)
-              .else_end(0))
+    result = X*2 == Y + 4
     return generate_shader_construction(
         'prepareCleanState',
         result)
@@ -126,7 +130,7 @@ def measure_set_result():
     rand = Tex(name='rand', val_type=Int32)
     target = Uniform(name='target', val_type=Int32)
     rand_bit = (rand[0, :] & 1).bool()
-    is_random_result = mux[2, :] != 0
+    is_random_result = mux[0, :] != 0
     toggle = is_random_result & rand_bit & (Y == target*2 + 1) & (X == 1)
     result = state != toggle
     return generate_shader_construction('measureSetResult', result)
@@ -185,8 +189,8 @@ def main():
     # print(single_cz())
     # print(prepare_clean_state())
     # print(eliminate_column())
-    print(random_advance())
-    # print(measure_set_result())
+    # print(random_advance())
+    print(measure_set_result())
     # print(shifter())
 
 

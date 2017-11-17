@@ -410,7 +410,7 @@ class Matcher(Idpression):
         for a, b in clauses:
             terms.append(a)
             terms.append(b)
-            combo_type = combo_type.combine(b.val_type)
+            combo_type = combo_type.combine(Idpression.wrap(b).val_type)
         terms.append(else_result)
         terms = [t for t in terms if isinstance(t, Idpression)]
 
