@@ -1,9 +1,9 @@
-import {Suite, assertThat, assertThrows, assertTrue, assertFalse} from "test/TestUtil.js"
+import {GpuSuite, assertThat, assertThrows, assertTrue, assertFalse} from "test/TestUtil.js"
 import {assertShaderOutputs, texture_diagram} from "test/GpuTestUtil.js"
 
 import {orFold} from "src/gen/orFold.js"
 
-let suite = new Suite("orFold");
+let suite = new GpuSuite("orFold");
 
 suite.test("sweep", () => {
     let shader = orFold.withArgs(texture_diagram(

@@ -20,8 +20,11 @@ let gl = /** @type {!WebGL2RenderingContext} */  undefined;
 let vertexShader = /** @type {!WebGLShader} */ undefined;
 
 function initGpu(canvas) {
-    gl = canvas.getContext('webgl2');
+    if (gl === undefined) {
+        gl = canvas.getContext('webgl2');
+    }
     if (gl === null || gl === undefined) {
+        gl = null;
         console.error('Webgl2 support not present.');
         throw new Error('Webgl2 support not present.');
     }

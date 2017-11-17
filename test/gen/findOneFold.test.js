@@ -1,9 +1,9 @@
-import {Suite, assertThat, assertThrows, assertTrue, assertFalse} from "test/TestUtil.js"
+import {GpuSuite, assertThat, assertThrows, assertTrue, assertFalse} from "test/TestUtil.js"
 import {assertShaderOutputs, texture_diagram} from "test/GpuTestUtil.js"
 
 import {findOneFold} from "src/gen/findOneFold.js"
 
-let suite = new Suite("findOneFold");
+let suite = new GpuSuite("findOneFold");
 
 suite.test("sweep_step1", () => {
     let shader = findOneFold.withArgs(texture_diagram(

@@ -16,7 +16,6 @@
 import {describe} from "src/base/Describe.js"
 import {equate} from "src/base/Equate.js"
 import {initGpu} from 'src/sim/Gpu.js'
-initGpu(document.createElement('canvas'));
 
 /** @type {!int} */
 let assertionSubjectIndexForNextTest = 1;
@@ -325,6 +324,36 @@ export class Suite {
             return result;
         }]);
     }
+}
+
+export class GpuSuite extends Suite {
+    /**
+     * @param {!string} name
+     */
+    constructor(name) {
+        super(name);
+
+        try {
+            initGpu(document.createElement('canvas'));
+            this.gpu_error = undefined;
+        } catch (ex) {
+            this.gpu_error = ex;
+            console.warn(`Skipping '${name}' tests because WebGL2 support isn't present.`);
+            super.test('fake', () => {assertTrue(true);});
+        }
+    }
+
+    /**
+     * @param {!string} name
+     * @param {!function(!{ warn_only: !boolean|!string })} method
+     * @param {!boolean=false} later
+     */
+    test(name, method, later=false) {
+        if (this.gpu_error === undefined) {
+            super.test(name, method, later);
+        }
+    }
+
 }
 
 Suite.suites = [];

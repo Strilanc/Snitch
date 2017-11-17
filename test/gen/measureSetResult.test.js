@@ -1,9 +1,9 @@
-import {Suite, assertThat, assertThrows, assertTrue, assertFalse} from "test/TestUtil.js"
+import {GpuSuite, assertThat, assertThrows, assertTrue, assertFalse} from "test/TestUtil.js"
 import {assertShaderOutputs, texture_diagram} from "test/GpuTestUtil.js"
 
 import {measureSetResult} from "src/gen/measureSetResult.js"
 
-let suite = new Suite("measureSetResult");
+let suite = new GpuSuite("measureSetResult");
 
 suite.test("random-result-toggled", () => {
     let state = texture_diagram(

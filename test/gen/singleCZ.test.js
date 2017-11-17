@@ -1,9 +1,9 @@
-import {Suite, assertThat, assertThrows, assertTrue, assertFalse} from "test/TestUtil.js"
+import {GpuSuite, assertThat, assertThrows, assertTrue, assertFalse} from "test/TestUtil.js"
 import {assertShaderOutputs, texture_diagram} from "test/GpuTestUtil.js"
 
 import {singleCZ} from "src/gen/singleCZ.js"
 
-let suite = new Suite("singleCZ");
+let suite = new GpuSuite("singleCZ");
 
 suite.test("example", () => {
     let shader = singleCZ.withArgs(1, 2, texture_diagram(

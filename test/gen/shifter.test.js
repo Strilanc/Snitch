@@ -1,9 +1,9 @@
-import {Suite, assertThat, assertThrows, assertTrue, assertFalse} from "test/TestUtil.js"
+import {GpuSuite, assertThat, assertThrows, assertTrue, assertFalse} from "test/TestUtil.js"
 import {assertShaderOutputs, texture_diagram} from "test/GpuTestUtil.js"
 
 import {shifter} from "src/gen/shifter.js"
 
-let suite = new Suite("shifter");
+let suite = new GpuSuite("shifter");
 
 suite.test("example", () => {
     let input = texture_diagram(
