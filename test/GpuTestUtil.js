@@ -1,4 +1,5 @@
 import {assertThat} from "test/TestUtil.js"
+import {DetailedError} from "src/base/DetailedError.js"
 import {Tex} from 'src/sim/Gpu.js'
 
 let char_levels = new Map([
@@ -52,7 +53,11 @@ function _reconstruct_texture_diagram(shader, w, h) {
     for (let i = 0; i < h; i++) {
         let line = [];
         for (let j = 0; j < w; j++) {
-            line.push(level_chars.get(vals[i*w + j]))
+            let k = vals[i*w + j];
+            if (!level_chars.has(k)) {
+                throw new DetailedError('No char for level.', {k})
+            }
+            line.push(level_chars.get(k))
         }
         lines.push(line.join(''))
     }

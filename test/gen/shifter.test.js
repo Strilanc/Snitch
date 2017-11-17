@@ -6,7 +6,7 @@ import {shifter} from "src/gen/shifter.js"
 let suite = new Suite("shifter");
 
 suite.test("example", () => {
-    let shader = shifter.withArgs([-2, -1], texture_diagram(
+    let input = texture_diagram(
         '       #',
         '      # ',
         '     #  ',
@@ -14,15 +14,25 @@ suite.test("example", () => {
         '   #    ',
         '  #6  F ',
         ' #  5   ',
-        '#    D  '));
+        '#    D  ');
 
-    assertShaderOutputs(shader,
+    assertShaderOutputs(shifter.withArgs([-2, -1], input),
         '    #   ',
         '   #    ',
-        '34#ABCCC',
+        '34#ABC  ',
         ' #      ',
         '#6  F   ',
         '  5     ',
         '   D    ',
-        '   D    ');
+        '        ');
+
+    assertShaderOutputs(shifter.withArgs([2, 1], input),
+        '        ',
+        '        ',
+        '        ',
+        '       #',
+        '  1234#A',
+        '     #  ',
+        '    #6  ',
+        '   #  5 ');
 });

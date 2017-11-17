@@ -1,4 +1,5 @@
 from idpression import Idpression, Literal, Int32
+import re
 
 
 def generate_shader(final_value: Idpression):
@@ -35,7 +36,10 @@ def generate_shader(final_value: Idpression):
             init_block,
             final_value.val_type.to_out(final_value.var_name))
 
-    return '\n'.join(code.split('\n        '))
+    indented = '\n'.join(code.split('\n        '))
+    cleaned = re.sub(r'([ \(*+\-!])\(([a-zA-Z_0-9]+)\)', r'\1\2', indented)
+
+    return cleaned
 
 
 def generate_shader_construction(name: str,

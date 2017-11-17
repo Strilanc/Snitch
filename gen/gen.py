@@ -5,11 +5,11 @@ from shader import X, Y, generate_shader_construction
 
 
 def single_x() -> Idpression:
-    state = Tex(name='state', val_type=Int32)
-    target = Uniform(name='target', val_type=Byte)
+    state = Tex(name='state', val_type=Bit)
+    target = Uniform(name='target', val_type=Int32)
     # Flip const bit of Z observable and Y sign bit.
     flip = (X < 2) & (Y == target * 2 + X)
-    result = state ^ flip
+    result = state != flip
     return generate_shader_construction(
         'singleX',
         result)
@@ -23,12 +23,21 @@ def do_parallel_hadamards(src: Idpression,
             .else_end(src[X, Y ^ 1]))  # Swap X/Z observables.
 
 
+def single_hadamard():
+    state = Tex(name='state', val_type=Bit)
+    target = Uniform(name='target', val_type=Int32)
+    result = do_parallel_hadamards(state, unaffected=(Y >> 1) != target)
+    return generate_shader_construction(
+        'singleHadamard',
+        result)
+
+
 def do_parallel_czs(state: Idpression,
                     affected: Union[bool, Idpression],
                     partner: Union[int, Idpression]) -> Idpression:
     is_affected_x_data = (X > 0) & (Y & 1 == 0) & affected
     return (
-        is_affected_x_data.if_then(state ^ state[X, partner * 2 + 1])
+        is_affected_x_data.if_then(state != state[X, partner * 2 + 1])
             .else_end(state)
     )
 
@@ -170,13 +179,13 @@ def apply_cycle(src):
 
 def main():
     # print(or_fold())
-    print(find_one_fold())
+    # print(find_one_fold())
     # print(single_x())
     # print(single_hadamard())
     # print(single_cz())
     # print(prepare_clean_state())
     # print(eliminate_column())
-    # print(random_advance())
+    print(random_advance())
     # print(measure_set_result())
     # print(shifter())
 

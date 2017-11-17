@@ -3,6 +3,7 @@ import {DetailedError} from 'src/base/DetailedError.js'
 import {describe} from 'src/base/Describe.js'
 
 import {initGpu, ParametrizedShader, readTexture, TexPair, Tex} from 'src/sim/Gpu.js'
+import {shifter} from 'src/gen/shifter.js'
 import {orFold} from 'src/gen/orFold.js'
 import {singleHadamard} from 'src/gen/singleHadamard.js'
 import {singleCZ} from 'src/gen/singleCZ.js'
@@ -12,20 +13,6 @@ import {findOneFold} from 'src/gen/findOneFold.js'
 
 let canvas = /** @type {!HTMLCanvasElement} */ document.getElementById('main-canvas');
 initGpu(canvas);
-
-//noinspection JSUnusedLocalSymbols
-function read(t, w, h, fb) {
-    let vals = readTexture(t, w, h, fb);
-    let r = [];
-    for (let j = 0; j < h; j++) {
-        let s = [];
-        for (let i = 0; i < w; i++) {
-            s.push(vals[j*w + i] !== 0 ? '1' : '_');
-        }
-        r.push(seq(s).join(''));
-    }
-    return seq(r).join('\n');
-}
 
 /**
  * @param {!Tex} tex
@@ -50,9 +37,9 @@ let fold_state = new TexPair(sim_state.src.width, sim_state.src.height);
 let rng_state = new TexPair(4, sim_state.src.height);
 
 function* compute_or() {
-    yield () => orFold.withArgs(sim_state.src).renderIntoTexPair(fold_state);
+    yield () => shifter.withArgs([-2, 0], sim_state.src).renderIntoTexPair(fold_state);
 
-    let w = Math.ceil(sim_state.src.width / 2);
+    let w = Math.ceil(sim_state.src.width - 2);
     while (w > 1) {
         yield () => orFold.withArgs(fold_state.src).renderIntoTexPair(fold_state);
         w = Math.ceil(w / 2);
@@ -61,9 +48,9 @@ function* compute_or() {
 
 //noinspection JSUnusedLocalSymbols
 function* compute_find() {
-    yield () => findOneFold.withArgs(sim_state.src).renderIntoTexPair(fold_state);
+    yield () => shifter.withArgs([-2, 0], sim_state.src).renderIntoTexPair(fold_state);
 
-    let w = Math.ceil(sim_state.src.width / 2);
+    let w = Math.ceil(sim_state.src.width - 2);
     while (w > 1) {
         yield () => findOneFold.withArgs(fold_state.src).renderIntoTexPair(fold_state);
         w = Math.ceil(w / 2);

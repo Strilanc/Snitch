@@ -16,22 +16,21 @@ let measureSetResult = new ParametrizedShader(`#version 300 es
     void main() {
         int x = int(gl_FragCoord.x);
         int y = int(gl_FragCoord.y);
-        int v_state = int(texture((state), gl_FragCoord.xy / (state_size)).x * 255.0 + 0.5);
-        int slice_2 = int(texture((found_ones), vec2(float(2) + 0.5, float(y) + 0.5) / (found_ones_size)).x * 255.0 + 0.5);
-        int ne_3 = int((slice_2) != (0));
-        int slice_0 = int(texture((rand), vec2(float(0) + 0.5, float(y) + 0.5) / (rand_size)).x * 255.0 + 0.5);
-        int bitwise_and_1 = int((slice_0) & (1));
-        int bitwise_and_4 = int((ne_3) & (bitwise_and_1));
-        int mul_5 = int((target) * (2));
-        int add_6 = int((mul_5) + (1));
-        int eq_7 = int((y) == (add_6));
-        int bitwise_and_8 = int((bitwise_and_4) & (eq_7));
-        int eq_9 = int((x) == (1));
-        int bitwise_and_10 = int((bitwise_and_8) & (eq_9));
-        int bitwise_and_11 = int((bitwise_and_10) & (1));
-        int mul_12 = int((bitwise_and_11) * (255));
-        int bitwise_xor_13 = int((v_state) ^ (mul_12));
-        outColor = float(((bitwise_xor_13) & 0xFF)) / 255.0;
+        bool v_state = (texture(state, gl_FragCoord.xy / state_size)).x > 0.5;
+        int slice_3 = int((texture(found_ones, vec2(float(0) + 0.5, gl_FragCoord.y) / found_ones_size)).x*255.0 + 0.5);
+        bool ne_4 = slice_3 != 0;
+        int slice_0 = int((texture(rand, vec2(float(0) + 0.5, gl_FragCoord.y) / rand_size)).x*255.0 + 0.5);
+        int bitwise_and_1 = slice_0 & 1;
+        bool func_bool_2 = bool(bitwise_and_1);
+        bool bit_and_5 = ne_4 && func_bool_2;
+        int mul_6 = target * 2;
+        int add_7 = mul_6 + 1;
+        bool eq_8 = y == add_7;
+        bool bit_and_9 = bit_and_5 && eq_8;
+        bool eq_10 = x == 1;
+        bool bit_and_11 = bit_and_9 && eq_10;
+        bool ne_12 = v_state != bit_and_11;
+        outColor = float(ne_12);
     }`,
     ['1i', 'target', false],
     ['tex', 'found_ones', 'found_ones_size'],

@@ -12,14 +12,14 @@ let singleX = new ParametrizedShader(`#version 300 es
     void main() {
         int x = int(gl_FragCoord.x);
         int y = int(gl_FragCoord.y);
-        int v_state = int(texture((state), gl_FragCoord.xy / (state_size)).x * 255.0 + 0.5);
-        int lt_0 = int((x) < (2));
-        int mul_1 = int((target) * (2));
-        int add_2 = int((mul_1) + (x));
-        int eq_3 = int((y) == (add_2));
-        int bitwise_and_4 = int((lt_0) & (eq_3));
-        int bitwise_xor_5 = int((v_state) ^ (bitwise_and_4));
-        outColor = float(((bitwise_xor_5) & 0xFF)) / 255.0;
+        bool v_state = (texture((state), gl_FragCoord.xy / state_size)).x > 0.5;
+        bool lt_0 = x < 2;
+        int mul_1 = target * 2;
+        int add_2 = mul_1 + x;
+        bool eq_3 = y == add_2;
+        bool bit_and_4 = lt_0 && eq_3;
+        bool ne_5 = v_state != bit_and_4;
+        outColor = float(ne_5);
     }`,
     ['1i', 'target', false],
     ['tex', 'state', 'state_size']);

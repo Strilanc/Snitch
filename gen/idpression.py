@@ -147,7 +147,9 @@ class Idpression(object):
         return FuncOp('float', Float32, self)
 
     def __invert__(self):
-        return UnaryOp(self, 'not', '~')
+        if self.val_type == Bit:
+            return UnaryOp(self, 'not', '!')
+        return UnaryOp(self, 'logical_neg', '~')
 
     def __neg__(self):
         return UnaryOp(self, 'neg', '-')
@@ -420,7 +422,8 @@ class Matcher(Idpression):
     def simplify(clauses, else_result):
         result = []
         for i in range(len(clauses)):
-            if isinstance(clauses[i][0], Literal) and clauses[i][0].python_equivalent is not None:
+            if (isinstance(clauses[i][0], Literal) and
+                    clauses[i][0].python_equivalent is not None):
                 if clauses[i][0].python_equivalent:
                     return clauses[:i], clauses[i][1]
                 continue
