@@ -1,4 +1,4 @@
-from typing import List, Optional, Union, Dict
+from typing import List, Optional, Union, Dict, Type, Tuple, Callable
 
 _next_id = 0
 
@@ -7,6 +7,70 @@ def next_id():
     global _next_id
     _next_id += 1
     return _next_id - 1
+
+
+class ShaderType(object):
+    def __init__(self,
+                 name: str,
+                 gl_name: str,
+                 set_arg_key: Optional[str] = None,
+                 from_in: Optional[Callable[[str], str]] = None,
+                 to_out: Optional[Callable[[str], str]] = None,
+                 spread_args: bool = False):
+        self.name = name
+        self.gl_name = gl_name
+        self.set_arg_key = set_arg_key
+        self.from_in = from_in
+        self._to_out = to_out
+        self.spread_args = spread_args
+
+    def to_out(self, expression: str) -> str:
+        if self._to_out is None:
+            raise ValueError('Not a convertible type: {}'.format(self))
+        return self._to_out(expression)
+
+    def __repr__(self):
+        return 'ShaderType({})'.format(repr(self.name))
+
+    def combine(self, other: 'ShaderType') -> 'ShaderType':
+        if self is other:
+            return self
+        raise ValueError('Incompatible types: {} vs {}'.format(self, other))
+
+
+Bit = ShaderType(
+    name='Bit',
+    gl_name='bool',
+    set_arg_key='1i',
+    from_in=lambda s: '({}).x > 0.5'.format(s),
+    to_out=lambda s: 'float({})'.format(s))
+
+Byte = ShaderType(
+    name='Byte',
+    gl_name='int',
+    set_arg_key='1i',
+    from_in=lambda s: 'int(({}).x*255.0 + 0.5)'.format(s),
+    to_out=lambda s: 'float({}) / 255.0'.format(s))
+
+Int32 = ShaderType(
+    name='Int32',
+    gl_name='int',
+    set_arg_key='1i',
+    from_in=lambda s: 'int(({}).x*255.0 + 0.5)'.format(s),
+    to_out=lambda s: 'float({}) / 255.0'.format(s))
+
+Float32 = ShaderType(
+    name='Float32',
+    gl_name='float',
+    set_arg_key='1f',
+    from_in=lambda s: s,
+    to_out=lambda s: s)
+
+Vec2 = ShaderType(
+    name='Vec2',
+    gl_name='vec2',
+    set_arg_key='2f',
+    spread_args=True)
 
 
 class Idpression(object):
@@ -18,10 +82,12 @@ class Idpression(object):
 
     def __init__(self,
                  name: str,
-                 dependencies: List['Idpression'],
+                 val_type: ShaderType,
+                 dependencies: List['Idpression'] = (),
                  uniform_dependencies: List['Idpression'] = (),
                  add_id_suffix_to_name=True):
         self.dependencies = dependencies
+        self.val_type = val_type
         self.uniform_dependencies = uniform_dependencies
         self.var_name = ('{}_{}'.format(name, next_id())
                          if add_id_suffix_to_name
@@ -62,10 +128,23 @@ class Idpression(object):
         return PartialMatcherBeforeElse([[self, true_result]])
 
     def __or__(self, other):
+        if self.val_type is Bit and other.val_type is Bit:
+            return BinaryOp(self, other, 'bit_or', '||')
         return BinaryOp(self, other, 'bitwise_or', '|')
 
     def __and__(self, other):
+        if self.val_type is Bit and other.val_type is Bit:
+            return BinaryOp(self, other, 'bit_and', '&&')
         return BinaryOp(self, other, 'bitwise_and', '&')
+
+    def bool(self):
+        return FuncOp('bool', Bit, self)
+
+    def int(self):
+        return FuncOp('int', Int32, self)
+
+    def float(self):
+        return FuncOp('float', Float32, self)
 
     def __invert__(self):
         return UnaryOp(self, 'not', '~')
@@ -89,22 +168,22 @@ class Idpression(object):
         return BinaryOp(other, self, 'add', '+')
 
     def __eq__(self, other):
-        return BinaryOp(self, other, 'eq', '==')
+        return BinaryOp(self, other, 'eq', '==', out_type=Bit)
 
     def __ne__(self, other):
-        return BinaryOp(self, other, 'ne', '!=')
+        return BinaryOp(self, other, 'ne', '!=', out_type=Bit)
 
     def __gt__(self, other):
-        return BinaryOp(self, other, 'gt', '>')
+        return BinaryOp(self, other, 'gt', '>', out_type=Bit)
 
     def __ge__(self, other):
-        return BinaryOp(self, other, 'ge', '>=')
+        return BinaryOp(self, other, 'ge', '>=', out_type=Bit)
 
     def __le__(self, other):
-        return BinaryOp(self, other, 'le', '<=')
+        return BinaryOp(self, other, 'le', '<=', out_type=Bit)
 
     def __lt__(self, other):
-        return BinaryOp(self, other, 'lt', '<')
+        return BinaryOp(self, other, 'lt', '<', out_type=Bit)
 
     def __sub__(self, other):
         return BinaryOp(self, other, 'sub', '-')
@@ -122,14 +201,32 @@ class Idpression(object):
         x_slice, y_slice = item
         return PseudoSlice(self, x_slice, y_slice)
 
+    def x(self):
+        if self.val_type is not Vec2:
+            raise ValueError('Not a Vec2.')
+        return PropertyOp(self, 'x', Float32)
+
+    def y(self):
+        if self.val_type is not Vec2:
+            raise ValueError('Not a Vec2.')
+        return PropertyOp(self, 'y', Float32)
+
     @staticmethod
     def wrap(val: Union[bool, int, float, 'Idpression']) -> 'Idpression':
         if isinstance(val, Idpression):
             return val
         if isinstance(val, bool):
-            return Literal('true' if val else 'false', -1 if val else 0)
-        if isinstance(val, (int, float)):
-            return Literal(repr(val), val)
+            return Literal(literal_text='true' if val else 'false',
+                           python_equivalent=-1 if val else 0,
+                           val_type=Bit)
+        if isinstance(val, int):
+            return Literal(literal_text=repr(val),
+                           val_type=Int32,
+                           python_equivalent=val)
+        if isinstance(val, float):
+            return Literal(literal_text=repr(val),
+                           val_type=Float32,
+                           python_equivalent=val)
         raise ValueError('Unrecognized val: {}'.format(val))
 
 
@@ -158,8 +255,11 @@ class PartialMatcherBeforeThen(object):
 
 
 class Literal(Idpression):
-    def __init__(self, literal_text: str, python_equivalent):
-        super().__init__(literal_text, [], [], False)
+    def __init__(self,
+                 literal_text: str,
+                 val_type: ShaderType,
+                 python_equivalent):
+        super().__init__(literal_text, val_type, add_id_suffix_to_name=False)
         self.python_equivalent = python_equivalent
 
     def __getitem__(self, item):
@@ -175,70 +275,106 @@ class Literal(Idpression):
 
 
 class Uniform(Idpression):
-    def __init__(self, type, set_key, spread, name,
+    def __init__(self,
+                 val_type: ShaderType,
+                 name: str,
                  add_id_suffix_to_name=False):
-        super().__init__(name, [], add_id_suffix_to_name=add_id_suffix_to_name)
-        self.type = type
-        self.set_key = set_key
-        self.spread = spread
+        super().__init__(name,
+                         val_type,
+                         add_id_suffix_to_name=add_id_suffix_to_name)
+        self.val_type = val_type
 
     def __getitem__(self, item):
         return ValueError()
 
     def uniform_lines(self):
         return [
-            'uniform {} {};'.format(self.type, self.var_name),
+            'uniform {} {};'.format(self.val_type.gl_name, self.var_name),
         ]
 
     def uniform_args(self):
-        return {
-            "['{}', '{}', {}]".format(self.set_key,
-                                    self.var_name,
-                                    'true' if self.spread else 'false')
-        }
+        return [
+            "['{}', '{}', {}]".format(
+                self.val_type.set_arg_key,
+                self.var_name,
+                'true' if self.val_type.spread_args else 'false')
+        ]
 
 
 class UniformTexSize(Uniform):
     def __init__(self, name, add_id_suffix_to_name=True):
-        super().__init__('vec2',
-                         '2f',
-                         True,
+        super().__init__(Vec2,
                          name,
                          add_id_suffix_to_name=add_id_suffix_to_name)
 
-    def uniform_lines(self):
-        return [
-            'uniform vec2 {};'.format(self.var_name)
-        ]
-
     def uniform_args(self):
+        # Handled by Tex.
         return []
 
 
 class UnaryOp(Idpression):
     def __init__(self, val, prefix, op_char):
         val = Idpression.wrap(val)
-        super().__init__(prefix, [val])
+        super().__init__(prefix, val.val_type, dependencies=[val])
         self.val = val
         self.op_char = op_char
 
     def formula(self):
-        return 'int({}({}))'.format(
+        return '{}({})'.format(
             self.op_char,
             self.val.var_name)
 
 
+class FuncOp(Idpression):
+    def __init__(self, op_name: str, out_type: ShaderType, *vals: Idpression):
+        vals = tuple(Idpression.wrap(val) for val in vals)
+        super().__init__(
+            name='func_{}'.format(op_name),
+            val_type=out_type,
+            dependencies=vals)
+        self.vals = vals
+        self.op_name = op_name
+
+    def formula(self):
+        return '{}({})'.format(
+            self.op_name,
+            ', '.join('({})'.format(e.var_name) for e in self.vals))
+
+
+class PropertyOp(Idpression):
+    def __init__(self, val: Idpression, prop_name: str, out_type: ShaderType):
+        super().__init__(
+            name='prop_{}'.format(prop_name),
+            val_type=out_type,
+            dependencies=[val])
+        self.val = val
+        self.prop_name = prop_name
+
+    def formula(self):
+        return '({}).{}'.format(
+            self.val.var_name,
+            self.prop_name)
+
+
 class BinaryOp(Idpression):
-    def __init__(self, lhs, rhs, prefix, op_char):
+    def __init__(self,
+                 lhs: Idpression,
+                 rhs: Idpression,
+                 prefix: str,
+                 op_char: str,
+                 out_type: Optional[ShaderType] = None):
         lhs = Idpression.wrap(lhs)
         rhs = Idpression.wrap(rhs)
-        super().__init__(prefix, [lhs, rhs])
+        super().__init__(
+            prefix,
+            val_type=out_type or lhs.val_type.combine(rhs.val_type),
+            dependencies=[lhs, rhs])
         self.lhs = lhs
         self.rhs = rhs
         self.op_char = op_char
 
     def formula(self):
-        return 'int(({}) {} ({}))'.format(
+        return '({}) {} ({})'.format(
             self.lhs.var_name,
             self.op_char,
             self.rhs.var_name)
@@ -249,7 +385,7 @@ class PseudoSlice(Idpression):
         deps = ([dep[x_slice, y_slice] for dep in val.dependencies] +
                 slice_deps(x_slice) +
                 slice_deps(y_slice))
-        super().__init__('slice', deps)
+        super().__init__('slice', val.val_type, deps)
         self.val = val
         self.x_slice = x_slice
         self.y_slice = y_slice
@@ -264,14 +400,19 @@ class PseudoSlice(Idpression):
 
 
 class Matcher(Idpression):
-    def __init__(self, clauses, else_result):
+    def __init__(self,
+                 clauses: List[Tuple[Idpression, Idpression]],
+                 else_result: Idpression):
         terms = []
+        combo_type = Idpression.wrap(else_result).val_type
         for a, b in clauses:
             terms.append(a)
             terms.append(b)
+            combo_type = combo_type.combine(b.val_type)
         terms.append(else_result)
         terms = [t for t in terms if isinstance(t, Idpression)]
-        super().__init__('match', terms)
+
+        super().__init__('match', combo_type, terms)
         self.clauses = clauses
         self.else_result = else_result
 
@@ -290,8 +431,11 @@ class Matcher(Idpression):
     def formula(self):
         lines = ['']
         for a, b in self.clauses:
-            lines.append('bool({}) ? ({}) :'.format(
-                Idpression.wrap(a).var_name,
+            aw = Idpression.wrap(a)
+            if aw.val_type is not Bit:
+                raise ValueError('Not a bool: {}'.format(aw))
+            lines.append('({}) ? ({}) :'.format(
+                aw.var_name,
                 Idpression.wrap(b).var_name))
         lines.append('({})'.format(Idpression.wrap(self.else_result).var_name))
         return '\n                '.join(lines)

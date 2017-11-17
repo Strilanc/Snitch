@@ -1,4 +1,4 @@
-from idpression import Idpression, Literal
+from idpression import Idpression, Literal, Int32
 
 
 def generate_shader(final_value: Idpression):
@@ -12,7 +12,10 @@ def generate_shader(final_value: Idpression):
     for dep in deps:
         f = dep.formula()
         if f is not None:
-            init_lines.append('int {} = {};'.format(dep.var_name, f))
+            init_lines.append('{} {} = {};'.format(
+                dep.val_type.gl_name,
+                dep.var_name,
+                f))
 
     uniform_block = '\n        '.join(line for line in uniform_lines if line)
     init_block = '\n            '.join(line for line in init_lines if line)
@@ -26,8 +29,11 @@ def generate_shader(final_value: Idpression):
             int x = int(gl_FragCoord.x);
             int y = int(gl_FragCoord.y);
             {}
-            outColor = float((({}) & 0xFF)) / 255.0;
-        }}""".format(uniform_block, init_block, final_value.var_name)
+            outColor = {};
+        }}""".format(
+            uniform_block,
+            init_block,
+            final_value.val_type.to_out(final_value.var_name))
 
     return '\n'.join(code.split('\n        '))
 
@@ -53,5 +59,5 @@ export {{{}}}""".format(
         ''.join(uniform_args),
         name)
 
-X = Literal('x', None)
-Y = Literal('y', None)
+X = Literal('x', val_type=Int32, python_equivalent=None)
+Y = Literal('y', val_type=Int32, python_equivalent=None)

@@ -1,7 +1,8 @@
 import {seq} from 'src/base/Seq.js'
 import {DetailedError} from 'src/base/DetailedError.js'
+import {describe} from 'src/base/Describe.js'
 
-import {initGpu, createFragProgram, ParametrizedShader, readTexture, TexPair, Tex} from 'src/sim/Gpu.js'
+import {initGpu, ParametrizedShader, readTexture, TexPair, Tex} from 'src/sim/Gpu.js'
 import {orFold} from 'src/gen/orFold.js'
 import {singleHadamard} from 'src/gen/singleHadamard.js'
 import {singleCZ} from 'src/gen/singleCZ.js'
@@ -161,3 +162,12 @@ setInterval(() => {
 
     showShader.withArgs(sim_state.src, [canvas.width, canvas.height]).drawToCanvas();
 }, 10);
+
+window.onerror = function(msg, url, line, col, error) {
+    document.getElementById('err_msg').textContent = describe(msg);
+    document.getElementById('err_line').textContent = describe(line);
+    document.getElementById('err_time').textContent = '' + new Date().getMilliseconds();
+    if (error instanceof DetailedError) {
+        document.getElementById('err_gen').textContent = describe(error.details);
+    }
+};

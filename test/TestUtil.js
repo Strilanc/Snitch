@@ -15,6 +15,8 @@
 // Cheat a little bit on the testing library being independent from what it tests
 import {describe} from "src/base/Describe.js"
 import {equate} from "src/base/Equate.js"
+import {initGpu} from 'src/sim/Gpu.js'
+initGpu(document.createElement('canvas'));
 
 /** @type {!int} */
 let assertionSubjectIndexForNextTest = 1;

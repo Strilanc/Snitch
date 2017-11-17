@@ -1,5 +1,13 @@
 from typing import Tuple, Union, Dict, List, Optional
-from idpression import Idpression, Literal, slice_deps, UniformTexSize
+from idpression import (
+    Idpression,
+    Literal,
+    slice_deps,
+    UniformTexSize,
+    Byte,
+    ShaderType,
+)
+import shader
 
 
 def coalesce_slice(s: Union[slice, Idpression, int]) -> slice:
@@ -31,8 +39,9 @@ class TexSlice(Idpression):
     def __init__(self, tex: 'Tex', x_slice: slice, y_slice: slice):
         super().__init__(
             'slice',
-            [tex.size] + slice_deps(x_slice) + slice_deps(y_slice),
-            [tex])
+            val_type=tex.val_type,
+            dependencies=[tex.size] + slice_deps(x_slice) + slice_deps(y_slice),
+            uniform_dependencies=[tex])
         self.tex = tex
         self.x_slice = x_slice
         self.y_slice = y_slice
@@ -45,47 +54,72 @@ class TexSlice(Idpression):
             nest_slice(self.y_slice, y_slice))
 
     def formula(self):
-        line = 'int(texture(({}), vec2({}) / ({})).x * 255.0 + 0.5)'
-        return line.format(
+        read_expression = 'texture(({}), vec2({}) / ({}))'.format(
             self.tex.tex_name(),
-            self.slices_to_indexing([self.x_slice, self.y_slice], ['x', 'y']),
+            self.indices_to_formula(
+                [self.x_slice, self.y_slice],
+                ['x', 'y'],
+                ['gl_FragCoord.x', 'gl_FragCoord.y']),
             self.tex.size.var_name)
+        return self.val_type.from_in(read_expression)
 
     @staticmethod
-    def slices_to_indexing(slices, var_labels):
-        if len(slices) != len(var_labels):
+    def indices_to_formula(indices, var_labels, var_raws):
+        if len(indices) != len(var_labels):
             raise NotImplementedError()
-        return ', '.join('float({}) + 0.5'.format(TexSlice.slice_innards(s, c))
-                         for s, c in zip(slices, var_labels))
+        parts = [
+            TexSlice.index_to_formula(index, label, raw)
+            for index, label, raw in zip(indices, var_labels, var_raws)
+        ]
+        return ', '.join(parts)
 
     @staticmethod
-    def slice_innards(s, c='x'):
+    def index_to_formula(index: Union[int, slice, Idpression],
+                         compute_var: str='x',
+                         raw_var: str='gl_FragCoord.x'):
+        if index is shader.X:
+            return 'gl_FragCoord.x'
+        if index is shader.Y:
+            return 'gl_FragCoord.y'
+        if (isinstance(index, slice) and
+                index.step is None and
+                index.stop is None and
+                index.start is None):
+            return raw_var
+        return 'float({}) + 0.5'.format(
+            TexSlice._int_index_to_formula(index, compute_var))
+
+    @staticmethod
+    def _int_index_to_formula(index: Union[int, slice, Idpression],
+                              compute_var: str='x'):
         def f(r):
             return Idpression.wrap(r).var_name
 
-        if isinstance(s, int):
-            return '{}'.format(s)
+        if isinstance(index, int):
+            return '{}'.format(index)
 
-        if isinstance(s, slice):
-            s = coalesce_slice(s)
+        if isinstance(index, slice):
+            index = coalesce_slice(index)
 
-            if s.start:
-                if s.step != 1:
-                    return '({})*({}) + ({})'.format(c, f(s.step), f(s.start))
-                return '({}) + ({})'.format(c, f(s.start))
-            if s.step != 1:
-                return '({})*({})'.format(c, f(s.step))
-            return c
+            if index.start:
+                if index.step != 1:
+                    return '({})*({}) + ({})'.format(
+                        compute_var, f(index.step), f(index.start))
+                return '({}) + ({})'.format(compute_var, f(index.start))
+            if index.step != 1:
+                return '({})*({})'.format(compute_var, f(index.step))
+            return compute_var
 
-        if isinstance(s, Idpression):
-            return s.var_name
+        if isinstance(index, Idpression):
+            return index.var_name
 
-        raise NotImplementedError(str(type(s)))
+        raise NotImplementedError(str(type(index)))
 
 
 class Tex(Idpression):
 
     def __init__(self,
+                 val_type: ShaderType,
                  steps: Optional[List[str]] = None,
                  size: Optional[Idpression] = None,
                  name: Optional[str] = None):
@@ -94,9 +128,10 @@ class Tex(Idpression):
                 size = UniformTexSize('tex_size')
             else:
                 size = UniformTexSize('{}_size'.format(name),
-                                   add_id_suffix_to_name=False)
+                                      add_id_suffix_to_name=False)
         super().__init__('v_' + (name or 'tex'),
-                         [size],
+                         val_type=val_type,
+                         dependencies=[size],
                          add_id_suffix_to_name=name is None)
         self.steps = steps
         self.size = size
@@ -115,10 +150,10 @@ class Tex(Idpression):
         return self.var_name[2:]
 
     def formula(self):
-        line = 'int(texture(({}), gl_FragCoord.xy / ({})).x * 255.0 + 0.5)'
-        return line.format(
+        read_expression = 'texture(({}), gl_FragCoord.xy / ({}))'.format(
             self.tex_name(),
             self.size.var_name)
+        return self.val_type.from_in(read_expression)
 
     def __getitem__(self, item: Tuple[slice, slice]) -> TexSlice:
         x, y = item

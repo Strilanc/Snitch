@@ -11,10 +11,10 @@ let orFold = new ParametrizedShader(`#version 300 es
     void main() {
         int x = int(gl_FragCoord.x);
         int y = int(gl_FragCoord.y);
-        int slice_0 = int(texture((state), vec2(float((x)*(2) + (-2)) + 0.5, float(y) + 0.5) / (state_size)).x * 255.0 + 0.5);
-        int slice_1 = int(texture((state), vec2(float((x)*(2) + (-1)) + 0.5, float(y) + 0.5) / (state_size)).x * 255.0 + 0.5);
-        int bitwise_or_2 = int((slice_0) | (slice_1));
-        outColor = float(bitwise_or_2) / 255.0;
+        bool slice_0 = (texture((state), vec2(float((x)*(2)) + 0.5, gl_FragCoord.y) / (state_size))).x > 0.5;
+        bool slice_1 = (texture((state), vec2(float((x)*(2) + (1)) + 0.5, gl_FragCoord.y) / (state_size))).x > 0.5;
+        bool bit_or_2 = (slice_0) || (slice_1);
+        outColor = float(bit_or_2);
     }`,
     ['tex', 'state', 'state_size']);
 

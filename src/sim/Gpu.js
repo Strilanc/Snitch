@@ -44,15 +44,39 @@ function initGpu(canvas) {
 }
 
 class Tex {
-    constructor(width, height) {
-        let {texture, frameBuffer} = Tex.allocTexture(width, height);
-        this.width = width;
-        this.height = height;
+    constructor(width, height, data=undefined) {
+        let {texture, frameBuffer} = Tex.allocTexture(width, height, data);
         this.texture = texture;
         this.frameBuffer = frameBuffer;
+        this.width = width;
+        this.height = height;
     }
 
-    static allocTexture(w, h) {
+    /**
+     * @returns {!Uint8Array}
+     */
+    read() {
+        gl.bindFramebuffer(gl.FRAMEBUFFER, this.frameBuffer);
+        try {
+            checkGetErrorResult(gl, "Tex.read:bindFramebuffer");
+            checkFrameBufferStatusResult(gl);
+            let outputBuffer = new Uint8Array(this.width * this.height);
+            //noinspection JSUnresolvedVariable
+            gl.readPixels(0, 0, this.width, this.height, gl.RED, gl.UNSIGNED_BYTE, outputBuffer);
+            checkGetErrorResult(gl, "Tex.read:readPixels");
+            return outputBuffer;
+        } finally {
+            gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+        }
+    }
+
+    /**
+     * @param {!int} w
+     * @param {!int} h
+     * @param {undefined|!Uint8Array} data
+     * @returns {!{texture: !WebGLTexture, frameBuffer: !WebGLFramebuffer}}
+     */
+    static allocTexture(w, h, data=undefined) {
         let texture = gl.createTexture();
         let frameBuffer = gl.createFramebuffer();
 
@@ -64,7 +88,7 @@ class Tex {
             gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
             gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
             //noinspection JSUnresolvedVariable
-            gl.texImage2D(gl.TEXTURE_2D, 0, gl.R8, w, h, 0, gl.RED, gl.UNSIGNED_BYTE, null);
+            gl.texImage2D(gl.TEXTURE_2D, 0, gl.R8, w, h, 0, gl.RED, gl.UNSIGNED_BYTE, data === undefined ? null : data);
             checkGetErrorResult(gl, "texImage2D");
             gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, texture, 0);
             checkGetErrorResult(gl, "framebufferTexture2D");
@@ -176,7 +200,13 @@ class ParametrizedShader {
             if (action === 'tex') {
                 gl.uniform1i(loc, texture_unit);
                 gl.activeTexture(gl.TEXTURE0 + texture_unit);
-                gl.bindTexture(gl.TEXTURE_2D, arg.texture);
+                if (arg instanceof Tex) {
+                    gl.bindTexture(gl.TEXTURE_2D, arg.texture);
+                } else if (arg instanceof TexPair) {
+                    gl.bindTexture(gl.TEXTURE_2D, arg.src.texture);
+                } else {
+                    gl.bindTexture(gl.TEXTURE_2D, arg);
+                }
                 texture_unit++;
                 if (param.length >= 2 && param[2] !== undefined) {
                     gl.uniform2f(gl.getUniformLocation(program, param[2]), arg.width, arg.height);
@@ -196,10 +226,31 @@ class ParametrizedShaderWithArgs {
         this.args = args;
     }
 
+    /**
+     * @param {!TexPair} texPair
+     */
     renderIntoTexPair(texPair) {
-        this.parametrizedShader.useArgs(...this.args);
-        drawToTexture(this.parametrizedShader.program, texPair.dst, texPair.dst.width, texPair.dst.height);
+        this.renderIntoTex(texPair.dst);
         texPair.swap();
+    }
+
+    /**
+     * @param {!Tex} tex
+     */
+    renderIntoTex(tex) {
+        this.parametrizedShader.useArgs(...this.args);
+        drawToTexture(this.parametrizedShader.program, tex, tex.width, tex.height);
+    }
+
+    /**
+     * @param {!int} w
+     * @param {!int} h
+     * @returns {!Uint8Array}
+     */
+    read(w, h) {
+        let tex = new Tex(w, h);
+        this.renderIntoTex(tex);
+        return tex.read();
     }
 
     drawToCanvas() {
@@ -228,29 +279,6 @@ function drawToTexture(program, tex, w, h) {
         gl.useProgram(program);
         gl.drawArrays(gl.TRIANGLES, 0, 6);
         checkGetErrorResult(gl, "drawToTexture:drawArrays");
-    } finally {
-        gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-    }
-}
-
-//noinspection JSValidateJSDoc
-/**
- * @param {!WebGLTexture} t
- * @param {!int} w
- * @param {!int} h
- * @param {!WebGLFramebuffer} fb
- * @returns {!Uint8Array}
- */
-function readTexture(t, w, h, fb) {
-    gl.bindFramebuffer(gl.FRAMEBUFFER, fb);
-    try {
-        checkGetErrorResult(gl, "readTexture:bindFramebuffer");
-        checkFrameBufferStatusResult(gl);
-        let outputBuffer = new Uint8Array(w * h);
-        //noinspection JSUnresolvedVariable
-        gl.readPixels(0, 0, w, h, gl.RED, gl.UNSIGNED_BYTE, outputBuffer);
-        checkGetErrorResult(gl, "readTexture:readPixels");
-        return outputBuffer;
     } finally {
         gl.bindFramebuffer(gl.FRAMEBUFFER, null);
     }
@@ -307,7 +335,6 @@ export {
     initGpu,
     createFragProgram,
     drawToTexture,
-    readTexture,
     Tex,
     TexPair,
     ParametrizedShader,

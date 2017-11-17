@@ -1,15 +1,15 @@
 from typing import Union
-from idpression import Idpression, Uniform
+from idpression import Idpression, Uniform, Byte, Bit, Int32, Vec2
 from tex import Tex
 from shader import X, Y, generate_shader_construction
 
 
 def single_x() -> Idpression:
-    tex = Tex(name='state')
-    target = Uniform('int', '1i', False, 'target')
+    state = Tex(name='state', val_type=Int32)
+    target = Uniform(name='target', val_type=Byte)
     # Flip const bit of Z observable and Y sign bit.
     flip = (X < 2) & (Y == target * 2 + X)
-    result = tex ^ flip
+    result = state ^ flip
     return generate_shader_construction(
         'singleX',
         result)
@@ -34,9 +34,9 @@ def do_parallel_czs(state: Idpression,
 
 
 def single_cz() -> Idpression:
-    state = Tex(name='state')
-    target1 = Uniform('int', '1i', False, 'target1')
-    target2 = Uniform('int', '1i', False, 'target2')
+    state = Tex(name='state', val_type=Bit)
+    target1 = Uniform(name='target1', val_type=Int32)
+    target2 = Uniform(name='target2', val_type=Int32)
     index = Y >> 1
     result = do_parallel_czs(state,
                              affected=(index == target1) | (index == target2),
@@ -45,9 +45,9 @@ def single_cz() -> Idpression:
 
 
 def find_one_fold():
-    tex = Tex(name='state')
-    a = tex[-2::2, :]
-    b = tex[-1::2, :]
+    state = Tex(name='state', val_type=Int32)
+    a = state[::2, :]
+    b = state[1::2, :]
     result = ((a != 0).if_then(a + X)
               .else_if(b != 0).then(b + X + 1)
               .else_end(0))
@@ -57,10 +57,19 @@ def find_one_fold():
 
 
 def or_fold():
-    tex = Tex(name='state')
-    result = tex[-2::2, :] | tex[-1::2, :]
+    state = Tex(name='state', val_type=Bit)
+    result = state[::2, :] | state[1::2, :]
     return generate_shader_construction(
         'orFold',
+        result)
+
+
+def shifter():
+    state = Tex(name='state', val_type=Int32)
+    offset = Uniform(name='offset', val_type=Vec2)
+    result = state[X - offset.x().int(), Y - offset.y().int()]
+    return generate_shader_construction(
+        'shifter',
         result)
 
 
@@ -74,9 +83,9 @@ def prepare_clean_state():
 
 
 def eliminate_column():
-    state = Tex(name='state')
-    mux = Tex(name='found_ones')
-    measured = Uniform('int', '1i', False, 'target')
+    state = Tex(name='state', val_type=Bit)
+    mux = Tex(name='found_ones', val_type=Int32)
+    measured = Uniform(name='target', val_type=Int32)
 
     unit_row = measured*2 + 1
     victim_col = mux[2, unit_row] + 1
@@ -86,7 +95,7 @@ def eliminate_column():
 
 
 def random_advance():
-    state = Tex(name='state')
+    state = Tex(name='state', val_type=Int32)
     x1 = state[0, :]
     x2 = state[1, :]
     x3 = state[2, :]
@@ -103,14 +112,14 @@ def random_advance():
 
 
 def measure_set_result():
-    state = Tex(name='state')
-    mux = Tex(name='found_ones')
-    rand = Tex(name='rand')
-    target = Uniform('int', '1i', False, 'target')
-    rand_bit = rand[0, :] & 1
+    state = Tex(name='state', val_type=Bit)
+    mux = Tex(name='found_ones', val_type=Int32)
+    rand = Tex(name='rand', val_type=Int32)
+    target = Uniform(name='target', val_type=Int32)
+    rand_bit = (rand[0, :] & 1).bool()
     is_random_result = mux[2, :] != 0
-    toggle = (is_random_result & rand_bit & (Y == target*2 + 1) & (X == 1) & 1) * 0xFF
-    result = state ^ toggle
+    toggle = is_random_result & rand_bit & (Y == target*2 + 1) & (X == 1)
+    result = state != toggle
     return generate_shader_construction('measureSetResult', result)
 
 
@@ -160,14 +169,16 @@ def apply_cycle(src):
 
 
 def main():
-    # print(find_one_fold())
+    # print(or_fold())
+    print(find_one_fold())
     # print(single_x())
     # print(single_hadamard())
     # print(single_cz())
     # print(prepare_clean_state())
     # print(eliminate_column())
     # print(random_advance())
-    print(measure_set_result())
+    # print(measure_set_result())
+    # print(shifter())
 
 
 main()
