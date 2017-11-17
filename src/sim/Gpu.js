@@ -259,15 +259,18 @@ class ParametrizedShader {
                 gl.activeTexture(gl.TEXTURE0 + texture_unit);
                 if (arg instanceof Tex) {
                     gl.bindTexture(gl.TEXTURE_2D, arg.texture);
+                    if (param.length >= 2 && param[2] !== undefined) {
+                        gl.uniform2f(gl.getUniformLocation(program, param[2]), arg.width, arg.height);
+                    }
                 } else if (arg instanceof TexPair) {
                     gl.bindTexture(gl.TEXTURE_2D, arg.src.texture);
+                    if (param.length >= 2 && param[2] !== undefined) {
+                        gl.uniform2f(gl.getUniformLocation(program, param[2]), arg.src.width, arg.src.height);
+                    }
                 } else {
-                    gl.bindTexture(gl.TEXTURE_2D, arg);
+                    throw DetailedError("Don't know how to get texture and size from tex arg.", {arg});
                 }
                 texture_unit++;
-                if (param.length >= 2 && param[2] !== undefined) {
-                    gl.uniform2f(gl.getUniformLocation(program, param[2]), arg.width, arg.height);
-                }
             } else if (spread) {
                 gl['uniform' + action](loc, ...arg);
             } else {
@@ -376,8 +379,8 @@ function createFragProgram(fragmentShaderSource) {
 }
 
 class TexPair {
-    constructor(width, height) {
-        this.src = new Tex(width, height);
+    constructor(width, height, data=undefined) {
+        this.src = new Tex(width, height, data);
         this.dst = new Tex(width, height);
     }
 

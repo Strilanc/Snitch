@@ -1,5 +1,5 @@
 from typing import Union
-from idpression import Idpression, Uniform, Byte, Bit, Int32, Vec2
+from idpression import Idpression, Uniform, Byte, Bit, Int32, Vec2, UInt32
 from tex import Tex
 from shader import X, Y, generate_shader_construction
 
@@ -108,7 +108,7 @@ def eliminate_column():
 
 
 def random_advance():
-    state = Tex(name='state', val_type=Int32)
+    state = Tex(name='state', val_type=UInt32)
     x1 = state[0, :]
     x2 = state[1, :]
     x3 = state[2, :]
@@ -117,10 +117,11 @@ def random_advance():
 
     # xorshift32 prng
     u ^= u << 13
+    u &= 0xFFFFFFFF
     u ^= u >> 17
     u ^= u << 5
 
-    result = u >> (X*8)
+    result = (u >> (X*8)) & 0xFF
     return generate_shader_construction('randomAdvance', result)
 
 
@@ -189,8 +190,8 @@ def main():
     # print(single_cz())
     # print(prepare_clean_state())
     # print(eliminate_column())
-    # print(random_advance())
-    print(measure_set_result())
+    print(random_advance())
+    # print(measure_set_result())
     # print(shifter())
 
 

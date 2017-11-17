@@ -59,6 +59,13 @@ Int32 = ShaderType(
     from_in=lambda s: 'int(({}).x*255.0 + 0.5)'.format(s),
     to_out=lambda s: 'float({}) / 255.0'.format(s))
 
+UInt32 = ShaderType(
+    name='UInt32',
+    gl_name='uint',
+    set_arg_key='1i',
+    from_in=lambda s: 'uint(({}).x*255.0 + 0.5)'.format(s),
+    to_out=lambda s: 'float({}) / 255.0'.format(s))
+
 Float32 = ShaderType(
     name='Float32',
     gl_name='float',
@@ -135,6 +142,8 @@ class Idpression(object):
     def __and__(self, other):
         if self.val_type is Bit and other.val_type is Bit:
             return BinaryOp(self, other, 'bit_and', '&&')
+        if self.val_type is UInt32 and isinstance(other, int):
+            return self & Idpression.wrap(other).uint()
         return BinaryOp(self, other, 'bitwise_and', '&')
 
     def bool(self):
@@ -142,6 +151,9 @@ class Idpression(object):
 
     def int(self):
         return FuncOp('int', Int32, self)
+
+    def uint(self):
+        return FuncOp('uint', UInt32, self)
 
     def float(self):
         return FuncOp('float', Float32, self)
@@ -158,10 +170,10 @@ class Idpression(object):
         return BinaryOp(self, other, 'bitwise_xor', '^')
 
     def __lshift__(self, other):
-        return BinaryOp(self, other, 'left_shift', '<<')
+        return BinaryOp(self, other, 'left_shift', '<<', self.val_type)
 
     def __rshift__(self, other):
-        return BinaryOp(self, other, 'right_shift', '>>')
+        return BinaryOp(self, other, 'right_shift', '>>', self.val_type)
 
     def __add__(self, other):
         return BinaryOp(self, other, 'add', '+')

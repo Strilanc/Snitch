@@ -3,6 +3,7 @@ import {DetailedError} from 'src/base/DetailedError.js'
 import {describe} from 'src/base/Describe.js'
 
 import {initGpu, ParametrizedShader, readTexture, TexPair, Tex} from 'src/sim/Gpu.js'
+import {randomAdvance} from 'src/gen/randomAdvance.js'
 import {shifter} from 'src/gen/shifter.js'
 import {orFold} from 'src/gen/orFold.js'
 import {singleHadamard} from 'src/gen/singleHadamard.js'
@@ -34,7 +35,13 @@ let showShader = new ParametrizedShader(`#version 300 es
 
 let sim_state = new TexPair(128, 128);
 let fold_state = new TexPair(sim_state.src.width, sim_state.src.height);
-let rng_state = new TexPair(4, sim_state.src.height);
+
+let rng_seed = new Uint8Array(4 * sim_state.src.height);
+for (let i = 0; i < rng_seed.length; i++) {
+    rng_seed[i] = Math.floor(Math.random() * 256);
+}
+console.log(rng_seed);
+let rng_state = new TexPair(4, sim_state.src.height, rng_seed);
 
 function* compute_or() {
     yield () => shifter.withArgs([-2, 0], sim_state.src).renderIntoTexPair(fold_state);
@@ -118,20 +125,9 @@ function* cycle() {
     }
 }
 
-let initRngShader = new ParametrizedShader(`#version 300 es
-    precision highp float;
-    precision highp int;
-    out float outColor;
-    void main() {
-        vec2 xy = gl_FragCoord.xy;
-        bool rand = bool(sin((xy.x * xy.x + xy.y * xy.y) * 432.3) > 0.0);  // TODO: actually make it random.
-        outColor = float(rand);
-    }`);
-
-
 let steps = [
     () => prepareCleanState.withArgs().renderIntoTexPair(sim_state),
-    () => initRngShader.withArgs().renderIntoTexPair(rng_state),
+    () => randomAdvance.withArgs(rng_state).renderIntoTexPair(rng_state),
     ...cycle()
 ];
 

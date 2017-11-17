@@ -353,7 +353,6 @@ export class GpuSuite extends Suite {
             super.test(name, method, later);
         }
     }
-
 }
 
 Suite.suites = [];
