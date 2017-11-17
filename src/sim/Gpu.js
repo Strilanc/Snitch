@@ -21,6 +21,10 @@ let vertexShader = /** @type {!WebGLShader} */ undefined;
 
 function initGpu(canvas) {
     gl = canvas.getContext('webgl2');
+    if (gl === null || gl === undefined) {
+        console.error('Webgl2 support not present.');
+        throw new Error('Webgl2 support not present.');
+    }
 
     gl.bindBuffer(gl.ARRAY_BUFFER, gl.createBuffer());
     gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([
