@@ -235,14 +235,38 @@ class ParametrizedShader {
         return new ParametrizedShaderWithArgs(this, args);
     }
 
+    /**
+     * @param {*} loc
+     * @param {!Array.<*>} param
+     * @param {!Tex|!TexPair} arg
+     * @param {!int} texture_unit
+     * @private
+     */
+    _useTexArg(loc, param, arg, texture_unit) {
+        gl.uniform1i(loc, texture_unit);
+        gl.activeTexture(gl.TEXTURE0 + texture_unit);
+        let tex;
+        if (arg instanceof Tex) {
+            tex = arg;
+        } else if (arg instanceof TexPair) {
+            tex = arg.src;
+        } else {
+            throw DetailedError("Don't know how to get texture and size from tex arg.", {arg});
+        }
+
+        gl.bindTexture(gl.TEXTURE_2D, tex.texture);
+        if (param.length >= 2 && param[2] !== undefined) {
+            gl.uniform2f(gl.getUniformLocation(this.program, param[2]), arg.width, arg.height);
+        }
+    }
+
     useArgs(...args) {
         if (this.program === undefined) {
             this.program = createFragProgram(this.fragmentShaderSource);
         }
 
         let params = this.params;
-        let program = this.program;
-        gl.useProgram(program);
+        gl.useProgram(this.program);
         if (args.length !== params.length) {
             throw new DetailedError('Shader arg mismatch.', {args, params});
         }
@@ -253,23 +277,9 @@ class ParametrizedShader {
             let key = param[1];
             let arg = args[i];
             let spread = param.length >= 2 && param[2];
-            let loc = gl.getUniformLocation(program, key);
+            let loc = gl.getUniformLocation(this.program, key);
             if (action === 'tex') {
-                gl.uniform1i(loc, texture_unit);
-                gl.activeTexture(gl.TEXTURE0 + texture_unit);
-                if (arg instanceof Tex) {
-                    gl.bindTexture(gl.TEXTURE_2D, arg.texture);
-                    if (param.length >= 2 && param[2] !== undefined) {
-                        gl.uniform2f(gl.getUniformLocation(program, param[2]), arg.width, arg.height);
-                    }
-                } else if (arg instanceof TexPair) {
-                    gl.bindTexture(gl.TEXTURE_2D, arg.src.texture);
-                    if (param.length >= 2 && param[2] !== undefined) {
-                        gl.uniform2f(gl.getUniformLocation(program, param[2]), arg.src.width, arg.src.height);
-                    }
-                } else {
-                    throw DetailedError("Don't know how to get texture and size from tex arg.", {arg});
-                }
+                this._useTexArg(loc, param, arg, texture_unit);
                 texture_unit++;
             } else if (spread) {
                 gl['uniform' + action](loc, ...arg);
