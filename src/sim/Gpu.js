@@ -18,6 +18,7 @@ import {DetailedError} from "src/base/DetailedError.js";
 let gl = /** @type {!WebGL2RenderingContext} */  undefined;
 //noinspection JSValidateJSDoc
 let vertexShader = /** @type {!WebGLShader} */ undefined;
+let maxTextureSize = /** @type {!int} */ undefined;
 
 function initGpu(canvas) {
     if (gl === undefined) {
@@ -41,6 +42,7 @@ function initGpu(canvas) {
     //noinspection JSUnresolvedFunction
     gl.bindVertexArray(gl.createVertexArray());
 
+    maxTextureSize = gl.getParameter(gl.MAX_TEXTURE_SIZE);
     vertexShader = createShader(gl.VERTEX_SHADER, `#version 300 es
         in vec4 a_position;
         void main() {
@@ -101,6 +103,10 @@ function unalign_buffer(buf, w) {
 
 class Tex {
     constructor(width, height, data=undefined) {
+        if (width > maxTextureSize || height > maxTextureSize) {
+            throw new DetailedError('Span exceeds maximum size.', {width, height, maxTextureSize});
+        }
+
         let {texture, frameBuffer} = Tex.allocTexture(width, height, data);
         this.texture = texture;
         this.frameBuffer = frameBuffer;
@@ -268,7 +274,7 @@ class ParametrizedShader {
         let params = this.params;
         gl.useProgram(this.program);
         if (args.length !== params.length) {
-            throw new DetailedError('Shader arg mismatch.', {args, params});
+            throw new DetailedError('Shader arg count mismatch.', {args, params});
         }
         let texture_unit = 0;
         for (let i = 0; i < args.length; i++) {

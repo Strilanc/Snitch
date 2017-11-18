@@ -5,7 +5,7 @@ import {prepareCleanState} from "src/gen/prepareCleanState.js"
 
 let suite = new GpuSuite("prepareCleanState");
 
-suite.test("example", () => {
+suite.test("small", () => {
     assertShaderOutputs(prepareCleanState.withArgs(),
         '  #     ',
         '        ',

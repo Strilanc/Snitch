@@ -12,6 +12,15 @@ import {prepareCleanState} from 'src/gen/prepareCleanState.js'
 import {measureSetResult} from 'src/gen/measureSetResult.js'
 import {findOneFold} from 'src/gen/findOneFold.js'
 
+window.onerror = function(msg, url, line, col, error) {
+    document.getElementById('err_msg').textContent = describe(msg);
+    document.getElementById('err_line').textContent = describe(line);
+    document.getElementById('err_time').textContent = '' + new Date().getMilliseconds();
+    if (error instanceof DetailedError) {
+        document.getElementById('err_gen').textContent = describe(error.details);
+    }
+};
+
 let canvas = /** @type {!HTMLCanvasElement} */ document.getElementById('main-canvas');
 initGpu(canvas);
 
@@ -33,45 +42,13 @@ let showShader = new ParametrizedShader(`#version 300 es
     ['tex', 'tex', 'tex_size'],
     ['2f', 'out_size', true]);
 
-let sim_state = new TexPair(128, 128);
-let fold_state = new TexPair(sim_state.src.width, sim_state.src.height);
-let rng_state = createPrng(sim_state.src.height);
-
-function* compute_or() {
-    yield () => shifter.withArgs([-2, 0], sim_state.src).renderInto(fold_state);
-
-    let w = Math.ceil(sim_state.src.width - 2);
-    while (w > 1) {
-        yield () => orFold.withArgs(fold_state.src).renderInto(fold_state);
-        w = Math.ceil(w / 2);
-    }
-}
-
-//noinspection JSUnusedLocalSymbols
-function* compute_find() {
-    yield () => shifter.withArgs([-2, 0], sim_state.src).renderInto(fold_state);
-
-    let w = Math.ceil(sim_state.src.width - 2);
-    while (w > 1) {
-        yield () => findOneFold.withArgs(fold_state.src).renderInto(fold_state);
-        w = Math.ceil(w / 2);
-    }
-}
-
-function measure_set_result(target) {
-    return () => measureSetResult.withArgs(target, fold_state.src, rng_state.src, sim_state.src).renderInto(sim_state);
-}
-
 function h(a) {
-    return () => singleHadamard.withArgs(a, sim_state.src).renderInto(sim_state);
+    singleHadamard.withArgs(a, sim_state.src).renderInto(sim_state);
 }
 
 function cz(a, b) {
-    return () => singleCZ.withArgs(a, b, sim_state.src).renderInto(sim_state);
+    singleCZ.withArgs(a, b, sim_state.src).renderInto(sim_state);
 }
-
-let surface_width = 5;
-let surface_height = 5;
 
 function neighbors(i, j) {
     let result = [];
@@ -87,64 +64,69 @@ function q(x, y) {
     return x + y*surface_width;
 }
 
+let sim_state;
+let fold_state;
+let rng_state;
+
 // eslint-disable-next-line
-function* cycle() {
+function cycle() {
     for (let i = 0; i < surface_width; i++) {
         for (let j = 0; j < surface_height; j++) {
             if ((i & 1) === (j & 1)) {
                 continue; // Data qubit.
             }
-            yield h(q(i, j));
+            h(q(i, j));
             for (let [x, y] of neighbors(i, j)) {
                 if ((i & 1) === 0) {
-                    yield h(q(x, y));
-                    yield cz(q(i, j), q(x, y));
-                    yield h(q(x, y));
+                    h(q(x, y));
+                    cz(q(i, j), q(x, y));
+                    h(q(x, y));
                 } else {
-                    yield cz(q(i, j), q(x, y));
+                    cz(q(i, j), q(x, y));
                 }
             }
-            yield h(q(i, j));
+            h(q(i, j));
         }
     }
-
-    yield* compute_or();
-
     for (let i = 0; i < surface_width; i++) {
         for (let j = 0; j < surface_height; j++) {
             if ((i & 1) !== (j & 1)) {
-                yield measure_set_result(q(i, j));
+                advanceMeasureWithReset(sim_state, fold_state, rng_state, q(i, j));
             }
         }
     }
 }
 
-let steps = [
-    () => prepareCleanState.withArgs().renderInto(sim_state),
-    () => randomAdvance.withArgs(rng_state).renderInto(rng_state),
-    ...cycle()
-];
+let surface_width = 5;
+//noinspection JSSuspiciousNameCombination
+let surface_height = surface_width;
+let area = surface_width * surface_height;
 
-let step_index = 0;
-canvas.width = sim_state.src.width*4;
-canvas.height = sim_state.src.height*4;
-setInterval(() => {
-    if (step_index < steps.length) {
-        steps[step_index]();
-    }
-    step_index++;
-    if (step_index >= steps.length + 100) {
-        step_index = 0;
-    }
+setTimeout(() => {
+    sim_state = new TexPair(area, area * 2);
+    fold_state = new TexPair(sim_state.src.width, sim_state.src.height);
+    rng_state = createPrng(sim_state.src.height);
+    canvas.width = sim_state.width * 3;
+    canvas.height = sim_state.height * 3;
+    console.log(canvas.height);
 
-    showShader.withArgs(sim_state.src, [canvas.width, canvas.height]).drawToCanvas();
-}, 10);
-
-window.onerror = function(msg, url, line, col, error) {
-    document.getElementById('err_msg').textContent = describe(msg);
-    document.getElementById('err_line').textContent = describe(line);
-    document.getElementById('err_time').textContent = '' + new Date().getMilliseconds();
-    if (error instanceof DetailedError) {
-        document.getElementById('err_gen').textContent = describe(error.details);
+    console.log('starting');
+    prepareCleanState.withArgs().renderInto(sim_state);
+    console.log('prepared initial state');
+    cycle();
+    console.log('spinup done');
+    let cycles = 1;
+    let dt = 0;
+    while (dt < 500) {
+        cycles *= 2;
+        console.log(`too fast (${dt}). Retrying with cycles=${cycles}`);
+        let startTime = new Date();
+        for (let i = 0; i < cycles; i++) {
+            cycle();
+        }
+        let endTime = new Date();
+        dt = endTime - startTime;
+        // showShader.withArgs(sim_state, [canvas.width, canvas.height]).drawToCanvas();
     }
-};
+    console.log(`${surface_width}x${surface_height}: ${cycles} cycles in ${dt}ms, or ${(cycles / dt * 1000).toFixed(1)} Hz, or ${(cycles * surface_width * surface_height / dt).toFixed(1)} qubit*kHz`)
+}, 0);
