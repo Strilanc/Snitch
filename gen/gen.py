@@ -1,4 +1,4 @@
-from typing import Union
+from typing import Union, Optional
 from idpression import Idpression, Uniform, Byte, Bit, Int32, Vec2, UInt32
 from tex import Tex
 from shader import X, Y, generate_shader_construction
@@ -35,11 +35,9 @@ def single_hadamard():
 def do_parallel_czs(state: Idpression,
                     affected: Union[bool, Idpression],
                     partner: Union[int, Idpression]) -> Idpression:
-    is_affected_x_data = (X > 0) & (Y & 1 == 0) & affected
-    return (
-        is_affected_x_data.if_then(state != state[X, partner * 2 + 1])
-            .else_end(state)
-    )
+    is_affected = (X > 0) & (Y & 1 == 0) & affected
+    flip = state[:, partner * 2 + 1] & is_affected
+    return state ^ flip
 
 
 def single_cz() -> Idpression:
@@ -188,6 +186,25 @@ def measure_set_result():
     return generate_shader_construction('measureSetResult', result)
 
 
+def surface_hadamards(check_vs_data: Optional[bool]):
+    state = Tex(name='state', val_type=Bit)
+    surface_width = Uniform(Int32, 'surface_width')
+    q = Y >> 1
+    qX = q % surface_width
+    qY = q // surface_width
+    is_check = qX & 1 == qY & 1
+    is_data = qX & 1 != qY & 1
+    result = do_parallel_hadamards(
+        state,
+        False if check_vs_data is None else
+        is_data if check_vs_data else
+        is_check)
+    caption = ('hadamardAll' if check_vs_data is None else
+               'hadamardCheck' if check_vs_data else
+               'hadamardData')
+    return generate_shader_construction(caption, result)
+
+
 def apply_cycle(src):
     qX = (Y >> 1) & 15
     qY = (Y >> 5) & 15
@@ -238,13 +255,14 @@ def main():
     # print(find_one_fold())
     # print(single_x())
     # print(single_hadamard())
-    # print(single_cz())
+    print(single_cz())
     # print(prepare_clean_state())
     # print(eliminate_column())
     # print(eliminate_column())
     # print(random_advance())
-    print(measure_set_result())
+    # print(measure_set_result())
     # print(shifter())
+    # print(surface_hadamards(check_vs_data=False))
 
 
 main()

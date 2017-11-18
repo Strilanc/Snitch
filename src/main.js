@@ -11,6 +11,9 @@ import {singleCZ} from 'src/gen/singleCZ.js'
 import {prepareCleanState} from 'src/gen/prepareCleanState.js'
 import {measureSetResult} from 'src/gen/measureSetResult.js'
 import {findOneFold} from 'src/gen/findOneFold.js'
+import {hadamardAll} from 'src/gen/hadamardAll.js'
+import {hadamardCheck} from 'src/gen/hadamardCheck.js'
+import {hadamardData} from 'src/gen/hadamardData.js'
 
 window.onerror = function(msg, url, line, col, error) {
     document.getElementById('err_msg').textContent = describe(msg);
@@ -70,24 +73,34 @@ let rng_state;
 
 // eslint-disable-next-line
 function cycle() {
+    hadamardAll.withArgs(sim_state).renderInto(sim_state);
     for (let i = 0; i < surface_width; i++) {
         for (let j = 0; j < surface_height; j++) {
             if ((i & 1) === (j & 1)) {
                 continue; // Data qubit.
             }
-            h(q(i, j));
             for (let [x, y] of neighbors(i, j)) {
                 if ((i & 1) === 0) {
-                    h(q(x, y));
-                    cz(q(i, j), q(x, y));
-                    h(q(x, y));
-                } else {
                     cz(q(i, j), q(x, y));
                 }
             }
-            h(q(i, j));
         }
     }
+    hadamardData.withArgs(surface_width, sim_state).renderInto(sim_state);
+    for (let i = 0; i < surface_width; i++) {
+        for (let j = 0; j < surface_height; j++) {
+            if ((i & 1) === (j & 1)) {
+                continue; // Data qubit.
+            }
+            for (let [x, y] of neighbors(i, j)) {
+                if ((i & 1) !== 0) {
+                    cz(q(i, j), q(x, y));
+                }
+            }
+        }
+    }
+    hadamardCheck.withArgs(surface_width, sim_state).renderInto(sim_state);
+
     for (let i = 0; i < surface_width; i++) {
         for (let j = 0; j < surface_height; j++) {
             if ((i & 1) !== (j & 1)) {

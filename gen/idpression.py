@@ -146,6 +146,16 @@ class Idpression(object):
             return self & Idpression.wrap(other).uint()
         return BinaryOp(self, other, 'bitwise_and', '&')
 
+    def __floordiv__(self, other):
+        if self.val_type is Int32 and other.val_type is Int32:
+            return BinaryOp(self, other, 'divide', '/')
+        return BinaryOp(self, other, 'divide', '/').int()
+
+    def __mod__(self, other):
+        if self.val_type is Float32 and other.val_type is Float32:
+            return FuncOp('mod', Float32, self, other)
+        return BinaryOp(self, other, 'mod', '%')
+
     def bool(self):
         return FuncOp('bool', Bit, self)
 
