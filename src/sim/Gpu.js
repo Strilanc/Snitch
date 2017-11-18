@@ -245,18 +245,18 @@ class ParametrizedShader {
     _useTexArg(loc, param, arg, texture_unit) {
         gl.uniform1i(loc, texture_unit);
         gl.activeTexture(gl.TEXTURE0 + texture_unit);
-        let tex;
+        let src;
         if (arg instanceof Tex) {
-            tex = arg;
+            src = arg;
         } else if (arg instanceof TexPair) {
-            tex = arg.src;
+            src = arg.src;
         } else {
             throw DetailedError("Don't know how to get texture and size from tex arg.", {arg});
         }
 
-        gl.bindTexture(gl.TEXTURE_2D, tex.texture);
+        gl.bindTexture(gl.TEXTURE_2D, src.texture);
         if (param.length >= 2 && param[2] !== undefined) {
-            gl.uniform2f(gl.getUniformLocation(this.program, param[2]), arg.width, arg.height);
+            gl.uniform2f(gl.getUniformLocation(this.program, param[2]), src.width, src.height);
         }
     }
 
@@ -297,19 +297,15 @@ class ParametrizedShaderWithArgs {
     }
 
     /**
-     * @param {!TexPair} texPair
+     * @param {!TexPair|!Tex} tex
      */
-    renderIntoTexPair(texPair) {
-        this.renderIntoTex(texPair.dst);
-        texPair.swap();
-    }
-
-    /**
-     * @param {!Tex} tex
-     */
-    renderIntoTex(tex) {
+    renderInto(tex) {
+        let dst = tex instanceof TexPair ? tex.dst : tex;
         this.parametrizedShader.useArgs(...this.args);
-        drawToTexture(this.parametrizedShader.program, tex, tex.width, tex.height);
+        drawToTexture(this.parametrizedShader.program, dst, dst.width, dst.height);
+        if (tex instanceof TexPair) {
+            tex.swap();
+        }
     }
 
     /**
@@ -319,7 +315,7 @@ class ParametrizedShaderWithArgs {
      */
     read(w, h) {
         let tex = new Tex(w, h);
-        this.renderIntoTex(tex);
+        this.renderInto(tex);
         return tex.read();
     }
 
@@ -392,12 +388,18 @@ class TexPair {
     constructor(width, height, data=undefined) {
         this.src = new Tex(width, height, data);
         this.dst = new Tex(width, height);
+        this.width = width;
+        this.height = height;
     }
 
     swap() {
         let t = this.src;
         this.src = this.dst;
         this.dst = t;
+    }
+
+    read() {
+        return this.src.read();
     }
 }
 

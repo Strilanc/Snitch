@@ -95,15 +95,46 @@ def prepare_clean_state():
         result)
 
 
+def bit_to_int():
+    state = Tex(name='state', val_type=Bit)
+    result = state.bool().int()
+    return generate_shader_construction(
+        'bitToInt',
+        result)
+
+
 def eliminate_column():
+    """
+    The input state should be the result of set_measured, with the target row
+    having been flipped to have unit product. The measurement result is stored
+    in the first cell of the target row (which is otherwise unused).
+
+    The found_ones param should be the result of folding found_ones over all
+    but the first two columns of the input state, so it has a single column
+    containing zero to mean "no variables" or non-zero to mean "index of
+    first variable" (off by one).
+
+    The output state is the state after reset-ing the measurement, without
+    removing the measurement results themselves. In the "no variable" case this
+    means nothing happens. In the "yes variables" case, the Z observable's row
+    (skipping first element) is xor'd into any rows who have a bit set at the
+    same position as the Z observable's first variable bit that's set. Also the
+    X observable will be replaced such that only the first variable bit from
+    the Z observable is set.
+    """
     state = Tex(name='state', val_type=Bit)
     mux = Tex(name='found_ones', val_type=Int32)
     measured = Uniform(name='target', val_type=Int32)
 
     unit_row = measured*2 + 1
-    victim_col = mux[2, unit_row] + 1
-    toggles = state[:, unit_row] & state[victim_col, :] & (victim_col >= 2)
-    result = toggles ^ state
+    victim_col = mux[0, unit_row] + 1
+    is_non_trivial = victim_col >= 2
+    toggles = (state[:, unit_row] &
+               state[victim_col, :] &
+               is_non_trivial &
+               (X > 0))
+    reset = (Y == measured*2) & is_non_trivial
+    result = reset.if_then(X == victim_col).else_end(toggles ^ state)
     return generate_shader_construction('eliminateCol', result)
 
 
@@ -126,14 +157,34 @@ def random_advance():
 
 
 def measure_set_result():
+    """
+    The input state should be the state to be measured.
+
+    The found_ones param should be the result of folding found_ones over all
+    but the first two columns of the input state, so it has a single column
+    containing zero to mean "no variables" or non-zero to mean "index of
+    first variable" (off by one).
+
+    The rand param should be a 4xH texture containing PRNG state. Its state
+    should be advanced (separately) after using this shader.
+
+    In the output state, the target qubit's Z observable is guaranteed to be
+    equal to 1. The actual measurement result is stored in column 0 of Z. No
+    other values should be affected.
+    """
     state = Tex(name='state', val_type=Bit)
-    mux = Tex(name='found_ones', val_type=Int32)
+    found_ones = Tex(name='found_ones', val_type=Int32)
     rand = Tex(name='rand', val_type=Int32)
     target = Uniform(name='target', val_type=Int32)
     rand_bit = (rand[0, :] & 1).bool()
-    is_random_result = mux[0, :] != 0
-    toggle = is_random_result & rand_bit & (Y == target*2 + 1) & (X == 1)
-    result = state != toggle
+    const_bit = state[1, :]
+    is_random_result = found_ones[0, :] != 0
+    outcome = is_random_result.if_then(rand_bit).else_end(const_bit)
+
+    not_affected = (Y != target*2 + 1) | (X >= 2)
+    result = (not_affected.if_then(state)
+              .else_if(X == 1).then(state ^ outcome)
+              .else_end(outcome))
     return generate_shader_construction('measureSetResult', result)
 
 
@@ -190,8 +241,9 @@ def main():
     # print(single_cz())
     # print(prepare_clean_state())
     # print(eliminate_column())
-    print(random_advance())
-    # print(measure_set_result())
+    # print(eliminate_column())
+    # print(random_advance())
+    print(measure_set_result())
     # print(shifter())
 
 

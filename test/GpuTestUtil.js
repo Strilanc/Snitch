@@ -1,6 +1,6 @@
 import {assertThat} from "test/TestUtil.js"
 import {DetailedError} from "src/base/DetailedError.js"
-import {Tex} from 'src/sim/Gpu.js'
+import {Tex, TexPair} from 'src/sim/Gpu.js'
 
 let char_levels = new Map([
     [' ', 0],
@@ -25,38 +25,38 @@ let level_chars = new Map([...char_levels.entries()].map(e => [e[1], e[0]]));
 
 /**
  * @param {!String|!Array.<!int>} lines
- * @returns {!Tex}
+ * @returns {!TexPair}
  */
 function texture_diagram(...lines) {
     let max_length = 0;
     for (let line of lines) {
         max_length = Math.max(max_length, line.length);
     }
-    let result = new Uint8Array(max_length * lines.length);
+    let buf = new Uint8Array(max_length * lines.length);
     for (let i = 0; i < lines.length; i++) {
         let line = lines[i];
         for (let j = 0; j < line.length; j++) {
-            result[i*max_length + j] = Number.isInteger(line[j]) ? line[j] : char_levels.get(line[j]);
+            buf[i*max_length + j] = Number.isInteger(line[j]) ? line[j] : char_levels.get(line[j]);
         }
     }
-    return new Tex(max_length, lines.length, result);
+    return new TexPair(max_length, lines.length, buf);
 }
 
 /**
- * @param {!ParametrizedShaderWithArgs} shader
+ * @param {!Uint8Array} buf
  * @param {!int} w
  * @param {!int} h
  * @param {!Array.<!string|!Array.<!int>>} matchingDiagram
  * @returns {!Array.<!string>}
  */
-function _reconstruct_texture_diagram(shader, w, h, matchingDiagram) {
-    let vals = shader.read(w, h);
+function _reconstruct_texture_diagram(buf, w, h, matchingDiagram) {
     let lines = [];
+    assertThat(matchingDiagram.length).isEqualTo(h);
     for (let i = 0; i < h; i++) {
         let line = [];
-        let useRaw = Number.isInteger(matchingDiagram[i][0]);
+        let useRaw = matchingDiagram.length <= i || Number.isInteger(matchingDiagram[i][0]);
         for (let j = 0; j < w; j++) {
-            let k = vals[i*w + j];
+            let k = buf[i*w + j];
             if (useRaw) {
                 line.push(k);
             } else {
@@ -72,6 +72,17 @@ function _reconstruct_texture_diagram(shader, w, h, matchingDiagram) {
 }
 
 /**
+ * @param {!Tex|!TexPair} texture
+ * @param {!String|!Array.<!int>} texture_diagram
+ */
+function assertTextureReads(texture, ...texture_diagram) {
+    let wrap = e => "texture_diagram(\n        '" + e.join("',\n        '") + "'\n    )";
+    let actual = wrap(_reconstruct_texture_diagram(texture.read(), texture.width, texture.height, texture_diagram));
+    let expected = wrap(texture_diagram);
+    assertThat(actual).isEqualTo(expected);
+}
+
+/**
  * @param {!ParametrizedShaderWithArgs} shader
  * @param {!String|!Array.<!int>} texture_diagram
  */
@@ -83,9 +94,9 @@ function assertShaderOutputs(shader, ...texture_diagram) {
     }
     let wrap = e => "texture_diagram([\n        '" + e.join("',\n        '") + "'\n    ])";
 
-    let actual = wrap(_reconstruct_texture_diagram(shader, w, h, texture_diagram));
+    let actual = wrap(_reconstruct_texture_diagram(shader.read(w, h), w, h, texture_diagram));
     let expected = wrap(texture_diagram);
     assertThat(actual).isEqualTo(expected);
 }
 
-export {assertShaderOutputs, texture_diagram}
+export {assertShaderOutputs, texture_diagram, assertTextureReads}

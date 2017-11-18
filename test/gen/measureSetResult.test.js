@@ -42,7 +42,7 @@ suite.test("random-result-toggled", () => {
         '  #     ',
         '   #    ',
         '    #   ',
-        ' #   #  ',
+        '##   #  ',
         '      # ',
         '       #');
 });
@@ -122,7 +122,7 @@ suite.test("fixed-result", () => {
 
     assertShaderOutputs(measureSetResult.withArgs(0, found_ones, rand, state),
         '#       ',
-        ' #      ',
+        '#       ',
         '  #     ',
         '   #    ',
         '    #   ',

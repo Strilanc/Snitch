@@ -167,6 +167,8 @@ class Idpression(object):
         return UnaryOp(self, 'neg', '-')
 
     def __xor__(self, other) -> 'Idpression':
+        if self.val_type is Bit and Idpression.wrap(other).val_type is Bit:
+            return BinaryOp(self, other, 'bit_xor', '!=')
         return BinaryOp(self, other, 'bitwise_xor', '^')
 
     def __lshift__(self, other):

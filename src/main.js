@@ -1,8 +1,8 @@
 import {seq} from 'src/base/Seq.js'
 import {DetailedError} from 'src/base/DetailedError.js'
 import {describe} from 'src/base/Describe.js'
-
 import {initGpu, ParametrizedShader, readTexture, TexPair, Tex} from 'src/sim/Gpu.js'
+import {createPrng, advancePrng, advanceMeasureWithReset} from 'src/sim/Operations.js'
 import {randomAdvance} from 'src/gen/randomAdvance.js'
 import {shifter} from 'src/gen/shifter.js'
 import {orFold} from 'src/gen/orFold.js'
@@ -35,45 +35,39 @@ let showShader = new ParametrizedShader(`#version 300 es
 
 let sim_state = new TexPair(128, 128);
 let fold_state = new TexPair(sim_state.src.width, sim_state.src.height);
-
-let rng_seed = new Uint8Array(4 * sim_state.src.height);
-for (let i = 0; i < rng_seed.length; i++) {
-    rng_seed[i] = Math.floor(Math.random() * 256);
-}
-console.log(rng_seed);
-let rng_state = new TexPair(4, sim_state.src.height, rng_seed);
+let rng_state = createPrng(sim_state.src.height);
 
 function* compute_or() {
-    yield () => shifter.withArgs([-2, 0], sim_state.src).renderIntoTexPair(fold_state);
+    yield () => shifter.withArgs([-2, 0], sim_state.src).renderInto(fold_state);
 
     let w = Math.ceil(sim_state.src.width - 2);
     while (w > 1) {
-        yield () => orFold.withArgs(fold_state.src).renderIntoTexPair(fold_state);
+        yield () => orFold.withArgs(fold_state.src).renderInto(fold_state);
         w = Math.ceil(w / 2);
     }
 }
 
 //noinspection JSUnusedLocalSymbols
 function* compute_find() {
-    yield () => shifter.withArgs([-2, 0], sim_state.src).renderIntoTexPair(fold_state);
+    yield () => shifter.withArgs([-2, 0], sim_state.src).renderInto(fold_state);
 
     let w = Math.ceil(sim_state.src.width - 2);
     while (w > 1) {
-        yield () => findOneFold.withArgs(fold_state.src).renderIntoTexPair(fold_state);
+        yield () => findOneFold.withArgs(fold_state.src).renderInto(fold_state);
         w = Math.ceil(w / 2);
     }
 }
 
 function measure_set_result(target) {
-    return () => measureSetResult.withArgs(target, fold_state.src, rng_state.src, sim_state.src).renderIntoTexPair(sim_state);
+    return () => measureSetResult.withArgs(target, fold_state.src, rng_state.src, sim_state.src).renderInto(sim_state);
 }
 
 function h(a) {
-    return () => singleHadamard.withArgs(a, sim_state.src).renderIntoTexPair(sim_state);
+    return () => singleHadamard.withArgs(a, sim_state.src).renderInto(sim_state);
 }
 
 function cz(a, b) {
-    return () => singleCZ.withArgs(a, b, sim_state.src).renderIntoTexPair(sim_state);
+    return () => singleCZ.withArgs(a, b, sim_state.src).renderInto(sim_state);
 }
 
 let surface_width = 5;
@@ -126,8 +120,8 @@ function* cycle() {
 }
 
 let steps = [
-    () => prepareCleanState.withArgs().renderIntoTexPair(sim_state),
-    () => randomAdvance.withArgs(rng_state).renderIntoTexPair(rng_state),
+    () => prepareCleanState.withArgs().renderInto(sim_state),
+    () => randomAdvance.withArgs(rng_state).renderInto(rng_state),
     ...cycle()
 ];
 
