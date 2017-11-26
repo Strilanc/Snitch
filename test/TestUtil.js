@@ -34,7 +34,7 @@ function isArrayIsh(value) {
 /**
  * @param {!string} message
  */
-export function fail(message) {
+function fail(message) {
     throw new Error(message);
 }
 
@@ -112,7 +112,7 @@ function isApproximatelyEqualToHelperDestructured(subject, other, epsilon) {
         isApproximatelyEqualToHelper(subject[key], other[key], epsilon));
 }
 
-export class AssertionSubject {
+class AssertionSubject {
     /**
      * @param {*} subject
      * @param {*} id
@@ -257,18 +257,18 @@ export class AssertionSubject {
  * @param {=undefined} extraArgCatcher
  * returns {!AssertionSubject}
  */
-export function assertThat(subject, extraArgCatcher) {
+function assertThat(subject, extraArgCatcher) {
     if (extraArgCatcher !== undefined) {
         fail('Extra assertThat arg');
     }
     return new AssertionSubject(subject, 'assertThat #' + assertionSubjectIndexForNextTest);
 }
 
-export function assertTrue(subject) {
+function assertTrue(subject) {
     assertThat(subject).isEqualTo(true);
 }
 
-export function assertFalse(subject) {
+function assertFalse(subject) {
     assertThat(subject).isEqualTo(false);
 }
 
@@ -278,7 +278,7 @@ export function assertFalse(subject) {
  * @param {=undefined} extraArgCatcher
  * returns {!AssertionSubject}
  */
-export function assertThrows(func, extraArgCatcher) {
+function assertThrows(func, extraArgCatcher) {
     if (extraArgCatcher !== undefined) {
         fail('Extra assertThrows arg');
     }
@@ -294,7 +294,7 @@ export function assertThrows(func, extraArgCatcher) {
 /**
  * A named collection of tests.
  */
-export class Suite {
+class Suite {
     /**
      * @param {!string} name
      */
@@ -326,3 +326,5 @@ export class Suite {
 }
 
 Suite.suites = [];
+
+export {fail, assertThrows, assertTrue, assertFalse, assertThat, AssertionSubject, Suite}

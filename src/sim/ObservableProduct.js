@@ -17,6 +17,23 @@ import {equate} from 'src/base/Equate.js'
 import {seq} from 'src/base/Seq.js'
 
 /**
+ * Toggles whether items from the mask set are in the destination set.
+ * @param {!Set.<T>} dst
+ * @param {!Set.<T>} mask
+ * @mutates dst
+ * @template T
+ */
+function set_xor_inline(dst, mask) {
+    for (let e of mask) {
+        if (dst.has(e)) {
+            dst.delete(e);
+        } else {
+            dst.add(e);
+        }
+    }
+}
+
+/**
  * Returns the set of elements that are in exactly one of the given sets.
  * @param {!Set.<T>} a
  * @param {!Set.<T>} b
@@ -24,14 +41,8 @@ import {seq} from 'src/base/Seq.js'
  * @template T
  */
 function set_xor(a, b) {
-    let result = new Set();
-    for (let [x, y] of [[a, b], [b, a]]) {
-        for (let e of x) {
-            if (!y.has(e)) {
-                result.add(e)
-            }
-        }
-    }
+    let result = new Set(a);
+    set_xor_inline(result, b);
     return result;
 }
 

@@ -14,7 +14,7 @@
 
 import {DetailedError} from "src/base/DetailedError.js"
 
-export const THROW_IF_EMPTY = { if_same_instance_as_this_then_throw: true };
+const THROW_IF_EMPTY = { if_same_instance_as_this_then_throw: true };
 
 /**
  * A private sygil/sentinel value that shouldn't ever be present in a sequence, and so can be used as a placeholder for
@@ -1167,4 +1167,4 @@ class Seq {
  */
 let seq = iterable => new Seq(iterable);
 
-export {seq, Seq};
+export {seq, Seq, THROW_IF_EMPTY};
