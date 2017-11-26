@@ -24,13 +24,25 @@ function productRange(prefix, count) {
 }
 
 perfGoal(
-    "times-small",
-    micros(20),
-    v => v[0].times(v[1]),
+    "ObservableProduct.times(10)",
+    micros(10),
+    v => v[0].times_inline(v[1]),
     [productRange('a', 10), productRange('b', 10).times(productRange('a', 5))]);
 
 perfGoal(
-    "times-big",
+    "ObservableProduct.times(10000)",
     millis(5),
     v => v[0].times(v[1]),
+    [productRange('a', 10000), productRange('b', 10000).times(productRange('a', 500))]);
+
+perfGoal(
+    "ObservableProduct.times_inline(10)",
+    micros(3),
+    v => v[0].times_inline(v[1]),
+    [productRange('a', 10), productRange('b', 10).times(productRange('a', 5))]);
+
+perfGoal(
+    "ObservableProduct.times_inline(10000)",
+    millis(2),
+    v => v[0].times_inline(v[1]),
     [productRange('a', 10000), productRange('b', 10000).times(productRange('a', 500))]);

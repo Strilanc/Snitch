@@ -75,7 +75,7 @@ class StabilizerCircuitState {
      * @param {!function(!StabilizerQubit): !StabilizerQubit} action
      * @private
      */
-    _apply(index, action) {
+    _do(index, action) {
         let q = this.qubit_map.get(index);
         if (q === undefined) {
             throw new DetailedError('Bad qubit index.', {index});
@@ -89,7 +89,7 @@ class StabilizerCircuitState {
      * @param {!function(!StabilizerQubit, !StabilizerQubit): !Array.<!StabilizerQubit>} action
      * @private
      */
-    _apply2(index1, index2, action) {
+    _do2(index1, index2, action) {
         let a = this.qubit_map.get(index1);
         let b = this.qubit_map.get(index2);
         if (a === undefined || b === undefined || a === b) {
@@ -101,23 +101,31 @@ class StabilizerCircuitState {
     }
 
     x(index) {
-        this._apply(index, e => e.sqrtX().sqrtX());
+        this._do(index, e => e.inline_x());
     }
 
     s(index) {
-        this._apply(index, e => e.sqrtZ());
+        this._do(index, e => e.inline_sqrtZ());
     }
 
     z(index) {
-        this._apply(index, e => e.sqrtZ().sqrtZ());
+        this._do(index, e => e.inline_z());
     }
 
     h(index) {
-        this._apply(index, e => e.sqrtY().sqrtX().sqrtX());
+        this._do(index, e => e.inline_h());
     }
 
     cz(index1, index2) {
-        this._apply2(index1, index2, (a, b) => a.cz(b));
+        this._do2(index1, index2, (a, b) => a.inline_cz(b));
+    }
+
+    cnot(controlIndex, targetIndex) {
+        this._do2(controlIndex, targetIndex, (a, b) => a.inline_cnot(b));
+    }
+
+    xnot(index1, index2) {
+        this._do2(index1, index2, (a, b) => a.inline_xnot(b));
     }
 
     measure(index, reset=false) {

@@ -16,23 +16,29 @@ import {perfGoal, millis, micros} from "test_perf/TestPerfUtil.js"
 import {SurfaceCode} from "src/sim/SurfaceCode.js"
 
 perfGoal(
-    "initial-cycle-10x10",
-    millis(5),
+    "surface-setup-10x10",
+    millis(3),
     () => new SurfaceCode(10, 10).cycle());
 
 perfGoal(
-    "initial-cycle-20x20",
+    "surface-setup-20x20",
     millis(20),
     () => new SurfaceCode(20, 20).cycle());
 
 perfGoal(
-    "steady-cycle-10x10",
-    millis(4),
+    "surface-cycle-10x10",
+    millis(1),
     s => s.cycle(),
     new SurfaceCode(10, 10));
 
 perfGoal(
-    "steady-cycle-20x20",
-    millis(20),
+    "surface-cycle-20x20",
+    millis(12),
     s => s.cycle(),
     new SurfaceCode(20, 20));
+
+perfGoal(
+    "surface-cycle-30x30",
+    millis(150),
+    s => s.cycle(),
+    new SurfaceCode(40, 40));

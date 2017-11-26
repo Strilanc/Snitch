@@ -44,20 +44,15 @@ class SurfaceCode {
 
     square_measure(i, j, h) {
         let t = this.qubits[i][j];
-        this.state.h(t);
         for (let [x, y] of this.neighbors(i, j)) {
             let c = this.qubits[x][y];
             if (h) {
-                this.state.h(c);
-            }
-            this.state.cz(c, t);
-            if (h) {
-                this.state.h(c);
+                this.state.xnot(c, t);
+            } else {
+                this.state.cnot(c, t);
             }
         }
-        this.state.h(t);
-        let v = this.state.measure(t, true);
-        return v;
+        return this.state.measure(t, true);
     }
 
     cycle() {

@@ -75,16 +75,16 @@ class ObservableProduct {
         if (other === -1) {
             return new ObservableProduct(new Set(this.ids), -this.sign);
         }
-        return new ObservableProduct(set_xor(this.ids, other.ids), this.sign * other.sign);
+        return this.clone().times_inline(other);
     }
 
+    /**
+     * @param {!ObservableProduct} other
+     * @returns {ObservableProduct}
+     */
     times_inline(other) {
-        if (other === +1 || other === -1) {
-            this.sign *= other;
-        } else {
-            this.sign *= other.sign;
-            set_xor_inline(this.ids, other.ids);
-        }
+        this.sign *= other.sign;
+        set_xor_inline(this.ids, other.ids);
         return this;
     }
 

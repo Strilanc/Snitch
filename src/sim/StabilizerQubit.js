@@ -37,6 +37,10 @@ class StabilizerQubit {
         this.signY = signY;
     }
 
+    clone() {
+        return new StabilizerQubit(this.obsX.clone(), this.obsZ.clone(), this.signY);
+    }
+
     /**
      * The Y observable is implied by the X and Z observables, times a sign.
      * @returns {!ObservableProduct}
@@ -56,12 +60,37 @@ class StabilizerQubit {
         return `Q(X=${this.obsX}, Z=${this.obsZ}, Y=${this.signY === -1 ? '-' : ''}X*Z)`;
     }
 
+    inline_x() {
+        this.obsZ.sign *= -1;
+        return this;
+    }
+
+    inline_y() {
+        this.obsX.sign *= -1;
+        this.obsZ.sign *= -1;
+        return this;
+    }
+
+    inline_z() {
+        this.obsX.sign *= -1;
+        return this;
+    }
+
+    inline_h() {
+        let z = this.obsZ;
+        this.obsZ = this.obsX;
+        this.obsX = z;
+        this.signY *= -1;
+        return this;
+    }
+
+
     /**
      * Returns the result of applying a 90 degree right handed rotation around the X axis to the qubit.
      * @returns {!StabilizerQubit}
      */
     sqrtX() {
-        return new StabilizerQubit(this.obsX, this.obsY, -this.signY);
+        return this.clone().inline_sqrtX();
     }
 
     /**
@@ -69,7 +98,7 @@ class StabilizerQubit {
      * @returns {!StabilizerQubit}
      */
     sqrtY() {
-        return new StabilizerQubit(this.obsZ, this.obsX.times(-1), -this.signY);
+        return this.clone().inline_sqrtY();
     }
 
     /**
@@ -77,7 +106,7 @@ class StabilizerQubit {
      * @returns {!StabilizerQubit}
      */
     sqrtZ() {
-        return new StabilizerQubit(this.obsY.times(-1), this.obsZ, -this.signY);
+        return this.clone().inline_sqrtZ();
     }
 
     /**
@@ -85,9 +114,52 @@ class StabilizerQubit {
      * @returns {!Array.<!StabilizerQubit>}
      */
     cz(other) {
-        let q1 = new StabilizerQubit(this.obsX.times(other.obsZ), this.obsZ, this.signY);
-        let q2 = new StabilizerQubit(other.obsX.times(this.obsZ), other.obsZ, other.signY);
-        return [q1, q2];
+        let q1 = this.clone();
+        let q2 = other.clone();
+        return q1.inline_cz(q2);
+    }
+
+    inline_sqrtX() {
+        this.obsZ.times_inline(this.obsX);
+        this.obsZ.sign *= this.signY;
+        this.signY *= -1;
+        return this;
+    }
+
+
+    inline_sqrtY() {
+        let x = this.obsX;
+        let z = this.obsZ;
+        this.obsX = z;
+        this.obsZ = x;
+        this.obsZ.sign *= -1;
+        this.signY *= -1;
+        return this;
+    }
+
+    inline_sqrtZ() {
+        this.obsX.times_inline(this.obsZ);
+        this.obsX.sign *= -this.signY;
+        this.signY *= -1;
+        return this;
+    }
+
+    inline_cz(other) {
+        this.obsX.times_inline(other.obsZ);
+        other.obsX.times_inline(this.obsZ);
+        return [this, other];
+    }
+
+    inline_xnot(other) {
+        this.obsZ.times_inline(other.obsX);
+        other.obsZ.times_inline(this.obsX);
+        return [this, other];
+    }
+
+    inline_cnot(target) {
+        this.obsX.times_inline(target.obsX);
+        target.obsZ.times_inline(this.obsZ);
+        return [this, target];
     }
 
     /**
