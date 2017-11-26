@@ -1,6 +1,6 @@
-import {assertThat} from "test/TestUtil.js"
+import {assertThat, assertTrue, Suite} from "test/TestUtil.js"
 import {DetailedError} from "src/base/DetailedError.js"
-import {Tex, TexPair} from 'src/sim/Gpu.js'
+import {initGpu, Tex, TexPair} from 'src/sim/Gpu.js'
 
 let char_levels = new Map([
     [' ', 0],
@@ -99,4 +99,33 @@ function assertShaderOutputs(shader, ...texture_diagram) {
     assertThat(actual).isEqualTo(expected);
 }
 
-export {assertShaderOutputs, texture_diagram, assertTextureReads}
+export class GpuSuite extends Suite {
+    /**
+     * @param {!string} name
+     */
+    constructor(name) {
+        super(name);
+
+        try {
+            initGpu(document.createElement('canvas'));
+            this.gpu_error = undefined;
+        } catch (ex) {
+            this.gpu_error = ex;
+            console.warn(`Skipping '${name}' tests because WebGL2 support isn't present.`);
+            super.test('fake', () => {assertTrue(true);});
+        }
+    }
+
+    /**
+     * @param {!string} name
+     * @param {!function(!{ warn_only: !boolean|!string })} method
+     * @param {!boolean=false} later
+     */
+    test(name, method, later=false) {
+        if (this.gpu_error === undefined) {
+            super.test(name, method, later);
+        }
+    }
+}
+
+export {GpuSuite, assertShaderOutputs, texture_diagram, assertTextureReads}

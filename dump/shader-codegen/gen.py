@@ -205,6 +205,62 @@ def surface_hadamards(check_vs_data: Optional[bool]):
     return generate_shader_construction(caption, result)
 
 
+def do_surface_czs(evens, verticals, zs):
+    # o==x--o==x--
+    #    |     |
+    # z  o  z  o
+    #    !     !
+    # o==x--o==x==
+    #    |     |
+    # z  o  z  o
+    #
+    # =: even horizontal
+    # -: odd horizontal
+    # |: even vertical
+    # !: odd vertical
+
+    state = Tex(name='state', val_type=Bit)
+    surface_width = Uniform(Int32, 'surface_width')
+    surface_height = Uniform(Int32, 'surface_height')
+    q = Y >> 1
+    qX = q % surface_width
+    qY = q // surface_width
+
+    if verticals:
+        i, j = qY, qX
+        r = surface_height
+    else:
+        i, j = qX, qY
+        r = surface_width
+    offset = 0 if evens else 1
+
+    on_line = (j & 1) == (1 if zs == verticals else 0)
+    in_range = ((i + offset) | 1) - offset < r
+    i = ((i + offset) ^ 1) - offset
+
+    if verticals:
+        qY, qX = i, j
+    else:
+        qX, qY = i, j
+
+    result = do_parallel_czs(state,
+                             affected=in_range & on_line,
+                             partner=qY * surface_width + qX)
+    captions = {
+        (False, False, False): 'surfaceCzsEHX',
+        (True, False, False): 'surfaceCzsOHX',
+        (False, True, False): 'surfaceCzsEVX',
+        (True, True, False): 'surfaceCzsOVX',
+        (False, False, True): 'surfaceCzsEHZ',
+        (True, False, True): 'surfaceCzsOHZ',
+        (False, True, True): 'surfaceCzsEVZ',
+        (True, True, True): 'surfaceCzsOVZ',
+    }
+    return generate_shader_construction(
+        captions[(evens, verticals, zs)],
+        result)
+
+
 def apply_cycle(src):
     qX = (Y >> 1) & 15
     qY = (Y >> 5) & 15
@@ -255,7 +311,7 @@ def main():
     # print(find_one_fold())
     # print(single_x())
     # print(single_hadamard())
-    print(single_cz())
+    # print(single_cz())
     # print(prepare_clean_state())
     # print(eliminate_column())
     # print(eliminate_column())
@@ -263,6 +319,7 @@ def main():
     # print(measure_set_result())
     # print(shifter())
     # print(surface_hadamards(check_vs_data=False))
+    print(do_surface_czs(evens=False, verticals=True, zs=True))
 
 
 main()

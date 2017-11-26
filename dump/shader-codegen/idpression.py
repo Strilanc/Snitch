@@ -177,20 +177,30 @@ class Idpression(object):
         return UnaryOp(self, 'neg', '-')
 
     def __xor__(self, other) -> 'Idpression':
+        if self.val_type is Int32 and isinstance(other, int) and other == 0:
+            return self
         if self.val_type is Bit and Idpression.wrap(other).val_type is Bit:
             return BinaryOp(self, other, 'bit_xor', '!=')
         return BinaryOp(self, other, 'bitwise_xor', '^')
 
     def __lshift__(self, other):
+        if self.val_type is Int32 and isinstance(other, int) and other == 0:
+            return self
         return BinaryOp(self, other, 'left_shift', '<<', self.val_type)
 
     def __rshift__(self, other):
+        if self.val_type is Int32 and isinstance(other, int) and other == 0:
+            return self
         return BinaryOp(self, other, 'right_shift', '>>', self.val_type)
 
     def __add__(self, other):
+        if self.val_type is Int32 and isinstance(other, int) and other == 0:
+            return self
         return BinaryOp(self, other, 'add', '+')
 
     def __radd__(self, other):
+        if self.val_type is Int32 and isinstance(other, int) and other == 0:
+            return self
         return BinaryOp(other, self, 'add', '+')
 
     def __eq__(self, other):
@@ -212,9 +222,13 @@ class Idpression(object):
         return BinaryOp(self, other, 'lt', '<', out_type=Bit)
 
     def __sub__(self, other):
+        if self.val_type is Int32 and isinstance(other, int) and other == 0:
+            return self
         return BinaryOp(self, other, 'sub', '-')
 
     def __rsub__(self, other):
+        if self.val_type is Int32 and isinstance(other, int) and other == 0:
+            return -self
         return BinaryOp(other, self, 'sub', '-')
 
     def __mul__(self, other):

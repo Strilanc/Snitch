@@ -1,145 +1,157 @@
-import {seq} from 'src/base/Seq.js'
 import {DetailedError} from 'src/base/DetailedError.js'
-import {describe} from 'src/base/Describe.js'
-import {initGpu, ParametrizedShader, readTexture, TexPair, Tex} from 'src/sim/Gpu.js'
-import {createPrng, advancePrng, advanceMeasureWithReset} from 'src/sim/Operations.js'
-import {randomAdvance} from 'src/gen/randomAdvance.js'
-import {shifter} from 'src/gen/shifter.js'
-import {orFold} from 'src/gen/orFold.js'
-import {singleHadamard} from 'src/gen/singleHadamard.js'
-import {singleCZ} from 'src/gen/singleCZ.js'
-import {prepareCleanState} from 'src/gen/prepareCleanState.js'
-import {measureSetResult} from 'src/gen/measureSetResult.js'
-import {findOneFold} from 'src/gen/findOneFold.js'
-import {hadamardAll} from 'src/gen/hadamardAll.js'
-import {hadamardCheck} from 'src/gen/hadamardCheck.js'
-import {hadamardData} from 'src/gen/hadamardData.js'
-
-window.onerror = function(msg, url, line, col, error) {
-    document.getElementById('err_msg').textContent = describe(msg);
-    document.getElementById('err_line').textContent = describe(line);
-    document.getElementById('err_time').textContent = '' + new Date().getMilliseconds();
-    if (error instanceof DetailedError) {
-        document.getElementById('err_gen').textContent = describe(error.details);
-    }
-};
+import {ObservableProduct} from 'src/sim/ObservableProduct.js'
+import {MeasurementResult} from 'src/sim/MeasurementResult.js'
+import {StabilizerQubit} from 'src/sim/StabilizerQubit.js'
+import {StabilizerCircuitState} from 'src/sim/StabilizerCircuitState.js'
 
 let canvas = /** @type {!HTMLCanvasElement} */ document.getElementById('main-canvas');
-initGpu(canvas);
 
-/**
- * @param {!Tex} tex
- * @param {!Array.<!int>} out_size
- */
-let showShader = new ParametrizedShader(`#version 300 es
-    precision highp float;
-    precision highp int;
-    out vec4 outColor;
-    uniform sampler2D tex;
-    uniform vec2 tex_size;
-    uniform vec2 out_size;
-    void main() {
-        float r = texture(tex, vec2(gl_FragCoord.x, out_size.y-gl_FragCoord.y) / out_size).x;
-        outColor = vec4(r, r, r, 1.0);
-    }`,
-    ['tex', 'tex', 'tex_size'],
-    ['2f', 'out_size', true]);
-
-function h(a) {
-    singleHadamard.withArgs(a, sim_state.src).renderInto(sim_state);
-}
-
-function cz(a, b) {
-    singleCZ.withArgs(a, b, sim_state.src).renderInto(sim_state);
+let width = 50;
+let height = 30;
+let state = new StabilizerCircuitState();
+let qubits = [];
+let last_result = [];
+let target = state.add_off_qubit();
+for (let i = 0; i < width; i++) {
+    let r = [];
+    let m = [];
+    for (let j = 0; j < height; j++) {
+        if ((i & 1) !== (j & 1)) {
+            r.push(state.add_off_qubit());
+        } else {
+            r.push(target);
+        }
+        m.push(undefined);
+    }
+    qubits.push(r);
+    last_result.push(m);
 }
 
 function neighbors(i, j) {
     let result = [];
-    for (let [x, y] of [[i-1, j], [i+1, j], [i, j-1], [i, j+1]]) {
-        if (x >= 0 && x < surface_width && y >= 0 && y < surface_height) {
-            result.push([x, y]);
+    for (let [di, dj] of [[1,0], [-1,0], [0,1], [0,-1]]) {
+        let i2 = i + di;
+        let j2 = j + dj;
+        if (i2 >= 0 && i2 < width && j2 >= 0 && j2 < height) {
+            result.push([i2, j2]);
         }
     }
     return result;
 }
 
-function q(x, y) {
-    return x + y*surface_width;
+function square_measure(i, j, h) {
+    let t = qubits[i][j];
+    state.h(t);
+    for (let [x, y] of neighbors(i, j)) {
+        let c = qubits[x][y];
+        if (h) {
+            state.h(c);
+        }
+        state.cz(c, t);
+        if (h) {
+            state.h(c);
+        }
+    }
+    state.h(t);
+    let v = state.measure(t, true);
+    return v;
 }
 
-let sim_state;
-let fold_state;
-let rng_state;
-
-// eslint-disable-next-line
 function cycle() {
-    hadamardAll.withArgs(sim_state).renderInto(sim_state);
-    for (let i = 0; i < surface_width; i++) {
-        for (let j = 0; j < surface_height; j++) {
+    for (let i = 0; i < width; i++) {
+        for (let j = 0; j < height; j++) {
             if ((i & 1) === (j & 1)) {
-                continue; // Data qubit.
-            }
-            for (let [x, y] of neighbors(i, j)) {
-                if ((i & 1) === 0) {
-                    cz(q(i, j), q(x, y));
-                }
-            }
-        }
-    }
-    hadamardData.withArgs(surface_width, sim_state).renderInto(sim_state);
-    for (let i = 0; i < surface_width; i++) {
-        for (let j = 0; j < surface_height; j++) {
-            if ((i & 1) === (j & 1)) {
-                continue; // Data qubit.
-            }
-            for (let [x, y] of neighbors(i, j)) {
-                if ((i & 1) !== 0) {
-                    cz(q(i, j), q(x, y));
-                }
-            }
-        }
-    }
-    hadamardCheck.withArgs(surface_width, sim_state).renderInto(sim_state);
-
-    for (let i = 0; i < surface_width; i++) {
-        for (let j = 0; j < surface_height; j++) {
-            if ((i & 1) !== (j & 1)) {
-                advanceMeasureWithReset(sim_state, fold_state, rng_state, q(i, j));
+                last_result[i][j] = square_measure(i, j, (i & 1) === 1);
             }
         }
     }
 }
 
-let surface_width = 5;
-//noinspection JSSuspiciousNameCombination
-let surface_height = surface_width;
-let area = surface_width * surface_height;
+let diam = 20;
+canvas.width = diam * width;
+canvas.height = diam * height;
 
-setTimeout(() => {
-    sim_state = new TexPair(area, area * 2);
-    fold_state = new TexPair(sim_state.src.width, sim_state.src.height);
-    rng_state = createPrng(sim_state.src.height);
-    canvas.width = sim_state.width * 3;
-    canvas.height = sim_state.height * 3;
-    console.log(canvas.height);
-
-    console.log('starting');
-    prepareCleanState.withArgs().renderInto(sim_state);
-    console.log('prepared initial state');
-    cycle();
-    console.log('spinup done');
-    let cycles = 1;
-    let dt = 0;
-    while (dt < 500) {
-        cycles *= 2;
-        console.log(`too fast (${dt}). Retrying with cycles=${cycles}`);
-        let startTime = new Date();
-        for (let i = 0; i < cycles; i++) {
-            cycle();
+function error(p = 0.01) {
+    for (let i = 0; i < width; i++) {
+        for (let j = 0; j < height; j++) {
+            if (Math.random() < p) {
+                if (Math.random() < 0.5) {
+                    state.x(qubits[i][j]);
+                }
+                if (Math.random() < 0.5) {
+                    state.z(qubits[i][j]);
+                }
+            }
         }
-        let endTime = new Date();
-        dt = endTime - startTime;
-        // showShader.withArgs(sim_state, [canvas.width, canvas.height]).drawToCanvas();
     }
-    console.log(`${surface_width}x${surface_height}: ${cycles} cycles in ${dt}ms, or ${(cycles / dt * 1000).toFixed(1)} Hz, or ${(cycles * surface_width * surface_height / dt).toFixed(1)} qubit*kHz`)
-}, 0);
+}
+
+function zero() {
+    for (let i = 0; i < width; i += 2) {
+        let b = false;
+        for (let j = 0; j < height; j += 2) {
+            b ^= last_result[i][j] === true;
+            if (b && j < height - 1) {
+                state.x(qubits[i][j+1]);
+            }
+        }
+    }
+
+    let max_i = (width - (width % 1)) - 1;
+    for (let j = 1; j < height; j += 2) {
+        let b = false;
+        for (let i = max_i; i >= 0; i -= 2) {
+            b ^= last_result[i][j] === true;
+            if (b && i > 0) {
+                state.z(qubits[i-1][j]);
+            }
+        }
+    }
+}
+
+function draw() {
+    let ctx = canvas.getContext('2d');
+    for (let i = 0; i < width; i++) {
+        for (let j = 0; j < height; j++) {
+            let x = i*diam;
+            let y = j*diam;
+            if ((i & 1) !== (j & 1)) {
+                ctx.fillStyle = '#FFF';
+            } else if ((i & 1) === 0) {
+                if (last_result[i][j] === true) {
+                    ctx.fillStyle = '#A62';
+                } else if (last_result[i][j] === false) {
+                    ctx.fillStyle = '#DFD';
+                }
+            } else {
+                if (last_result[i][j] === true) {
+                    ctx.fillStyle = '#F6F';
+                } else if (last_result[i][j] === false) {
+                    ctx.fillStyle = '#DDF';
+                }
+            }
+            ctx.fillRect(x, y, diam, diam);
+        }
+    }
+}
+
+setInterval(() => {
+    zero();
+    error();
+    cycle();
+    draw();
+}, 100);
+
+canvas.onmousedown = ev => {
+    let i = Math.floor(ev.x / diam);
+    let j = Math.floor(ev.y / diam);
+    if (i >= 0 && i < width && j >= 0 && j < height && ((i & 1) !== (j & 1))) {
+        if (ev.button === 0) {
+            state.x(qubits[i][j]);
+        } else {
+            state.z(qubits[i][j]);
+        }
+        cycle();
+        draw();
+    }
+};
