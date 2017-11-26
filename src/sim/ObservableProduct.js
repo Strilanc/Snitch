@@ -73,9 +73,23 @@ class ObservableProduct {
             return this
         }
         if (other === -1) {
-            return new ObservableProduct(this.ids, -this.sign);
+            return new ObservableProduct(new Set(this.ids), -this.sign);
         }
         return new ObservableProduct(set_xor(this.ids, other.ids), this.sign * other.sign);
+    }
+
+    times_inline(other) {
+        if (other === +1 || other === -1) {
+            this.sign *= other;
+        } else {
+            this.sign *= other.sign;
+            set_xor_inline(this.ids, other.ids);
+        }
+        return this;
+    }
+
+    clone() {
+        return new ObservableProduct(new Set(this.ids), this.sign);
     }
 
     /**
