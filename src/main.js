@@ -29,6 +29,17 @@ let canvas_padding = 10;
 canvas.width = diam * surface.width + canvas_padding*2;
 canvas.height = diam * surface.height + canvas_padding*2;
 
+const X_ON_COLOR = '#55F';
+const X_BORDER_COLOR = '#55F';
+const X_OFF_COLOR = '#E6E6FF';
+
+const Z_ON_COLOR = '#0A0';
+const Z_BORDER_COLOR = '#0A0';
+const Z_OFF_COLOR = '#DFD';
+
+const D_COLOR = '#FFF';
+const H_COLOR = '#000';
+
 function draw() {
     let ctx = canvas.getContext('2d');
     ctx.save();
@@ -41,25 +52,21 @@ function draw() {
             let y = j * diam;
             ctx.fillStyle = '#888';
             if (surface.isDataQubit(i, j)) {
-                ctx.fillStyle = '#FFF'; // data qubit
+                ctx.fillStyle = D_COLOR; // data qubit
             } else if (surface.isZCheckQubit(i, j)) {
                 if (surface.last_result[i][j] === true) {
-                    ctx.fillStyle = '#080'; // Z fail
+                    ctx.fillStyle = Z_ON_COLOR; // Z fail
                 } else if (surface.last_result[i][j] === false) {
-                    ctx.fillStyle = '#DFD'; // Z normal
+                    ctx.fillStyle = Z_OFF_COLOR; // Z normal
                 }
             } else if (surface.isXCheckQubit(i, j)) {
                 if (surface.last_result[i][j] === true) {
-                    ctx.fillStyle = '#008'; // X fail
+                    ctx.fillStyle = X_ON_COLOR; // X fail
                 } else if (surface.last_result[i][j] === false) {
-                    ctx.fillStyle = '#DDF'; // X normal
+                    ctx.fillStyle = X_OFF_COLOR; // X normal
                 }
             } else {
-                if (surface.last_result[i][j]) {
-                    ctx.fillStyle = '#000'; // hole
-                } else {
-                    ctx.fillStyle = '#444'; // hole
-                }
+                ctx.fillStyle = H_COLOR;
             }
             ctx.fillRect(x, y, diam, diam);
         }
@@ -77,7 +84,7 @@ function draw() {
             let drawBorder = (di, dj) => {
                 let type = surface.borderType(i, j, di, dj);
                 if (type !== undefined) {
-                    ctx.fillStyle = type === 'Z' ? '#0A0' : '#00A';
+                    ctx.fillStyle = type === 'Z' ? Z_BORDER_COLOR : X_BORDER_COLOR;
                     let ai = Math.abs(di);
                     let aj = Math.abs(dj);
                     ctx.fillRect(
@@ -102,7 +109,7 @@ function draw() {
                 continue
             }
             if (surface.xFlips[i][j]) {
-                ctx.strokeStyle = '#080';
+                ctx.strokeStyle = Z_ON_COLOR;
                 ctx.beginPath();
                 if (surface.isXCheckRow(j)) {
                     ctx.moveTo(x+diam/2, y - diam/2);
@@ -114,7 +121,7 @@ function draw() {
                 ctx.stroke();
             }
             if (surface.zFlips[i][j]) {
-                ctx.strokeStyle = '#008';
+                ctx.strokeStyle = X_ON_COLOR;
                 ctx.beginPath();
                 if (!surface.isXCheckRow(j)) {
                     ctx.moveTo(x+diam/2, y - diam/2);
@@ -178,6 +185,20 @@ canvas.onmousedown = ev => {
                     surface.state.z(surface.qubits[i][j]);
                     if (!ev.altKey) {
                         surface.zFlips[i][j] ^= true;
+                    }
+                }
+            } else if (surface.isXCheckQubit(i, j)) {
+                for (let [i2, j2] of surface.neighbors(i, j)) {
+                    surface.state.x(surface.qubits[i2][j2]);
+                    if (!ev.altKey) {
+                        surface.xFlips[i2][j2] ^= true;
+                    }
+                }
+            } else if (surface.isZCheckQubit(i, j)) {
+                for (let [i2, j2] of surface.neighbors(i, j)) {
+                    surface.state.z(surface.qubits[i2][j2]);
+                    if (!ev.altKey) {
+                        surface.zFlips[i2][j2] ^= true;
                     }
                 }
             }
