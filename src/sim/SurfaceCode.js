@@ -35,6 +35,14 @@ function* _holes(surface, pad=1) {
     }
 }
 
+function* _checkQubits(surface, xz) {
+    for (let pt of surface.points) {
+        if (surface.isCheckQubit(pt[0], pt[1], xz)) {
+            yield pt;
+        }
+    }
+}
+
 class SurfaceCode {
     constructor(width, height) {
         this.width = width;
@@ -58,6 +66,10 @@ class SurfaceCode {
 
     xzFlips(xz) {
         return xz ? this.xFlips : this.zFlips;
+    }
+
+    checkQubits(xz) {
+        return _checkQubits(this, xz);
     }
 
     isXCheckCol(col) {
@@ -157,6 +169,10 @@ class SurfaceCode {
         return (ignoreHole || !this.isHole(i, j)) && (i & 1) === 1 && (j & 1) === 1;
     }
 
+    isCheckQubit(i, j, xz, ignoreHole=false) {
+        return xz ? this.isXCheckQubit(i, j, ignoreHole) : this.isZCheckQubit(i, j, ignoreHole);
+    }
+
     //noinspection JSMethodCanBeStatic
     isDataQubit(i, j) {
         return !this.isHole(i, j) && (i & 1) !== (j & 1);
@@ -175,17 +191,15 @@ class SurfaceCode {
     }
 
     error(p = 0.0001) {
-        for (let i = 0; i < this.width; i++) {
-            for (let j = 0; j < this.height; j++) {
-                if (this.isDataQubit(i, j) && Math.random() < p) {
-                    if (Math.random() < 0.5) {
-                        this.state.x(this.qubits[i][j]);
-                        this.xFlips[i][j] ^= true;
-                    }
-                    if (Math.random() < 0.5) {
-                        this.state.z(this.qubits[i][j]);
-                        this.zFlips[i][j] ^= true;
-                    }
+        for (let [i, j] of this.dataPoints()) {
+            if (Math.random() < p) {
+                if (Math.random() < 0.5) {
+                    this.state.x(this.qubits[i][j]);
+                    this.xFlips[i][j] ^= true;
+                }
+                if (Math.random() < 0.5) {
+                    this.state.z(this.qubits[i][j]);
+                    this.zFlips[i][j] ^= true;
                 }
             }
         }
@@ -220,11 +234,9 @@ class SurfaceCode {
         let queue = points.map(e => [e, e]);
 
         let clear = pt => {
-            for (let i = 0; i < this.width; i++) {
-                for (let j = 0; j < this.height; j++) {
-                    if (grid[i][j] === pt) {
-                        grid[i][j] = undefined;
-                    }
+            for (let [i, j] of this.points) {
+                if (grid[i][j] === pt) {
+                    grid[i][j] = undefined;
                 }
             }
             queue = queue.filter(e => e[1] !== pt);
@@ -250,17 +262,10 @@ class SurfaceCode {
                 pairs.push([src, dst])
             } else {
                 grid[x][y] = src;
-                if (!this.isHole(x + 1, y)) {
-                    queue.push([[x + 2, y], src]);
-                }
-                if (!this.isHole(x - 1, y)) {
-                    queue.push([[x - 2, y], src]);
-                }
-                if (!this.isHole(x, y - 1)) {
-                    queue.push([[x, y - 2], src]);
-                }
-                if (!this.isHole(x, y + 1)) {
-                    queue.push([[x, y + 2], src]);
+                for (let [di, dj] of SurfaceCode.cardinals()) {
+                    if (!this.isHole(x + di, y + dj)) {
+                        queue.push([[x + 2*di, y + 2*dj], src]);
+                    }
                 }
             }
         }
@@ -268,7 +273,9 @@ class SurfaceCode {
     }
 
     clean_areas() {
-        for (let b of [false, true]) {
+        for (let xz of [false, true]) {
+            let flips = this.xzFlips(xz);
+
             let areas = new Map();
             let areaVals = [];
             let reps = [];
@@ -278,20 +285,18 @@ class SurfaceCode {
                 let hitOppositeTypeSide = false;
                 while (queue.length > 0) {
                     let [i, j] = queue.pop();
-                    if (b ? (i < 0 || j < 0) : (i >= this.width || j >= this.height)) {
+                    if (xz ? (i < 0 || j < 0) : (i >= this.width || j >= this.height)) {
                         hitOppositeTypeSide = true;
                     }
                     let k = j * this.width + i;
-                    if (areas.has(k) || this.isHole(i, j) || (b ? this.xFlips[i][j] : this.zFlips[i][j]) || (b ? this.isZCheckQubit(i, j) : this.isXCheckQubit(i, j))) {
+                    if (areas.has(k) || this.isHole(i, j) || flips[i][j] || this.isCheckQubit(i, j, !xz)) {
                         continue;
                     }
                     areas.set(k, areaVals.length);
                     area.push([i, j]);
-
-                    queue.push([i + 1, j]);
-                    queue.push([i - 1, j]);
-                    queue.push([i, j - 1]);
-                    queue.push([i, j + 1]);
+                    for (let [di, dj] of SurfaceCode.cardinals()) {
+                        queue.push([i + di, j + dj]);
+                    }
                 }
 
                 if (hitOppositeTypeSide) {
@@ -304,7 +309,7 @@ class SurfaceCode {
                     let best_n = false;
                     for (let [i, j] of area) {
                         if (!this.isDataQubit(i, j)) {
-                            let n = !this.neighbors(i, j).every(([i2, j2]) => !(b ? this.xFlips : this.zFlips)[i2][j2]);
+                            let n = !this.neighbors(i, j).every(([i2, j2]) => !(xz ? this.xFlips : this.zFlips)[i2][j2]);
                             let m = Math.max(Infinity,
                                 ...this.neighbors(i, j).
                                     filter(([i2, j2]) => area.length - 1 !== areas.get(j2*this.width + i2)).
@@ -321,80 +326,88 @@ class SurfaceCode {
                             }
                         }
                     }
-                    if (best_i !== undefined) {
+                    if (best_i !== undefined && this.isCheckQubit(best_i, best_j, xz)) {
                         reps.push([best_i, best_j]);
                     }
                 }
             }
 
             for (let [i, j] of reps) {
-                if (b ? this.isXCheckQubit(i, j) : this.isZCheckQubit(i, j)) {
-                    for (let [di, dj] of [[-1, 0], [+1, 0], [0, -1], [0, +1]]) {
-                        let i2 = i + di;
-                        let j2 = j + dj;
-                        if (this.isDataQubit(i2, j2)) {
-                            if (b) {
-                                this.xFlips[i2][j2] ^= true;
-                            } else {
-                                this.zFlips[i2][j2] ^= true;
-                            }
-                        }
+                for (let [di, dj] of SurfaceCode.cardinals()) {
+                    let i2 = i + di;
+                    let j2 = j + dj;
+                    if (this.isDataQubit(i2, j2)) {
+                        flips[i2][j2] ^= true;
                     }
                 }
             }
         }
     }
 
-    chain(x1, y1, x2, y2, isX) {
-        let flip = isX ?
-            (x, y) => {
-                this.state.x(this.qubits[x][y]);
-                this.xFlips[x][y] ^= true;
-            } :
-            (x, y) => {
-                this.state.z(this.qubits[x][y]);
-                this.zFlips[x][y] ^= true;
-            };
+    /**
+     * @param {!int} i
+     * @param {!int} j
+     * @param {!boolean} xz
+     * @param {!boolean=} doNotMarkFlip
+     */
+    doXZ(i, j, xz, doNotMarkFlip=false) {
+        if (xz) {
+            this.state.x(this.qubits[i][j]);
+        } else {
+            this.state.z(this.qubits[i][j]);
+        }
+        if (!doNotMarkFlip) {
+            this.xzFlips(xz)[i][j] ^= true;
+        }
+    }
 
-        while (x1 < x2) {
-            flip(x1 + 1, y1);
-            x1 += 2;
+    chain(x1, y1, x2, y2, xz) {
+        let queue = [[x1, y1, undefined]];
+        let dirs = makeGrid(this.width + 2, this.height + 2, () => undefined);
+        while (queue.length > 0) {
+            let [i, j, dir] = queue[0];
+            queue.splice(0, 1);
+            if (!this.isInBounds(i, j, 1) || dirs[i+1][j+1] !== undefined) {
+                continue;
+            }
+            dirs[i+1][j+1] = dir;
+            if (i === x2 && j === y2) {
+                break;
+            }
+            for (let [di, dj] of SurfaceCode.cardinals()) {
+                if (this.isDataQubit(i + di, j + dj) || this.isHole(i, j)) {
+                    queue.push([i + di*2, j + dj*2, [-di, -dj]]);
+                }
+            }
         }
-        while (x1 > x2) {
-            flip(x1 - 1, y1);
-            x1 -= 2;
+        if (dirs[x2+1][y2+1] === undefined) {
+            return [];
         }
-        while (y1 < y2) {
-            flip(x1, y1 + 1);
-            y1 += 2;
-        }
-        while (y1 > y2) {
-            flip(x1, y1 - 1);
-            y1 -= 2;
+
+        let [i, j] = [x2, y2];
+        while (i !== x1 || j !== y1) {
+            let [di, dj] = dirs[i+1][j+1];
+            if (!this.isHole(i + di, j + dj)) {
+                this.doXZ(i + di, j + dj, xz);
+            }
+            i += di*2;
+            j += dj*2;
         }
     }
 
     correct() {
-        let points = [];
-        let points2 = [];
-        for (let i = 0; i < this.width; i++) {
-            for (let j = 0; j < this.height; j++) {
-                if (this.last_result[i][j] === true) {
-                    if (this.isZCheckQubit(i, j)) {
-                        points.push([i, j]);
-                    } else if (this.isXCheckQubit(i, j)) {
-                        points2.push([i, j]);
-                    }
+        for (let xz of [false, true]) {
+            let points = [];
+            for (let [i, j] of this.checkQubits(xz)) {
+                if (this.last_result[i][j]) {
+                    points.push([i, j]);
                 }
             }
-        }
 
-        for (let [[x1, y1], [x2, y2]] of this.pairs(points)) {
-            this.chain(x1, y1, x2, y2, true);
-        }
-
-        for (let [[x1, y1], [x2, y2]] of this.pairs(points2)) {
-            this.chain(x1, y1, x2, y2, false);
+            let pairs = this.pairs(points);
+            for (let [[x1, y1], [x2, y2]] of pairs) {
+                this.chain(x1, y1, x2, y2, !xz);
+            }
         }
     }
 

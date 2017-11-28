@@ -13,7 +13,6 @@ window.onerror = function(msg, url, line, col, error) {
     if (error instanceof DetailedError) {
         document.getElementById('err_gen').textContent = describe(error.details);
     }
-    console.warn(msg, url, line, col, error);
 };
 
 let canvas = /** @type {!HTMLCanvasElement} */ document.getElementById('main-canvas');
@@ -147,8 +146,8 @@ canvas.onmousedown = ev => {
     let b = canvas.getBoundingClientRect();
     let i = Math.floor((ev.x - canvas_padding - b.left) / diam);
     let j = Math.floor((ev.y - canvas_padding - b.top) / diam);
-    if (i >= 0 && i < surface.width && j >= 0 && j < surface.height) {
-        if (ev.ctrlKey) {
+    if (ev.ctrlKey) {
+        if (i >= 0 && i < surface.width && j >= 0 && j < surface.height) {
             if (ev.button === 0) {
                 surface.holes[i][j] ^= true;
                 if (surface.holes[i][j]) {
@@ -158,36 +157,31 @@ canvas.onmousedown = ev => {
                 }
 
             }
-        } else {
-            if (surface.isDataQubit(i, j)) {
-                if (ev.button === 0) {
-                    surface.state.x(surface.qubits[i][j]);
-                    if (!ev.altKey) {
-                        surface.xFlips[i][j] ^= true;
-                    }
-                } else {
-                    surface.state.z(surface.qubits[i][j]);
-                    if (!ev.altKey) {
-                        surface.zFlips[i][j] ^= true;
-                    }
+        }
+    } else {
+        if (surface.isDataQubit(i, j)) {
+            if (ev.button === 0) {
+                surface.state.x(surface.qubits[i][j]);
+                if (!ev.altKey) {
+                    surface.xFlips[i][j] ^= true;
                 }
-            } else if (surface.isXCheckQubit(i, j)) {
-                for (let [i2, j2] of surface.neighbors(i, j)) {
-                    surface.state.x(surface.qubits[i2][j2]);
-                    if (!ev.altKey) {
-                        surface.xFlips[i2][j2] ^= true;
-                    }
-                }
-            } else if (surface.isZCheckQubit(i, j)) {
-                for (let [i2, j2] of surface.neighbors(i, j)) {
-                    surface.state.z(surface.qubits[i2][j2]);
-                    if (!ev.altKey) {
-                        surface.zFlips[i2][j2] ^= true;
-                    }
+            } else {
+                surface.state.z(surface.qubits[i][j]);
+                if (!ev.altKey) {
+                    surface.zFlips[i][j] ^= true;
                 }
             }
         }
-        surface.cycle();
-        draw();
+
+        for (let xz of [false, true]) {
+            if (surface.isCheckQubit(i, j, xz)) {
+                for (let [i2, j2] of surface.neighbors(i, j)) {
+                    surface.doXZ(i2, j2, xz, ev.altKey);
+                }
+            }
+        }
     }
+
+    surface.cycle();
+    draw();
 };
