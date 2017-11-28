@@ -17,6 +17,24 @@ function makeGrid(width, height, generatorFunc) {
     return grid;
 }
 
+function* _dataPoints(surface) {
+    for (let pt of surface.points) {
+        if (surface.isDataQubit(pt[0], pt[1])) {
+            yield pt;
+        }
+    }
+}
+
+function* _holes(surface, pad=1) {
+    for (let i = -pad; i < surface.width+pad; i++) {
+        for (let j = -pad; j < surface.height+pad; j++) {
+            if (surface.isHole(i, j)) {
+                yield [i, j];
+            }
+        }
+    }
+}
+
 class SurfaceCode {
     constructor(width, height) {
         this.width = width;
@@ -38,6 +56,10 @@ class SurfaceCode {
         }
     }
 
+    xzFlips(xz) {
+        return xz ? this.xFlips : this.zFlips;
+    }
+
     isXCheckCol(col) {
         return (col & 1) === 1;
     }
@@ -52,6 +74,23 @@ class SurfaceCode {
 
     isZCheckRow(row) {
         return (row & 1) === 0;
+    }
+
+    dataPoints() {
+        return _dataPoints(this);
+    }
+
+    static cardinals() {
+        return [
+            [1, 0],
+            [-1, 0],
+            [0, 1],
+            [0, -1]
+        ];
+    }
+
+    holePoints() {
+        return _holes(this);
     }
 
     neighbors(i, j) {
