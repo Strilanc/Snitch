@@ -12,10 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-var path = require('path');
-
 module.exports = function(grunt) {
-    //noinspection JSUnresolvedFunction
     grunt.initConfig({
         pkg: grunt.file.readJSON('package.json'),
         karma: {
@@ -39,24 +36,8 @@ module.exports = function(grunt) {
                 browsers: ['Chrome']
             }
         },
-        include_file: {
-            options: {
-                src: ['html/snitch.template.html'],
-                dest: 'out/tmp/'
-            },
-            your_target: {
-                // Target-specific file lists and/or options go here.
-            }
-        },
         clean: {
             'clean-tmp': ['out/tmp'],
-            'clean-out': ['out/']
-        },
-        makeTestPostBootstrap: {
-            options: {
-                from: null,
-                to: null
-            }
         }
     });
 
