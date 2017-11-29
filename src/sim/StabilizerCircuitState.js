@@ -128,6 +128,11 @@ class StabilizerCircuitState {
         this._do2(index1, index2, (a, b) => a.inline_xnot(b));
     }
 
+    /**
+     * @param {!int} index
+     * @param {!boolean} reset
+     * @returns {!boolean}
+     */
     measure(index, reset=false) {
         let q = this.qubit_map.get(index);
         if (q === undefined) {
@@ -136,9 +141,12 @@ class StabilizerCircuitState {
 
         let {new_state: s, result: m} = q.measureZ('m' + this._next_id());
         this.qubit_map.set(index, s);
-        for (let k of [...this.qubit_map.keys()]) {
-            let p = this.qubit_map.get(k);
-            this.qubit_map.set(k, p.rewriteWithMeasurementResult(m));
+        if (m.eliminatedId !== undefined) {
+            for (let k of [...this.qubit_map.keys()]) {
+                let p = this.qubit_map.get(k);
+                let r = p.rewriteWithMeasurementResult(m);
+                this.qubit_map.set(k, r);
+            }
         }
         if (reset && m.result === -1) {
             this.x(index);

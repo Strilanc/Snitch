@@ -80,7 +80,7 @@ class ObservableProduct {
 
     /**
      * @param {!ObservableProduct} other
-     * @returns {ObservableProduct}
+     * @returns {!ObservableProduct}
      */
     times_inline(other) {
         this.sign *= other.sign;
@@ -88,6 +88,9 @@ class ObservableProduct {
         return this;
     }
 
+    /**
+     * @returns {!ObservableProduct}
+     */
     clone() {
         return new ObservableProduct(new Set(this.ids), this.sign);
     }
@@ -113,4 +116,4 @@ class ObservableProduct {
     }
 }
 
-export {ObservableProduct};
+export {ObservableProduct}
