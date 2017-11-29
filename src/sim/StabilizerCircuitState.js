@@ -151,10 +151,8 @@ class StabilizerCircuitState {
 
         // Use measurement result to eliminate an id from the system.
         let m = new MeasurementResult(p, Math.random() < 0.5 ? -1 : +1);
-        for (let k of [...this.qubit_map.keys()]) {
-            let p = this.qubit_map.get(k);
-            let r = p.rewriteWithMeasurementResult(m);
-            this.qubit_map.set(k, r);
+        for (let q of this.qubit_map.values()) {
+            q.inline_rewriteWithMeasurementResult(m);
         }
         return m.result === -1;
     }
@@ -173,10 +171,8 @@ class StabilizerCircuitState {
         let {new_state: s, result: m} = q.measureZ('m' + this._next_id());
         this.qubit_map.set(index, s);
         if (m.eliminatedId !== undefined) {
-            for (let k of [...this.qubit_map.keys()]) {
-                let p = this.qubit_map.get(k);
-                let r = p.rewriteWithMeasurementResult(m);
-                this.qubit_map.set(k, r);
+            for (let q of this.qubit_map.values()) {
+                q.inline_rewriteWithMeasurementResult(m);
             }
         }
         if (reset && m.result === -1) {

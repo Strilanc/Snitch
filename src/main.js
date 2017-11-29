@@ -151,7 +151,9 @@ canvas.onmousedown = ev => {
             if (ev.button === 0) {
                 surface.holes[i][j] ^= true;
                 if (surface.holes[i][j]) {
-                    surface.measure(i, j);
+                    if (surface.isDataQubit(i, j)) {
+                        surface.measure(i, j);
+                    }
                     surface.xFlips[i][j] = false;
                     surface.zFlips[i][j] = false;
                 }

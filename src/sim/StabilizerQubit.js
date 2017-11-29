@@ -168,10 +168,17 @@ class StabilizerQubit {
      * @returns {!StabilizerQubit}
      */
     rewriteWithMeasurementResult(measurementResult) {
-        return new StabilizerQubit(
-            measurementResult.rewriteObservableProduct(this.obsX),
-            measurementResult.rewriteObservableProduct(this.obsZ),
-            this.signY);
+        return this.clone().inline_rewriteWithMeasurementResult(measurementResult);
+    }
+
+    /**
+     * @param {!MeasurementResult} measurementResult
+     * @returns {!StabilizerQubit}
+     */
+    inline_rewriteWithMeasurementResult(measurementResult) {
+        measurementResult.inline_rewriteObservableProduct(this.obsX);
+        measurementResult.inline_rewriteObservableProduct(this.obsZ);
+        return this;
     }
 
     /**

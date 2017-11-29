@@ -54,6 +54,18 @@ class MeasurementResult {
         return obs.times(this.eliminationUnit);
     }
 
+
+    /**
+     * @param {!ObservableProduct} obs The observable product to try to rewrite.
+     * @returns {!ObservableProduct}
+     */
+    inline_rewriteObservableProduct(obs) {
+        if (this.eliminatedId === undefined || !obs.ids.has(this.eliminatedId)) {
+            return obs;
+        }
+        return obs.times_inline(this.eliminationUnit);
+    }
+
     /**
      * Determines if two measurement results are equivalent.
      * @param {!MeasurementResult|*} other
