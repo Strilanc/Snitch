@@ -128,6 +128,37 @@ class StabilizerCircuitState {
         this._do2(index1, index2, (a, b) => a.inline_xnot(b));
     }
 
+
+    /**
+     * @param {!Array.<!ObservableProduct>} targets
+     * @param {!Array.<!ObservableProduct>} collaterals
+     * @returns {!boolean}
+     */
+    measure_observable(targets, collaterals) {
+        let p = ObservableProduct.product(targets);
+
+        // Don't bother updating state if measurement result is predetermined.
+        if (p.ids.size === 0) {
+            return p.sign === -1;
+        }
+
+        // CNOT-ing the target observables into an ancilla has back-action on the target observables'
+        // anti-commuting partners.
+        let kickback = 'm' + this._next_id();
+        for (let e of collaterals) {
+            e.ids.add(kickback);
+        }
+
+        // Use measurement result to eliminate an id from the system.
+        let m = new MeasurementResult(p, Math.random() < 0.5 ? -1 : +1);
+        for (let k of [...this.qubit_map.keys()]) {
+            let p = this.qubit_map.get(k);
+            let r = p.rewriteWithMeasurementResult(m);
+            this.qubit_map.set(k, r);
+        }
+        return m.result === -1;
+    }
+
     /**
      * @param {!int} index
      * @param {!boolean} reset

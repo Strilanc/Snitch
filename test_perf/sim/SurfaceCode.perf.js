@@ -27,18 +27,30 @@ perfGoal(
 
 perfGoal(
     "surface-cycle-10x10",
-    micros(300),
+    micros(150),
     s => s.cycle(),
     new SurfaceCode(10, 10));
 
 perfGoal(
     "surface-cycle-20x20",
-    millis(1.2),
+    micros(600),
     s => s.cycle(),
     new SurfaceCode(20, 20));
 
 perfGoal(
     "surface-cycle-30x30",
-    millis(7),
+    millis(2),
+    s => s.cycle(),
+    new SurfaceCode(30, 30));
+
+perfGoal(
+    "surface-cycle-40x40",
+    millis(5),
     s => s.cycle(),
     new SurfaceCode(40, 40));
+
+perfGoal(
+    "surface-cycle-50x50",
+    millis(7),
+    s => s.cycle(),
+    new SurfaceCode(50, 50));

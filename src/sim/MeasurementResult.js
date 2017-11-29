@@ -25,7 +25,7 @@ class MeasurementResult {
      * @param {!int} result The result of the measurement.
      */
     constructor(measuredObservable, result) {
-        if (!(measuredObservable instanceof  ObservableProduct) || (result !== -1 && result !== 1)) {
+        if (!(measuredObservable instanceof ObservableProduct) || (result !== -1 && result !== 1)) {
             throw new DetailedError('Bad args.', {measuredObservable, result});
         }
         this.result = result;

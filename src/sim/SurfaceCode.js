@@ -52,9 +52,8 @@ class SurfaceCode {
         this.xFlips = makeGrid(width, height, () => false);
         this.zFlips = makeGrid(width, height, () => false);
         this.last_result = makeGrid(width, height, () => undefined);
-        this.target = this.state.add_off_qubit();
         this.qubits = makeGrid(width, height,
-            (i, j) => this.isDataQubit(i, j) ? this.state.add_off_qubit(): this.target);
+            (i, j) => this.isDataQubit(i, j) ? this.state.add_off_qubit() : undefined);
 
         this.points = [];
         for (let i = 0; i < this.width; i++) {
@@ -117,17 +116,25 @@ class SurfaceCode {
         return result;
     }
 
-    square_measure(i, j, h) {
-        let t = this.qubits[i][j];
-        for (let [x, y] of this.neighbors(i, j)) {
-            let c = this.qubits[x][y];
-            if (h) {
-                this.state.xnot(c, t);
-            } else {
-                this.state.cnot(c, t);
-            }
+    /**
+     * @param {!int} i
+     * @param {!int} j
+     * @param {!boolean} zx
+     * @returns {!boolean}
+     */
+    square_measure(i, j, zx) {
+        let neighborXs = [];
+        let neighborZs = [];
+        for (let [i2, j2] of this.neighbors(i, j)) {
+            let q = this.state.qubit_map.get(this.qubits[i2][j2]);
+            neighborXs.push(q.obsX);
+            neighborZs.push(q.obsZ);
         }
-        return this.state.measure(t, true);
+
+        if (zx) {
+            return this.state.measure_observable(neighborXs, neighborZs);
+        }
+        return this.state.measure_observable(neighborZs, neighborXs);
     }
 
     measure(i, j) {

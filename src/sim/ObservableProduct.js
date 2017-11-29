@@ -79,6 +79,21 @@ class ObservableProduct {
     }
 
     /**
+     * @param {!Array.<!ObservableProduct>} several
+     * @returns {!ObservableProduct}
+     */
+    static product(several) {
+        if (several.length === 0) {
+            return new ObservableProduct();
+        }
+        let result = several[0].clone();
+        for (let i = 1; i < several.length; i++) {
+            result.times_inline(several[i]);
+        }
+        return result;
+    }
+
+    /**
      * @param {!ObservableProduct} other
      * @returns {!ObservableProduct}
      */
