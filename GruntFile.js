@@ -12,43 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-var path = require('path');
-
 module.exports = function(grunt) {
-    //noinspection JSUnresolvedFunction
     grunt.initConfig({
         pkg: grunt.file.readJSON('package.json'),
-        traceur: {
-            'translate-src': {
-                options: {
-                    experimental: true,
-                    copyRuntime: 'out/tmp/traceur/bootstrap_pre_src',
-                    moduleNaming: {
-                        stripPrefix: 'out/tmp/traceur'
-                    }
-                },
-                files: [{
-                    expand: true,
-                    cwd: 'src/',
-                    src: ['**/*.js'],
-                    dest: 'out/tmp/traceur/src/'
-                }]
-            },
-            'translate-test': {
-                options: {
-                    experimental: true,
-                    moduleNaming: {
-                        stripPrefix: 'out/tmp/traceur'
-                    }
-                },
-                files: [{
-                    expand: true,
-                    cwd: 'test/',
-                    src: ['**/*.js'],
-                    dest: 'out/tmp/traceur/test/'
-                }]
-            }
-        },
         karma: {
             unit: {
                 configFile: 'karma.test.conf.js'
@@ -64,63 +30,73 @@ module.exports = function(grunt) {
             'unit-travis': {
                 configFile: 'karma.test.conf.js',
                 browsers: ['Firefox']
-            }
-        },
-        concat: {
-            'concat-traceur-src': {
-                options: {
-                    separator: ';'
-                },
-                src: [
-                    'out/tmp/traceur/bootstrap_pre_src/**/*.js',
-                    'out/tmp/traceur/src/**/*.js',
-                    'out/tmp/traceur/bootstrap_post_src/**/*.js'
-                ],
-                dest: 'out/tmp/concatenated-src.js'
             },
-            'concat-traceur-test': {
-                options: {
-                    separator: ';'
-                },
-                src: [
-                    'out/tmp/traceur/bootstrap_pre_src/**/*.js',
-                    'out/tmp/traceur/bootstrap_pre_test/**/*.js',
-                    'out/tmp/traceur/src/**/*.js',
-                    'out/tmp/traceur/test/**/*.js',
-                    'out/tmp/traceur/bootstrap_post_test/**/*.js'
-                ],
-                dest: 'out/test.js'
-            }
-        },
-        uglify: {
-            'uglify-concatenated-src': {
-                options: {
-                    maxLineLen: 128
-                },
-                files: {
-                    'out/tmp/minified-src.js': ['out/tmp/concatenated-src.js']
-                }
-            }
-        },
-        include_file: {
-            options: {
-                src: ['html/snitch.template.html'],
-                dest: 'out/tmp/'
-            },
-            your_target: {
-                // Target-specific file lists and/or options go here.
+            'perf-chrome': {
+                configFile: 'karma.test_perf.conf.js',
+                browsers: ['Chrome']
             }
         },
         clean: {
             'clean-tmp': ['out/tmp'],
-            'clean-out': ['out/']
-        },
-        makeTestPostBootstrap: {
-            options: {
-                from: null,
-                to: null
+        }
+    });
+
+    grunt.registerTask('wrap-packages', function(src, root, dst) {
+        var sourceFiles = grunt.file.glob.sync(src);
+        var rootFiles = grunt.file.glob.sync(root);
+        for (var i = 0; i < rootFiles.length; i++) {
+            if (sourceFiles.indexOf(rootFiles[i]) === -1) {
+                sourceFiles.push(rootFiles[i]);
             }
         }
+
+        var header = [
+            '"use strict";',
+            'let _gen_packages_vals = new Map();',
+            'let _gen_packages_inits = new Map();',
+            'function _gen_package_export(key, vals) {',
+            '    let dict = _gen_packages_vals.get(key);',
+            '    for (let valKey of Object.keys(vals)) {',
+            '        dict[valKey] = vals[valKey];',
+            '    }',
+            '}',
+            'function _gen_package_get(key) {',
+            '    if (!_gen_packages_vals.has(key)) {',
+            '        _gen_packages_vals.set(key, new Map());',
+            '        _gen_packages_inits.get(key)();',
+            '    }',
+            '    return _gen_packages_vals.get(key);',
+            '}'
+        ].join('\n');
+
+        var wrappedContent = sourceFiles.map(function(path) {
+            var content = grunt.file.read(path);
+
+            content = content.replace(new RegExp(
+                /\bexport\s*(\{.+\})/,
+                'g'),
+                function (match, vals) {
+                    return '_gen_package_export(' + JSON.stringify(path) + ', ' + vals + ');'
+                });
+
+            content = content.replace(new RegExp(
+                /\bimport (.+) from (['"].+['"])/,
+                'g'),
+                function(match, vals, key) {
+                    return 'let ' + vals + ' = _gen_package_get(' + key + ');'
+                });
+
+            return '///////////////////////////////////////////////////////////////////////////////////////////////\n' +
+                   '_gen_packages_inits.set(' + JSON.stringify(path) + ', function() {\n\n' + content + '\n\n});';
+        }).join('\n\n');
+
+        var triggers = rootFiles.map(function(path) {
+            return '_gen_package_get(' + JSON.stringify(path) + ');';
+        }).join('\n');
+
+        var all = [header, wrappedContent, triggers].join('\n\n\n') + '\n';
+
+        grunt.file.write(dst, all);
     });
 
     grunt.registerTask('bootstrap-get-packages', function(src, dst) {
@@ -140,38 +116,22 @@ module.exports = function(grunt) {
     });
 
     grunt.loadNpmTasks('grunt-contrib-clean');
-    grunt.loadNpmTasks('grunt-contrib-concat');
-    grunt.loadNpmTasks('grunt-contrib-copy');
-    grunt.loadNpmTasks('grunt-contrib-uglify');
     grunt.loadNpmTasks('grunt-karma');
-    grunt.loadNpmTasks('grunt-traceur');
 
-    grunt.registerTask('build-src', [
-        'clean:clean-tmp',
-        'traceur:translate-src',
-        'bootstrap-get-packages:src/main.js:out/tmp/traceur/bootstrap_post_src/run_main.js',
-        'concat:concat-traceur-src',
-        'uglify:uglify-concatenated-src',
-        'inject-js-into-html:html/snitch.template.html:out/tmp/minified-src.js:out/snitch.html',
-        'clean:clean-tmp'
-    ]);
     grunt.registerTask('build-debug', [
         'clean:clean-tmp',
-        'traceur:translate-src',
-        'bootstrap-get-packages:src/main.js:out/tmp/traceur/bootstrap_post_src/run_main.js',
-        'concat:concat-traceur-src',
-        'inject-js-into-html:html/snitch.template.html:out/tmp/concatenated-src.js:out/snitch.html',
-        'clean:clean-tmp'
+        'wrap-packages:src/**/*.js:src/**/*.js:out/tmp/wrapped-src.js',
+        'inject-js-into-html:html/snitch.template.html:out/tmp/wrapped-src.js:out/snitch.html',
+        'clean:clean-tmp',
     ]);
     grunt.registerTask('build-test', [
-        'clean:clean-tmp',
-        'traceur:translate-src',
-        'traceur:translate-test',
-        'bootstrap-get-packages:test/**/*.test.js:out/tmp/traceur/bootstrap_post_test/run_tests.js',
-        'concat:concat-traceur-test',
-        'clean:clean-tmp'
+        'wrap-packages:src/**/*.js:test/**/*.js:out/test.js',
+    ]);
+    grunt.registerTask('build-test-perf', [
+        'wrap-packages:src/**/*.js:test_perf/**/*.js:out/test_perf.js',
     ]);
 
+    grunt.registerTask('test-perf-chrome', ['build-test-perf', 'karma:perf-chrome']);
     grunt.registerTask('test-chrome', ['build-test', 'karma:unit-chrome']);
     grunt.registerTask('test-firefox', ['build-test', 'karma:unit-firefox']);
     grunt.registerTask('test-travis', ['build-test', 'karma:unit-travis']);
