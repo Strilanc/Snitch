@@ -52,22 +52,29 @@ function draw() {
     ctx.restore();
 }
 
-function drawQubitBlocks(ctx) {
-    for (let [i, j] of surface.points) {
+function drawQubitBlocksOfType(ctx, points, color) {
+    ctx.beginPath();
+    for (let [i, j] of points) {
         let x = i * diam;
         let y = j * diam;
-        let b = surface.last_result[i][j];
-        if (surface.isDataQubit(i, j)) {
-            ctx.fillStyle = D_COLOR;
-        } else if (surface.isZCheckQubit(i, j)) {
-            ctx.fillStyle = b ? Z_ON_COLOR : Z_OFF_COLOR;
-        } else if (surface.isXCheckQubit(i, j)) {
-            ctx.fillStyle = b ? X_ON_COLOR : X_OFF_COLOR;
-        } else {
-            ctx.fillStyle = H_COLOR;
-        }
-        ctx.fillRect(x, y, diam, diam);
+        ctx.moveTo(x, y);
+        ctx.lineTo(x + diam, y);
+        ctx.lineTo(x + diam, y + diam);
+        ctx.lineTo(x, y + diam);
+        ctx.lineTo(x, y);
     }
+    ctx.fillStyle = color;
+    ctx.fill();
+}
+
+function drawQubitBlocks(ctx) {
+    ctx.fillStyle = D_COLOR;
+    ctx.fillRect(0, 0, surface.width * diam, surface.height * diam);
+    drawQubitBlocksOfType(ctx, surface.checkQubitsWithResult(true, false), X_OFF_COLOR);
+    drawQubitBlocksOfType(ctx, surface.checkQubitsWithResult(true, true), X_ON_COLOR);
+    drawQubitBlocksOfType(ctx, surface.checkQubitsWithResult(false, false), Z_OFF_COLOR);
+    drawQubitBlocksOfType(ctx, surface.checkQubitsWithResult(false, true), Z_ON_COLOR);
+    drawQubitBlocksOfType(ctx, surface.holePoints(0), H_COLOR);
 }
 
 function drawSingleBorder(ctx, i, j, di, dj) {

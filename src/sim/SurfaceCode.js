@@ -43,6 +43,14 @@ function* _checkQubits(surface, xz) {
     }
 }
 
+function* _checkQubitsWithResult(surface, xz, result) {
+    for (let pt of surface.points) {
+        if (surface.last_result[pt[0]][pt[1]] === result && surface.isCheckQubit(pt[0], pt[1], xz)) {
+            yield pt;
+        }
+    }
+}
+
 class SurfaceCode {
     constructor(width, height) {
         this.width = width;
@@ -69,6 +77,10 @@ class SurfaceCode {
 
     checkQubits(xz) {
         return _checkQubits(this, xz);
+    }
+
+    checkQubitsWithResult(xz, result) {
+        return _checkQubitsWithResult(this, xz, result);
     }
 
     isXCheckCol(col) {
@@ -100,8 +112,8 @@ class SurfaceCode {
         ];
     }
 
-    holePoints() {
-        return _holes(this);
+    holePoints(pad=1) {
+        return _holes(this, pad);
     }
 
     neighbors(i, j) {
