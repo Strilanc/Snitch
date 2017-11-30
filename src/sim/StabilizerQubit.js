@@ -120,7 +120,7 @@ class StabilizerQubit {
     }
 
     inline_sqrtX() {
-        this.obsZ.times_inline(this.obsX);
+        this.obsZ.inline_times(this.obsX);
         this.obsZ.sign *= this.signY;
         this.signY *= -1;
         return this;
@@ -138,27 +138,27 @@ class StabilizerQubit {
     }
 
     inline_sqrtZ() {
-        this.obsX.times_inline(this.obsZ);
+        this.obsX.inline_times(this.obsZ);
         this.obsX.sign *= -this.signY;
         this.signY *= -1;
         return this;
     }
 
     inline_cz(other) {
-        this.obsX.times_inline(other.obsZ);
-        other.obsX.times_inline(this.obsZ);
+        this.obsX.inline_times(other.obsZ);
+        other.obsX.inline_times(this.obsZ);
         return [this, other];
     }
 
     inline_xnot(other) {
-        this.obsZ.times_inline(other.obsX);
-        other.obsZ.times_inline(this.obsX);
+        this.obsZ.inline_times(other.obsX);
+        other.obsZ.inline_times(this.obsX);
         return [this, other];
     }
 
     inline_cnot(target) {
-        this.obsX.times_inline(target.obsX);
-        target.obsZ.times_inline(this.obsZ);
+        this.obsX.inline_times(target.obsX);
+        target.obsZ.inline_times(this.obsZ);
         return [this, target];
     }
 

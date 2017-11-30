@@ -34,19 +34,6 @@ function set_xor_inline(dst, mask) {
 }
 
 /**
- * Returns the set of elements that are in exactly one of the given sets.
- * @param {!Set.<T>} a
- * @param {!Set.<T>} b
- * @returns {!Set.<T>}
- * @template T
- */
-function set_xor(a, b) {
-    let result = new Set(a);
-    set_xor_inline(result, b);
-    return result;
-}
-
-/**
  * A product of quantum observables, with eigenvalues required to equal to +1 or -1, identified by strings.
  */
 class ObservableProduct {
@@ -75,7 +62,7 @@ class ObservableProduct {
         if (other === -1) {
             return new ObservableProduct(new Set(this.ids), -this.sign);
         }
-        return this.clone().times_inline(other);
+        return this.clone().inline_times(other);
     }
 
     /**
@@ -88,7 +75,7 @@ class ObservableProduct {
         }
         let result = several[0].clone();
         for (let i = 1; i < several.length; i++) {
-            result.times_inline(several[i]);
+            result.inline_times(several[i]);
         }
         return result;
     }
@@ -97,7 +84,7 @@ class ObservableProduct {
      * @param {!ObservableProduct} other
      * @returns {!ObservableProduct}
      */
-    times_inline(other) {
+    inline_times(other) {
         this.sign *= other.sign;
         set_xor_inline(this.ids, other.ids);
         return this;

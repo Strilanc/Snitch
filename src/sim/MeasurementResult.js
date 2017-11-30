@@ -63,7 +63,7 @@ class MeasurementResult {
         if (this.eliminatedId === undefined || !obs.ids.has(this.eliminatedId)) {
             return obs;
         }
-        return obs.times_inline(this.eliminationUnit);
+        return obs.inline_times(this.eliminationUnit);
     }
 
     /**

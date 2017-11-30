@@ -24,9 +24,9 @@ surface.cycle();
 surface.clearFlips();
 
 let diam = 20;
-let canvas_padding = 10;
-canvas.width = diam * surface.width + canvas_padding*2;
-canvas.height = diam * surface.height + canvas_padding*2;
+let canvasPadding = 5;
+canvas.width = diam * surface.width + canvasPadding*2;
+canvas.height = diam * surface.height + canvasPadding*2;
 
 const X_ON_COLOR = '#55F';
 const X_BORDER_COLOR = '#55F';
@@ -43,7 +43,7 @@ function draw() {
     let ctx = canvas.getContext('2d');
     ctx.save();
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    ctx.translate(canvas_padding, canvas_padding);
+    ctx.translate(canvasPadding, canvasPadding);
 
     drawQubitBlocks(ctx);
     drawHoleBorders(ctx);
@@ -151,8 +151,8 @@ document.onkeydown = ev => {
 canvas.onmousedown = ev => {
     ev.preventDefault();
     let b = canvas.getBoundingClientRect();
-    let i = Math.floor((ev.x - canvas_padding - b.left) / diam);
-    let j = Math.floor((ev.y - canvas_padding - b.top) / diam);
+    let i = Math.floor((ev.x - canvasPadding - b.left) / diam);
+    let j = Math.floor((ev.y - canvasPadding - b.top) / diam);
     if (ev.ctrlKey) {
         if (i >= 0 && i < surface.width && j >= 0 && j < surface.height) {
             if (ev.button === 0) {

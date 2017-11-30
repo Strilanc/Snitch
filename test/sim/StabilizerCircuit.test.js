@@ -24,16 +24,16 @@ suite.test('teleport', () => {
     let c = new StabilizerCircuitState();
 
     // Pre-shared entanglement.
-    let a = c.add_off_qubit();
-    let b = c.add_off_qubit();
+    let a = c.addOffQubit();
+    let b = c.addOffQubit();
     c.h(a);
     c.h(b);
     c.cz(a, b);
     c.h(b);
 
     // Entangled message.
-    let e = c.add_off_qubit();
-    let m = c.add_off_qubit();
+    let e = c.addOffQubit();
+    let m = c.addOffQubit();
     c.h(e);
     c.h(m);
     c.cz(e, m);
