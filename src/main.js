@@ -39,6 +39,9 @@ const Z_OFF_COLOR = '#DFD';
 const D_COLOR = '#FFF';
 const H_COLOR = '#000';
 
+let lastMouseBlock = undefined;
+let lastCtrlKey = false;
+
 function draw() {
     let ctx = canvas.getContext('2d');
     ctx.save();
@@ -48,10 +51,76 @@ function draw() {
     drawQubitBlocks(ctx);
     drawHoleBorders(ctx);
     drawErrorCurves(ctx);
+    drawMouseHint(ctx);
 
     ctx.restore();
 }
 
+function drawMouseHint(ctx) {
+    if (lastMouseBlock === undefined) {
+        return;
+    }
+
+    ctx.save();
+    let [i, j] = lastMouseBlock;
+
+    ctx.strokeStyle = '#000';
+    ctx.strokeRect(i*diam+0.5, j*diam+0.5, diam, diam);
+    ctx.globalAlpha *= 0.5;
+
+    if (surface.isDataQubit(i, j)) {
+        ctx.lineWidth = 3;
+        for (let xz of [false, true]) {
+            ctx.beginPath();
+            strokeErrorCurveAt(ctx, i, j, xz);
+            //noinspection JSUnresolvedFunction
+            ctx.setLineDash(xz ? [4, 4] : [6, 2]);
+            ctx.strokeStyle = xz ? Z_ON_COLOR : X_ON_COLOR;
+            ctx.stroke();
+        }
+    }
+    for (let xz of [false, true]) {
+        if (lastCtrlKey) {
+            if (surface.isCheckQubit(i, j, xz)) {
+                ctx.lineWidth = 3;
+                ctx.beginPath();
+                for (let [i2, j2] of surface.neighbors(i, j)) {
+                    strokeErrorCurveAt(ctx, i2, j2, xz);
+                }
+                //noinspection JSUnresolvedFunction
+                ctx.setLineDash([4, 8]);
+                ctx.strokeStyle = xz ? Z_ON_COLOR : X_ON_COLOR;
+                ctx.stroke();
+            }
+        } else {
+            if (surface.isCheckQubit(i, j, xz, true)) {
+                if (surface.isHole(i, j)) {
+                    ctx.fillStyle = surface.isZCheckQubit(i, j, true) ? Z_ON_COLOR : Z_OFF_COLOR;
+                    ctx.fillRect(i * diam + 0.5, j * diam + 0.5, diam, diam);
+                    for (let [di, dj] of SurfaceCode.cardinals()) {
+                        let i2 = i + di;
+                        let j2 = j + dj;
+                        if (surface.isHole(i2, j2) && surface.isDataQubit(i2, j2, true) && surface.isHole(i + 2 * di, j + 2 * dj)) {
+                            if (!surface.isHole(i2+dj, j2+di) || !surface.isHole(i2-dj, j2-di)) {
+                                ctx.fillStyle = D_COLOR;
+                                ctx.fillRect((i + di) * diam + 0.5, (j + dj) * diam + 0.5, diam, diam);
+                            }
+                        }
+                    }
+                } else {
+                    ctx.fillStyle = H_COLOR;
+                    ctx.fillRect(i * diam + 0.5, j * diam + 0.5, diam, diam);
+                    for (let [di, dj] of SurfaceCode.cardinals()) {
+                        if (surface.isDataQubit(i + di, j + dj) && surface.isHole(i + 2 * di, j + 2 * dj)) {
+                            ctx.fillRect((i + di) * diam + 0.5, (j + dj) * diam + 0.5, diam, diam);
+                        }
+                    }
+                }
+            }
+        }
+    }
+    ctx.restore();
+}
 function drawQubitBlocksOfType(ctx, points, color) {
     ctx.beginPath();
     for (let [i, j] of points) {
@@ -104,22 +173,26 @@ function drawHoleBorders(ctx) {
     }
 }
 
+function strokeErrorCurveAt(ctx, i, j, xz) {
+    let x = i * diam + 0.5;
+    let y = j * diam + 0.5;
+
+    if (surface.isXCheckRow(j) === xz) {
+        ctx.moveTo(x + diam / 2, y - diam / 2);
+        ctx.lineTo(x + diam / 2, y + diam * 3 / 2);
+    } else {
+        ctx.moveTo(x - diam / 2, y + diam / 2);
+        ctx.lineTo(x + diam * 3 / 2, y + diam / 2);
+    }
+}
+
 function drawErrorCurves(ctx) {
     for (let xz of [false, true]) {
         ctx.beginPath();
         let flips = surface.xzFlips(xz);
         for (let [i, j] of surface.dataPoints()) {
-            let x = i * diam + 0.5;
-            let y = j * diam + 0.5;
-
             if (flips[i][j]) {
-                if (surface.isXCheckRow(j) === xz) {
-                    ctx.moveTo(x + diam / 2, y - diam / 2);
-                    ctx.lineTo(x + diam / 2, y + diam * 3 / 2);
-                } else {
-                    ctx.moveTo(x - diam / 2, y + diam / 2);
-                    ctx.lineTo(x + diam * 3 / 2, y + diam / 2);
-                }
+                strokeErrorCurveAt(ctx, i, j, xz);
             }
         }
         ctx.strokeStyle = xz ? Z_ON_COLOR : X_ON_COLOR;
@@ -133,7 +206,12 @@ setInterval(() => {
     draw();
 }, 100);
 
+document.onkeyup = ev => {
+    lastCtrlKey = ev.ctrlKey;
+};
+
 document.onkeydown = ev => {
+    lastCtrlKey = ev.ctrlKey;
     if (ev.keyCode === 32) {
         ev.preventDefault();
         surface.correct();
@@ -148,44 +226,55 @@ document.onkeydown = ev => {
     }
 };
 
+canvas.onmousemove = ev => {
+    let b = canvas.getBoundingClientRect();
+    let i = Math.floor((ev.x - canvasPadding - b.left) / diam);
+    let j = Math.floor((ev.y - canvasPadding - b.top) / diam);
+    lastCtrlKey = ev.ctrlKey;
+    lastMouseBlock = [i, j];
+};
+
+canvas.onmouseout = ev => {
+    lastMouseBlock = undefined;
+    lastCtrlKey = ev.ctrlKey;
+};
+
 canvas.onmousedown = ev => {
     ev.preventDefault();
     let b = canvas.getBoundingClientRect();
     let i = Math.floor((ev.x - canvasPadding - b.left) / diam);
     let j = Math.floor((ev.y - canvasPadding - b.top) / diam);
+    lastMouseBlock = [i, j];
+    lastCtrlKey = ev.ctrlKey;
+
+    if (surface.isDataQubit(i, j)) {
+        if (ev.button === 0) {
+            surface.state.x(surface.qubits[i][j]);
+            if (!ev.altKey) {
+                surface.xFlips[i][j] ^= true;
+            }
+        } else {
+            surface.state.z(surface.qubits[i][j]);
+            if (!ev.altKey) {
+                surface.zFlips[i][j] ^= true;
+            }
+        }
+    }
+
     if (ev.ctrlKey) {
-        if (i >= 0 && i < surface.width && j >= 0 && j < surface.height) {
-            if (ev.button === 0) {
-                surface.holes[i][j] ^= true;
-                if (surface.holes[i][j]) {
-                    if (surface.isDataQubit(i, j)) {
-                        surface.measure(i, j);
-                    }
-                    surface.xFlips[i][j] = false;
-                    surface.zFlips[i][j] = false;
-                }
-
-            }
-        }
-    } else {
-        if (surface.isDataQubit(i, j)) {
-            if (ev.button === 0) {
-                surface.state.x(surface.qubits[i][j]);
-                if (!ev.altKey) {
-                    surface.xFlips[i][j] ^= true;
-                }
-            } else {
-                surface.state.z(surface.qubits[i][j]);
-                if (!ev.altKey) {
-                    surface.zFlips[i][j] ^= true;
-                }
-            }
-        }
-
         for (let xz of [false, true]) {
             if (surface.isCheckQubit(i, j, xz)) {
                 for (let [i2, j2] of surface.neighbors(i, j)) {
                     surface.doXZ(i2, j2, xz, ev.altKey);
+                }
+            }
+        }
+    } else {
+        if (ev.button === 0) {
+            if (surface.isCheckQubit(i, j, undefined, true)) {
+                surface.holes[i][j] = !surface.holes[i][j];
+                for (let [i2, j2] of surface.neighbors(i, j, true)) {
+                    surface.updateDataHoleBasedOnNeighbors(i2, j2);
                 }
             }
         }

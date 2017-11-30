@@ -17,9 +17,9 @@ function makeGrid(width, height, generatorFunc) {
     return grid;
 }
 
-function* _dataPoints(surface) {
+function* _dataPoints(surface, ignoreHoles) {
     for (let pt of surface.points) {
-        if (surface.isDataQubit(pt[0], pt[1])) {
+        if (surface.isDataQubit(pt[0], pt[1], ignoreHoles)) {
             yield pt;
         }
     }
@@ -44,9 +44,9 @@ function* _checkQubits(surface, xz) {
 }
 
 function* _checkQubitsWithResult(surface, xz, result) {
-    for (let pt of surface.points) {
-        if (surface.last_result[pt[0]][pt[1]] === result && surface.isCheckQubit(pt[0], pt[1], xz)) {
-            yield pt;
+    for (let [i, j] of surface.points) {
+        if ((surface.last_result[i][j] !== surface.expected_result[i][j]) === result && surface.isCheckQubit(i, j, xz)) {
+            yield [i, j];
         }
     }
 }
@@ -59,7 +59,8 @@ class SurfaceCode {
         this.holes = makeGrid(width, height, () => false);
         this.xFlips = makeGrid(width, height, () => false);
         this.zFlips = makeGrid(width, height, () => false);
-        this.last_result = makeGrid(width, height, () => undefined);
+        this.last_result = makeGrid(width, height, () => false);
+        this.expected_result = makeGrid(width, height, () => false);
         this.qubits = makeGrid(width, height,
             (i, j) => this.isDataQubit(i, j) ? this.state.addOffQubit() : undefined);
 
@@ -99,8 +100,8 @@ class SurfaceCode {
         return (row & 1) === 0;
     }
 
-    dataPoints() {
-        return _dataPoints(this);
+    dataPoints(ignoreHoles=false) {
+        return _dataPoints(this, ignoreHoles);
     }
 
     static cardinals() {
@@ -116,12 +117,12 @@ class SurfaceCode {
         return _holes(this, pad);
     }
 
-    neighbors(i, j) {
+    neighbors(i, j, ignoreHoles=false) {
         let result = [];
         for (let [di, dj] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
             let i2 = i + di;
             let j2 = j + dj;
-            if (i2 >= 0 && i2 < this.width && j2 >= 0 && j2 < this.height && !this.isHole(i2, j2)) {
+            if (i2 >= 0 && i2 < this.width && j2 >= 0 && j2 < this.height && (ignoreHoles || !this.isHole(i2, j2))) {
                 result.push([i2, j2]);
             }
         }
@@ -154,6 +155,48 @@ class SurfaceCode {
         return this.last_result[i][j];
     }
 
+    updateDataHoleBasedOnNeighbors(i, j) {
+        if (!this.isDataQubit(i, j, true)) {
+            return;
+        }
+
+        let hasX = false;
+        let hasZ = false;
+        for (let [i2, j2] of this.neighbors(i, j)) {
+            hasX = hasX || this.isXCheckQubit(i2, j2);
+            hasZ = hasZ || this.isZCheckQubit(i2, j2);
+        }
+        let shouldBeHole = !hasX || !hasZ;
+
+        if (this.holes[i][j] === shouldBeHole) {
+            return;
+        }
+
+        this.holes[i][j] = shouldBeHole;
+        if (shouldBeHole) {
+            if (hasX) {
+                this.state.h(this.qubits[i][j]);
+            }
+            let m = this.measure(i, j);
+            if (m) {
+                for (let [i2, j2] of this.neighbors(i, j)) {
+                    this.expected_result[i2][j2] = !this.expected_result[i2][j2];
+                }
+            }
+        } else {
+            for (let [i2, j2] of this.neighbors(i, j)) {
+                let zx = this.isXCheckRow(i2);
+                let m = this.squareMeasure(i2, j2, zx);
+                if (m !== this.expected_result[i2][j2]) {
+                    this.doXZ(i, j, !zx, true);
+                }
+            }
+        }
+        this.xFlips[i][j] = false;
+        this.zFlips[i][j] = false;
+    }
+
+
     isHole(i, j) {
         return !this.isInBounds(i, j) || this.holes[i][j];
     }
@@ -163,8 +206,8 @@ class SurfaceCode {
     }
 
     //noinspection JSMethodCanBeStatic
-    isZCheckQubit(i, j, ignoreHole=false) {
-        return (ignoreHole || !this.isHole(i, j)) && (i & 1) === 0 && (j & 1) === 0;
+    isZCheckQubit(i, j, ignoreHole=false, ignoreBounds=false) {
+        return (ignoreHole || !this.isHole(i, j)) && (ignoreBounds || this.isInBounds(i, j)) && (i & 1) === 0 && (j & 1) === 0;
     }
 
     borderType(i, j, di, dj) {
@@ -178,23 +221,26 @@ class SurfaceCode {
         if (h2) {
             [i, j, i2, j2] = [i2, j2, i, j];
         }
-        let z1 = this.isZCheckQubit(i, j, true);
-        let x2 = this.isXCheckQubit(i2, j2, true);
+        let z1 = this.isZCheckQubit(i, j, true, true);
+        let x2 = this.isXCheckQubit(i2, j2, true, true);
         return z1 || x2 ? 'Z' : 'X';
     }
 
     //noinspection JSMethodCanBeStatic
-    isXCheckQubit(i, j, ignoreHole=false) {
-        return (ignoreHole || !this.isHole(i, j)) && (i & 1) === 1 && (j & 1) === 1;
+    isXCheckQubit(i, j, ignoreHole=false, ignoreBounds=false) {
+        return (ignoreHole || !this.isHole(i, j)) && (ignoreBounds || this.isInBounds(i, j)) && (i & 1) === 1 && (j & 1) === 1;
     }
 
-    isCheckQubit(i, j, xz, ignoreHole=false) {
+    isCheckQubit(i, j, xz=undefined, ignoreHole=false) {
+        if (xz === undefined) {
+            return this.isXCheckQubit(i, j, ignoreHole) || this.isZCheckQubit(i, j, ignoreHole);
+        }
         return xz ? this.isXCheckQubit(i, j, ignoreHole) : this.isZCheckQubit(i, j, ignoreHole);
     }
 
     //noinspection JSMethodCanBeStatic
-    isDataQubit(i, j) {
-        return !this.isHole(i, j) && (i & 1) !== (j & 1);
+    isDataQubit(i, j, ignoreHoles=false) {
+        return (ignoreHoles || !this.isHole(i, j)) && this.isInBounds(i, j) && (i & 1) !== (j & 1);
     }
 
     cycle() {
@@ -228,7 +274,7 @@ class SurfaceCode {
         for (let i = 0; i < this.width; i += 2) {
             let b = false;
             for (let j = 0; j < this.height; j += 2) {
-                b ^= this.last_result[i][j] === true;
+                b ^= this.last_result[i][j] !== this.expected_result[i][j];
                 if (b && j < this.height - 1) {
                     this.state.x(this.qubits[i][j + 1]);
                 }
@@ -239,7 +285,7 @@ class SurfaceCode {
         for (let j = 1; j < this.height; j += 2) {
             let b = false;
             for (let i = max_i; i >= 0; i -= 2) {
-                b ^= this.last_result[i][j] === true;
+                b ^= this.last_result[i][j] !== this.expected_result[i][j];
                 if (b && i > 0) {
                     this.state.z(this.qubits[i - 1][j]);
                 }
@@ -418,7 +464,7 @@ class SurfaceCode {
         for (let xz of [false, true]) {
             let points = [];
             for (let [i, j] of this.checkQubits(xz)) {
-                if (this.last_result[i][j]) {
+                if (this.last_result[i][j] !== this.expected_result[i][j]) {
                     points.push([i, j]);
                 }
             }
