@@ -3,7 +3,28 @@ import {ObservableProduct} from 'src/sim/ObservableProduct.js'
 import {MeasurementResult} from 'src/sim/MeasurementResult.js'
 import {StabilizerQubit} from 'src/sim/StabilizerQubit.js'
 import {StabilizerCircuitState} from 'src/sim/StabilizerCircuitState.js'
+import {seq} from "src/base/Seq.js";
 
+
+/**
+ * @param {!number} x
+ * @param {!number} y
+ * @param {!number} x1
+ * @param {!number} y1
+ * @param {!number} x2
+ * @param {!number} y2
+ * @returns {!number}
+ */
+function squaredDistanceFromLine(x, y, x1, y1, x2, y2) {
+    let ax = x - x1;
+    let ay = y - y1;
+    let bx = x2 - x1;
+    let by = y2 - y1;
+    let s = (ax*bx + ay*by) / (bx*bx + by*by);
+    ax -= s*bx;
+    ay -= s*by;
+    return ax*ax + ay*ay;
+}
 
 function makeGrid(width, height, generatorFunc) {
     let grid = [];
@@ -88,6 +109,14 @@ class SurfaceCode {
         return (col & 1) === 1;
     }
 
+    isCheckCol(col, xz) {
+        return (col & 1) === (xz ? 0 : 1);
+    }
+
+    isCheckRow(row, xz) {
+        return (row & 1) === (xz ? 0 : 1);
+    }
+
     isZCheckCol(col) {
         return (col & 1) === 0;
     }
@@ -127,6 +156,24 @@ class SurfaceCode {
             }
         }
         return result;
+    }
+
+    /**
+     * @param {!number} x
+     * @param {!number} y
+     * @param {!boolean} xz
+     * @returns {[!int, !int]}
+     */
+    nearestCheckQubitCoord(x, y, xz) {
+        let i = Math.round(x);
+        let j = Math.round(y);
+        if (!this.isCheckCol(i, xz)) {
+            i -= 1;
+        }
+        if (!this.isCheckRow(j, xz)) {
+            j -= 1;
+        }
+        return [i, j];
     }
 
     /**
@@ -426,7 +473,15 @@ class SurfaceCode {
         }
     }
 
-    chain(x1, y1, x2, y2, xz) {
+    /**
+     * @param {!int} x1
+     * @param {!int} y1
+     * @param {!int} x2
+     * @param {!int} y2
+     * @param {!boolean} checkVsData
+     * @returns {!Array.<!Array.<!int, !int>>}
+     */
+    pathAlongCheckQubits(x1, y1, x2, y2, checkVsData) {
         let queue = [[x1, y1, undefined]];
         let dirs = makeGrid(this.width + 2, this.height + 2, () => undefined);
         while (queue.length > 0) {
@@ -439,7 +494,11 @@ class SurfaceCode {
             if (i === x2 && j === y2) {
                 break;
             }
-            for (let [di, dj] of SurfaceCode.cardinals()) {
+
+            let pts = seq(SurfaceCode.cardinals()).
+                sortedBy(([di, dj]) => squaredDistanceFromLine(i + di*2, j + dj*2, x1, y1, x2, y2)).
+                toArray();
+            for (let [di, dj] of pts) {
                 if (this.isDataQubit(i + di, j + dj) || this.isHole(i, j)) {
                     queue.push([i + di*2, j + dj*2, [-di, -dj]]);
                 }
@@ -449,14 +508,26 @@ class SurfaceCode {
             return [];
         }
 
+        let result = [];
         let [i, j] = [x2, y2];
         while (i !== x1 || j !== y1) {
             let [di, dj] = dirs[i+1][j+1];
-            if (!this.isHole(i + di, j + dj)) {
-                this.doXZ(i + di, j + dj, xz);
+            if (checkVsData) {
+                result.push([i, j]);
+            } else {
+                result.push([i + di, j + dj]);
             }
             i += di*2;
             j += dj*2;
+        }
+        return result;
+    }
+
+    chain(x1, y1, x2, y2, xz) {
+        for (let [i, j] of this.pathAlongCheckQubits(x1, y1, x2, y2, false)) {
+            if (!this.isHole(i, j)) {
+                this.doXZ(i, j, xz);
+            }
         }
     }
 
