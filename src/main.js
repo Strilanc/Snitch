@@ -1,11 +1,3 @@
-import {DetailedError} from 'src/base/DetailedError.js'
-import {ObservableProduct} from 'src/sim/ObservableProduct.js'
-import {MeasurementResult} from 'src/sim/MeasurementResult.js'
-import {StabilizerQubit} from 'src/sim/StabilizerQubit.js'
-import {StabilizerCircuitState} from 'src/sim/StabilizerCircuitState.js'
-import {SurfaceCode} from 'src/sim/SurfaceCode.js'
-import {describe} from "src/base/Describe.js";
-
 window.onerror = function(msg, url, line, col, error) {
     document.getElementById('err_msg').textContent = describe(msg);
     document.getElementById('err_line').textContent = describe(line);
@@ -15,6 +7,17 @@ window.onerror = function(msg, url, line, col, error) {
     }
 };
 
+import {DetailedError} from 'src/base/DetailedError.js'
+import {ObservableProduct} from 'src/sim/ObservableProduct.js'
+import {MeasurementResult} from 'src/sim/MeasurementResult.js'
+import {StabilizerQubit} from 'src/sim/StabilizerQubit.js'
+import {StabilizerCircuitState} from 'src/sim/StabilizerCircuitState.js'
+import {SurfaceCode} from 'src/sim/SurfaceCode.js'
+import {ToolEffectArgs} from 'src/tools/ToolEffectArgs.js'
+import {SquareHoleMaker} from 'src/tools/SquareHoleMaker.js'
+import {describe} from "src/base/Describe.js";
+import {config} from "src/config.js"
+
 let canvas = /** @type {!HTMLCanvasElement} */ document.getElementById('main-canvas');
 
 let surface = new SurfaceCode(50, 30);
@@ -23,38 +26,31 @@ surface.zero();
 surface.cycle();
 surface.clearFlips();
 
-let diam = 20;
-let canvasPadding = 5;
-canvas.width = diam * surface.width + canvasPadding*2;
-canvas.height = diam * surface.height + canvasPadding*2;
+canvas.width = config.diam * surface.width + config.canvasPadding*2;
+canvas.height = config.diam * surface.height + config.canvasPadding*2;
 
-const X_ON_COLOR = '#55F';
-const X_BORDER_COLOR = '#55F';
-const X_OFF_COLOR = '#E6E6FF';
 
-const Z_ON_COLOR = '#0A0';
-const Z_BORDER_COLOR = '#0A0';
-const Z_OFF_COLOR = '#DFD';
-
-const D_COLOR = '#FFF';
-const H_COLOR = '#000';
-
+let latestToolArgs = new ToolEffectArgs(surface, undefined, undefined, undefined, false, false);
 let lastMouseBlock = undefined;
 let lastCtrlKey = false;
-let lastHoleDragBlock = undefined;
 
 function draw() {
     let ctx = canvas.getContext('2d');
     ctx.save();
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    ctx.translate(canvasPadding, canvasPadding);
+    try {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.translate(config.canvasPadding, config.canvasPadding);
 
-    drawQubitBlocks(ctx);
-    drawHoleBorders(ctx);
-    drawErrorCurves(ctx);
-    drawMouseHint(ctx);
+        drawQubitBlocks(ctx);
+        drawHoleBorders(ctx);
+        drawErrorCurves(ctx);
+        drawMouseHint(ctx);
 
-    ctx.restore();
+        ctx.globalAlpha *= 0.5;
+        SquareHoleMaker.drawPreview(ctx, latestToolArgs);
+    } finally {
+        ctx.restore();
+    }
 }
 
 function drawMouseHint(ctx) {
@@ -67,12 +63,8 @@ function drawMouseHint(ctx) {
         let [i, j] = lastMouseBlock;
 
         ctx.strokeStyle = '#000';
-        ctx.strokeRect(i * diam + 0.5, j * diam + 0.5, diam, diam);
+        ctx.strokeRect(i * config.diam + 0.5, j * config.diam + 0.5, config.diam, config.diam);
         ctx.globalAlpha *= 0.5;
-
-        if (lastHoleDragBlock !== undefined) {
-            return;
-        }
 
         if (surface.isDataQubit(i, j)) {
             ctx.lineWidth = 3;
@@ -81,7 +73,7 @@ function drawMouseHint(ctx) {
                 strokeErrorCurveAt(ctx, i, j, xz);
                 //noinspection JSUnresolvedFunction
                 ctx.setLineDash(xz ? [4, 4] : [6, 2]);
-                ctx.strokeStyle = xz ? Z_ON_COLOR : X_ON_COLOR;
+                ctx.strokeStyle = xz ? config.zOnColor : config.xOnColor;
                 ctx.stroke();
             }
         }
@@ -95,30 +87,30 @@ function drawMouseHint(ctx) {
                     }
                     //noinspection JSUnresolvedFunction
                     ctx.setLineDash([4, 8]);
-                    ctx.strokeStyle = xz ? Z_ON_COLOR : X_ON_COLOR;
+                    ctx.strokeStyle = xz ? config.zOnColor : config.xOnColor;
                     ctx.stroke();
                 }
             } else {
                 if (surface.isCheckQubit(i, j, xz, true)) {
                     if (surface.isHole(i, j)) {
-                        ctx.fillStyle = surface.isZCheckQubit(i, j, true) ? Z_ON_COLOR : Z_OFF_COLOR;
-                        ctx.fillRect(i * diam + 0.5, j * diam + 0.5, diam, diam);
+                        ctx.fillStyle = surface.isZCheckQubit(i, j, true) ? config.zOnColor : config.zOffColor;
+                        ctx.fillRect(i * config.diam + 0.5, j * config.diam + 0.5, config.diam, config.diam);
                         for (let [di, dj] of SurfaceCode.cardinals()) {
                             let i2 = i + di;
                             let j2 = j + dj;
                             if (surface.isHole(i2, j2) && surface.isDataQubit(i2, j2, true) && surface.isHole(i + 2 * di, j + 2 * dj)) {
                                 if (!surface.isHole(i2 + dj, j2 + di) || !surface.isHole(i2 - dj, j2 - di)) {
-                                    ctx.fillStyle = D_COLOR;
-                                    ctx.fillRect((i + di) * diam + 0.5, (j + dj) * diam + 0.5, diam, diam);
+                                    ctx.fillStyle = config.dataQubitColor;
+                                    ctx.fillRect((i + di) * config.diam + 0.5, (j + dj) * config.diam + 0.5, config.diam, config.diam);
                                 }
                             }
                         }
                     } else {
-                        ctx.fillStyle = H_COLOR;
-                        ctx.fillRect(i * diam + 0.5, j * diam + 0.5, diam, diam);
+                        ctx.fillStyle = config.holeColor;
+                        ctx.fillRect(i * config.diam + 0.5, j * config.diam + 0.5, config.diam, config.diam);
                         for (let [di, dj] of SurfaceCode.cardinals()) {
                             if (surface.isDataQubit(i + di, j + dj) && surface.isHole(i + 2 * di, j + 2 * dj)) {
-                                ctx.fillRect((i + di) * diam + 0.5, (j + dj) * diam + 0.5, diam, diam);
+                                ctx.fillRect((i + di) * config.diam + 0.5, (j + dj) * config.diam + 0.5, config.diam, config.diam);
                             }
                         }
                     }
@@ -133,12 +125,12 @@ function drawMouseHint(ctx) {
 function drawQubitBlocksOfType(ctx, points, color) {
     ctx.beginPath();
     for (let [i, j] of points) {
-        let x = i * diam;
-        let y = j * diam;
+        let x = i * config.diam;
+        let y = j * config.diam;
         ctx.moveTo(x, y);
-        ctx.lineTo(x + diam, y);
-        ctx.lineTo(x + diam, y + diam);
-        ctx.lineTo(x, y + diam);
+        ctx.lineTo(x + config.diam, y);
+        ctx.lineTo(x + config.diam, y + config.diam);
+        ctx.lineTo(x, y + config.diam);
         ctx.lineTo(x, y);
     }
     ctx.fillStyle = color;
@@ -146,13 +138,13 @@ function drawQubitBlocksOfType(ctx, points, color) {
 }
 
 function drawQubitBlocks(ctx) {
-    ctx.fillStyle = D_COLOR;
-    ctx.fillRect(0, 0, surface.width * diam, surface.height * diam);
-    drawQubitBlocksOfType(ctx, surface.checkQubitsWithResult(true, false), X_OFF_COLOR);
-    drawQubitBlocksOfType(ctx, surface.checkQubitsWithResult(true, true), X_ON_COLOR);
-    drawQubitBlocksOfType(ctx, surface.checkQubitsWithResult(false, false), Z_OFF_COLOR);
-    drawQubitBlocksOfType(ctx, surface.checkQubitsWithResult(false, true), Z_ON_COLOR);
-    drawQubitBlocksOfType(ctx, surface.holePoints(0), H_COLOR);
+    ctx.fillStyle = config.dataQubitColor;
+    ctx.fillRect(0, 0, surface.width * config.diam, surface.height * config.diam);
+    drawQubitBlocksOfType(ctx, surface.checkQubitsWithResult(true, false), config.xOffColor);
+    drawQubitBlocksOfType(ctx, surface.checkQubitsWithResult(true, true), config.xOnColor);
+    drawQubitBlocksOfType(ctx, surface.checkQubitsWithResult(false, false), config.zOffColor);
+    drawQubitBlocksOfType(ctx, surface.checkQubitsWithResult(false, true), config.zOnColor);
+    drawQubitBlocksOfType(ctx, surface.holePoints(0), config.holeColor);
 }
 
 function drawSingleBorder(ctx, i, j, di, dj) {
@@ -163,14 +155,14 @@ function drawSingleBorder(ctx, i, j, di, dj) {
 
     let ai = Math.abs(di);
     let aj = Math.abs(dj);
-    let x = i * diam;
-    let y = j * diam;
-    ctx.fillStyle = type === 'Z' ? Z_BORDER_COLOR : X_BORDER_COLOR;
+    let x = i * config.diam;
+    let y = j * config.diam;
+    ctx.fillStyle = type === 'Z' ? config.zBorderColor : config.xBorderColor;
     ctx.fillRect(
-        x + (diam - 3) * (di + 1) / 2 * ai,
-        y + (diam - 3) * (dj + 1) / 2 * aj,
-        aj * diam + 3 * ai,
-        ai * diam + 3 * aj);
+        x + (config.diam - config.borderWidth) * (di + 1) / 2 * ai,
+        y + (config.diam - config.borderWidth) * (dj + 1) / 2 * aj,
+        aj * config.diam + config.borderWidth * ai,
+        ai * config.diam + config.borderWidth * aj);
 }
 
 
@@ -183,15 +175,15 @@ function drawHoleBorders(ctx) {
 }
 
 function strokeErrorCurveAt(ctx, i, j, xz) {
-    let x = i * diam + 0.5;
-    let y = j * diam + 0.5;
+    let x = i * config.diam + 0.5;
+    let y = j * config.diam + 0.5;
 
     if (surface.isXCheckRow(j) === xz) {
-        ctx.moveTo(x + diam / 2, y - diam / 2);
-        ctx.lineTo(x + diam / 2, y + diam * 3 / 2);
+        ctx.moveTo(x + config.diam / 2, y - config.diam / 2);
+        ctx.lineTo(x + config.diam / 2, y + config.diam * 3 / 2);
     } else {
-        ctx.moveTo(x - diam / 2, y + diam / 2);
-        ctx.lineTo(x + diam * 3 / 2, y + diam / 2);
+        ctx.moveTo(x - config.diam / 2, y + config.diam / 2);
+        ctx.lineTo(x + config.diam * 3 / 2, y + config.diam / 2);
     }
 }
 
@@ -204,7 +196,7 @@ function drawErrorCurves(ctx) {
                 strokeErrorCurveAt(ctx, i, j, xz);
             }
         }
-        ctx.strokeStyle = xz ? Z_ON_COLOR : X_ON_COLOR;
+        ctx.strokeStyle = xz ? config.zOnColor : config.xOnColor;
         ctx.stroke();
     }
 }
@@ -217,10 +209,14 @@ setInterval(() => {
 
 document.onkeyup = ev => {
     lastCtrlKey = ev.ctrlKey;
+    latestToolArgs.ctrlKey = ev.ctrlKey;
+    latestToolArgs.shiftKey = ev.shiftKey;
 };
 
 document.onkeydown = ev => {
     lastCtrlKey = ev.ctrlKey;
+    latestToolArgs.ctrlKey = ev.ctrlKey;
+    latestToolArgs.shiftKey = ev.shiftKey;
     if (ev.keyCode === 32) {
         ev.preventDefault();
         surface.correct();
@@ -235,64 +231,64 @@ document.onkeydown = ev => {
     }
 };
 
-function roundWithDeadZone(v, d, r) {
-    let s = v < 0 ? -1 : +1;
-    v *= s;
-    if (v < d) {
-        return 0;
-    }
-    v -= d;
-    v /= r;
-    return Math.round(v) * r * s;
-}
-
 canvas.onmousemove = ev => {
     let b = canvas.getBoundingClientRect();
-    let x = (ev.x - canvasPadding - b.left) / diam;
-    let y = (ev.y - canvasPadding - b.top) / diam;
+    let x = (ev.x - config.canvasPadding - b.left) / config.diam;
+    let y = (ev.y - config.canvasPadding - b.top) / config.diam;
+    lastCtrlKey = ev.ctrlKey;
+    latestToolArgs.ctrlKey = ev.ctrlKey;
+    latestToolArgs.shiftKey = ev.shiftKey;
+    latestToolArgs.mousePos = [x, y];
+    latestToolArgs.mouseButton = ev.button;
     let i = Math.floor(x);
     let j = Math.floor(y);
-    lastCtrlKey = ev.ctrlKey;
     lastMouseBlock = [i, j];
-
-    if (ev.button === 0 && lastHoleDragBlock !== undefined) {
-        console.log("DRAGGING");
-        ev.preventDefault();
-        let [i0, j0] = lastHoleDragBlock;
-        let i2 = roundWithDeadZone(x - i0 - 0.5, 0.5, 2) + i0;
-        let j2 = roundWithDeadZone(y - j0 - 0.5, 0.5, 2) + j0;
-        for (let [i3, j3] of surface.pathAlongCheckQubits(i0, j0, i2, j2, true)) {
-            if (surface.isCheckQubit(i3, j3, undefined)) {
-                surface.holes[i3][j3] = true;
-                for (let [i4, j4] of surface.neighbors(i3, j3, true)) {
-                    surface.updateDataHoleBasedOnNeighbors(i4, j4);
-                }
-            }
-        }
-        lastHoleDragBlock = [i2, j2];
-    }
 };
 
 canvas.onmouseout = ev => {
     lastMouseBlock = undefined;
     lastCtrlKey = ev.ctrlKey;
+    latestToolArgs.ctrlKey = ev.ctrlKey;
+    latestToolArgs.shiftKey = ev.shiftKey;
+    latestToolArgs.mousePos = undefined;
 };
 
 canvas.onmouseup = ev => {
     let b = canvas.getBoundingClientRect();
-    let i = Math.floor((ev.x - canvasPadding - b.left) / diam);
-    let j = Math.floor((ev.y - canvasPadding - b.top) / diam);
+
+    let x = (ev.x - config.canvasPadding - b.left) / config.diam;
+    let y = (ev.y - config.canvasPadding - b.top) / config.diam;
+    latestToolArgs.ctrlKey = ev.ctrlKey;
+    latestToolArgs.shiftKey = ev.shiftKey;
+    latestToolArgs.mousePos = [x, y];
+    latestToolArgs.mouseButton = ev.button;
+    SquareHoleMaker.applyEffect(latestToolArgs);
+
+    latestToolArgs.dragStartPos = undefined;
+
+    let i = Math.floor(x);
+    let j = Math.floor(y);
+
+    lastCtrlKey = ev.ctrlKey;
     lastMouseBlock = [i, j];
-    lastHoleDragBlock = undefined;
 };
 
 canvas.onmousedown = ev => {
     ev.preventDefault();
     let b = canvas.getBoundingClientRect();
-    let i = Math.floor((ev.x - canvasPadding - b.left) / diam);
-    let j = Math.floor((ev.y - canvasPadding - b.top) / diam);
+    let x = (ev.x - config.canvasPadding - b.left) / config.diam;
+    let y = (ev.y - config.canvasPadding - b.top) / config.diam;
+    latestToolArgs.ctrlKey = ev.ctrlKey;
+    latestToolArgs.shiftKey = ev.shiftKey;
+    latestToolArgs.dragStartPos = [x, y];
+    latestToolArgs.mousePos = [x, y];
+    latestToolArgs.mouseButton = ev.button;
+    let i = Math.floor(x);
+    let j = Math.floor(y);
     lastMouseBlock = [i, j];
     lastCtrlKey = ev.ctrlKey;
+    latestToolArgs.ctrlKey = ev.ctrlKey;
+    latestToolArgs.shiftKey = ev.shiftKey;
 
     if (surface.isDataQubit(i, j)) {
         if (ev.button === 0) {
@@ -318,14 +314,8 @@ canvas.onmousedown = ev => {
         }
     } else {
         if (ev.button === 0) {
-            if (surface.isCheckQubit(i, j, undefined, true)) {
-                surface.holes[i][j] = !surface.holes[i][j];
-                for (let [i2, j2] of surface.neighbors(i, j, true)) {
-                    surface.updateDataHoleBasedOnNeighbors(i2, j2);
-                }
-                if (surface.holes[i][j]) {
-                    lastHoleDragBlock = [i, j];
-                }
+            if (surface.isCheckQubit(i, j, undefined, true) && surface.isHole(i, j)) {
+                surface.holes[i][j] = true;
             }
         }
     }

@@ -202,45 +202,57 @@ class SurfaceCode {
         return this.last_result[i][j];
     }
 
-    updateDataHoleBasedOnNeighbors(i, j) {
-        if (!this.isDataQubit(i, j, true)) {
-            return;
+    shouldBeHole(i, j, holeOverlayFunc = () => false) {
+        if (this.isCheckQubit(i, j)) {
+            return {
+                shouldBeHole: this.neighbors(i, j).length === 0 ? true : undefined,
+                hasX: false,
+                hasZ: false,
+            };
         }
 
         let hasX = false;
         let hasZ = false;
         for (let [i2, j2] of this.neighbors(i, j)) {
-            hasX = hasX || this.isXCheckQubit(i2, j2);
-            hasZ = hasZ || this.isZCheckQubit(i2, j2);
+            if (!holeOverlayFunc(i2, j2)) {
+                hasX = hasX || this.isXCheckQubit(i2, j2);
+                hasZ = hasZ || this.isZCheckQubit(i2, j2);
+            }
         }
-        let shouldBeHole = !hasX || !hasZ;
+        return {shouldBeHole: !hasX || !hasZ, hasX, hasZ};
+    }
 
-        if (this.holes[i][j] === shouldBeHole) {
+    updateDataHoleBasedOnNeighbors(i, j) {
+        let {shouldBeHole, hasX} = this.shouldBeHole(i, j);
+
+        if (shouldBeHole === undefined || this.holes[i][j] === shouldBeHole) {
             return;
         }
 
         this.holes[i][j] = shouldBeHole;
-        if (shouldBeHole) {
-            if (hasX) {
-                this.state.h(this.qubits[i][j]);
-            }
-            let m = this.measure(i, j);
-            if (m) {
+        if (this.isDataQubit(i, j, true)) {
+            if (shouldBeHole) {
+                if (hasX) {
+                    this.state.h(this.qubits[i][j]);
+                }
+                let m = this.measure(i, j);
+                if (m) {
+                    for (let [i2, j2] of this.neighbors(i, j)) {
+                        this.expected_result[i2][j2] = !this.expected_result[i2][j2];
+                    }
+                }
+            } else {
                 for (let [i2, j2] of this.neighbors(i, j)) {
-                    this.expected_result[i2][j2] = !this.expected_result[i2][j2];
+                    let zx = this.isXCheckRow(i2);
+                    let m = this.squareMeasure(i2, j2, zx);
+                    if (m !== this.expected_result[i2][j2]) {
+                        this.doXZ(i, j, !zx, true);
+                    }
                 }
             }
-        } else {
-            for (let [i2, j2] of this.neighbors(i, j)) {
-                let zx = this.isXCheckRow(i2);
-                let m = this.squareMeasure(i2, j2, zx);
-                if (m !== this.expected_result[i2][j2]) {
-                    this.doXZ(i, j, !zx, true);
-                }
-            }
+            this.xFlips[i][j] = false;
+            this.zFlips[i][j] = false;
         }
-        this.xFlips[i][j] = false;
-        this.zFlips[i][j] = false;
     }
 
 
