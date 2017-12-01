@@ -298,8 +298,8 @@ class SurfaceCode {
     }
 
     //noinspection JSMethodCanBeStatic
-    isDataQubit(i, j, ignoreHoles=false) {
-        return (ignoreHoles || !this.isHole(i, j)) && this.isInBounds(i, j) && (i & 1) !== (j & 1);
+    isDataQubit(i, j, ignoreHoles=false, ignoreBounds=false) {
+        return (ignoreHoles || !this.isHole(i, j)) && (ignoreBounds || this.isInBounds(i, j)) && (i & 1) !== (j & 1);
     }
 
     cycle() {
@@ -490,10 +490,11 @@ class SurfaceCode {
      * @param {!int} y1
      * @param {!int} x2
      * @param {!int} y2
-     * @param {!boolean} checkVsData
+     * @param {!boolean} returnCheckQubitsAlongPathInsteadOfDataQubits
+     * @param {!boolean} ignoreHoles
      * @returns {!Array.<!Array.<!int, !int>>}
      */
-    pathAlongCheckQubits(x1, y1, x2, y2, checkVsData) {
+    pathAlongCheckQubits(x1, y1, x2, y2, returnCheckQubitsAlongPathInsteadOfDataQubits, ignoreHoles=false) {
         let queue = [[x1, y1, undefined]];
         let dirs = makeGrid(this.width + 2, this.height + 2, () => undefined);
         while (queue.length > 0) {
@@ -511,7 +512,7 @@ class SurfaceCode {
                 sortedBy(([di, dj]) => squaredDistanceFromLine(i + di*2, j + dj*2, x1, y1, x2, y2)).
                 toArray();
             for (let [di, dj] of pts) {
-                if (this.isDataQubit(i + di, j + dj) || this.isHole(i, j)) {
+                if (this.isDataQubit(i + di, j + dj, ignoreHoles) || this.isHole(i, j)) {
                     queue.push([i + di*2, j + dj*2, [-di, -dj]]);
                 }
             }
@@ -524,7 +525,7 @@ class SurfaceCode {
         let [i, j] = [x2, y2];
         while (i !== x1 || j !== y1) {
             let [di, dj] = dirs[i+1][j+1];
-            if (checkVsData) {
+            if (returnCheckQubitsAlongPathInsteadOfDataQubits) {
                 result.push([i, j]);
             } else {
                 result.push([i + di, j + dj]);
@@ -532,7 +533,24 @@ class SurfaceCode {
             i += di*2;
             j += dj*2;
         }
+        if (returnCheckQubitsAlongPathInsteadOfDataQubits) {
+            result.push([i, j]);
+        }
         return result;
+    }
+
+    /**
+     * @param {!int} i
+     * @param {!int} j
+     * @param {!boolean} xz
+     * @returns {!Array.<![!int, !int]>}
+     */
+    errorOrientation(i, j, xz) {
+        if (!this.isDataQubit(i, j, true, true)) {
+            throw new DetailedError('Not an error route', {i, j, xz});
+        }
+        let vertical = this.isXCheckCol(i) !== xz;
+        return vertical ? [0, 1] : [1, 0];
     }
 
     chain(x1, y1, x2, y2, xz) {

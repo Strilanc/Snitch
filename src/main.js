@@ -15,6 +15,7 @@ import {StabilizerCircuitState} from 'src/sim/StabilizerCircuitState.js'
 import {SurfaceCode} from 'src/sim/SurfaceCode.js'
 import {ToolEffectArgs} from 'src/tools/ToolEffectArgs.js'
 import {SquareHoleMaker} from 'src/tools/SquareHoleMaker.js'
+import {ErrorPathMaker} from 'src/tools/ErrorPathMaker.js'
 import {describe} from "src/base/Describe.js";
 import {config} from "src/config.js"
 
@@ -48,6 +49,7 @@ function draw() {
 
         ctx.globalAlpha *= 0.5;
         SquareHoleMaker.drawPreview(ctx, latestToolArgs);
+        ErrorPathMaker.drawPreview(ctx, latestToolArgs);
     } finally {
         ctx.restore();
     }
@@ -263,6 +265,7 @@ canvas.onmouseup = ev => {
     latestToolArgs.mousePos = [x, y];
     latestToolArgs.mouseButton = ev.button;
     SquareHoleMaker.applyEffect(latestToolArgs);
+    ErrorPathMaker.applyEffect(latestToolArgs);
 
     latestToolArgs.dragStartPos = undefined;
 
@@ -289,20 +292,6 @@ canvas.onmousedown = ev => {
     lastCtrlKey = ev.ctrlKey;
     latestToolArgs.ctrlKey = ev.ctrlKey;
     latestToolArgs.shiftKey = ev.shiftKey;
-
-    if (surface.isDataQubit(i, j)) {
-        if (ev.button === 0) {
-            surface.state.x(surface.qubits[i][j]);
-            if (!ev.altKey) {
-                surface.xFlips[i][j] ^= true;
-            }
-        } else {
-            surface.state.z(surface.qubits[i][j]);
-            if (!ev.altKey) {
-                surface.zFlips[i][j] ^= true;
-            }
-        }
-    }
 
     if (ev.ctrlKey) {
         for (let xz of [false, true]) {
