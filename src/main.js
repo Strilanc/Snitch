@@ -8,32 +8,28 @@ window.onerror = function(msg, url, line, col, error) {
 };
 
 import {DetailedError} from 'src/base/DetailedError.js'
-import {ObservableProduct} from 'src/sim/ObservableProduct.js'
-import {MeasurementResult} from 'src/sim/MeasurementResult.js'
-import {StabilizerQubit} from 'src/sim/StabilizerQubit.js'
-import {StabilizerCircuitState} from 'src/sim/StabilizerCircuitState.js'
 import {SurfaceCode} from 'src/sim/SurfaceCode.js'
 import {ToolEffectArgs} from 'src/tools/ToolEffectArgs.js'
 import {SquareHoleMaker} from 'src/tools/SquareHoleMaker.js'
+import {SquareStabilizerFlipper} from 'src/tools/SquareStabilizerFlipper.js'
 import {ErrorPathMaker} from 'src/tools/ErrorPathMaker.js'
 import {describe} from "src/base/Describe.js";
 import {config} from "src/config.js"
 
 let canvas = /** @type {!HTMLCanvasElement} */ document.getElementById('main-canvas');
+let activeTools = [SquareHoleMaker, ErrorPathMaker, SquareStabilizerFlipper];
 
 let surface = new SurfaceCode(50, 30);
 surface.cycle();
 surface.zero();
 surface.cycle();
 surface.clearFlips();
+surface.cycle();
 
 canvas.width = config.diam * surface.width + config.canvasPadding*2;
 canvas.height = config.diam * surface.height + config.canvasPadding*2;
 
-
 let latestToolArgs = new ToolEffectArgs(surface, undefined, undefined, undefined, false, false);
-let lastMouseBlock = undefined;
-let lastCtrlKey = false;
 
 function draw() {
     let ctx = canvas.getContext('2d');
@@ -46,80 +42,25 @@ function draw() {
         drawHoleBorders(ctx);
         drawErrorCurves(ctx);
         drawMouseHint(ctx);
-
-        ctx.globalAlpha *= 0.5;
-        SquareHoleMaker.drawPreview(ctx, latestToolArgs);
-        ErrorPathMaker.drawPreview(ctx, latestToolArgs);
     } finally {
         ctx.restore();
     }
 }
 
 function drawMouseHint(ctx) {
-    if (lastMouseBlock === undefined) {
-        return;
-    }
-
     ctx.save();
     try {
-        let [i, j] = lastMouseBlock;
-
-        ctx.strokeStyle = '#000';
-        ctx.strokeRect(i * config.diam + 0.5, j * config.diam + 0.5, config.diam, config.diam);
         ctx.globalAlpha *= 0.5;
 
-        if (surface.isDataQubit(i, j)) {
-            ctx.lineWidth = 3;
-            for (let xz of [false, true]) {
-                ctx.beginPath();
-                strokeErrorCurveAt(ctx, i, j, xz);
-                //noinspection JSUnresolvedFunction
-                ctx.setLineDash(xz ? [4, 4] : [6, 2]);
-                ctx.strokeStyle = xz ? config.zOnColor : config.xOnColor;
-                ctx.stroke();
+        for (let e of activeTools) {
+            if (e.canApply(latestToolArgs)) {
+                e.drawPreview(ctx, latestToolArgs);
+                break;
+            } else if (e.canHoverHint(latestToolArgs)) {
+                e.drawHoverHint(ctx, latestToolArgs);
+                break;
             }
         }
-        for (let xz of [false, true]) {
-            if (lastCtrlKey) {
-                if (surface.isCheckQubit(i, j, xz)) {
-                    ctx.lineWidth = 3;
-                    ctx.beginPath();
-                    for (let [i2, j2] of surface.neighbors(i, j)) {
-                        strokeErrorCurveAt(ctx, i2, j2, xz);
-                    }
-                    //noinspection JSUnresolvedFunction
-                    ctx.setLineDash([4, 8]);
-                    ctx.strokeStyle = xz ? config.zOnColor : config.xOnColor;
-                    ctx.stroke();
-                }
-            } else {
-                if (surface.isCheckQubit(i, j, xz, true)) {
-                    if (surface.isHole(i, j)) {
-                        ctx.fillStyle = surface.isZCheckQubit(i, j, true) ? config.zOnColor : config.zOffColor;
-                        ctx.fillRect(i * config.diam + 0.5, j * config.diam + 0.5, config.diam, config.diam);
-                        for (let [di, dj] of SurfaceCode.cardinals()) {
-                            let i2 = i + di;
-                            let j2 = j + dj;
-                            if (surface.isHole(i2, j2) && surface.isDataQubit(i2, j2, true) && surface.isHole(i + 2 * di, j + 2 * dj)) {
-                                if (!surface.isHole(i2 + dj, j2 + di) || !surface.isHole(i2 - dj, j2 - di)) {
-                                    ctx.fillStyle = config.dataQubitColor;
-                                    ctx.fillRect((i + di) * config.diam + 0.5, (j + dj) * config.diam + 0.5, config.diam, config.diam);
-                                }
-                            }
-                        }
-                    } else {
-                        ctx.fillStyle = config.holeColor;
-                        ctx.fillRect(i * config.diam + 0.5, j * config.diam + 0.5, config.diam, config.diam);
-                        for (let [di, dj] of SurfaceCode.cardinals()) {
-                            if (surface.isDataQubit(i + di, j + dj) && surface.isHole(i + 2 * di, j + 2 * dj)) {
-                                ctx.fillRect((i + di) * config.diam + 0.5, (j + dj) * config.diam + 0.5, config.diam, config.diam);
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
     } finally {
         ctx.restore();
     }
@@ -203,77 +144,84 @@ function drawErrorCurves(ctx) {
     }
 }
 
-setInterval(() => {
-    surface.error();
-    surface.cycle();
-    draw();
-}, 100);
+//noinspection JSUnresolvedVariable
+let lastDrawTime = window.performance.now();
+let timeUntilNextCycle = 0;
+function drawingCycle() {
+    //noinspection JSUnresolvedVariable
+    let dt = window.performance.now() - lastDrawTime;
+    timeUntilNextCycle -= dt;
+    lastDrawTime += dt;
+    if (timeUntilNextCycle < 0) {
+        surface.cycle();
+        timeUntilNextCycle %= 100;
+        timeUntilNextCycle += 100;
+    }
+    requestAnimationFrame(draw);
+}
+setInterval(drawingCycle, 100);
 
 document.onkeyup = ev => {
-    lastCtrlKey = ev.ctrlKey;
     latestToolArgs.ctrlKey = ev.ctrlKey;
     latestToolArgs.shiftKey = ev.shiftKey;
+    requestAnimationFrame(draw);
 };
 
 document.onkeydown = ev => {
-    lastCtrlKey = ev.ctrlKey;
     latestToolArgs.ctrlKey = ev.ctrlKey;
     latestToolArgs.shiftKey = ev.shiftKey;
     if (ev.keyCode === 32) {
         ev.preventDefault();
         surface.correct();
         surface.cycle();
-        draw();
     } else if (ev.keyCode === 65) {
         ev.preventDefault();
         surface.clean_areas();
     } else if (ev.keyCode === 69) {
         ev.preventDefault();
         surface.error(0.001);
+        surface.cycle();
     }
+    requestAnimationFrame(draw);
 };
 
 canvas.onmousemove = ev => {
     let b = canvas.getBoundingClientRect();
     let x = (ev.x - config.canvasPadding - b.left) / config.diam;
     let y = (ev.y - config.canvasPadding - b.top) / config.diam;
-    lastCtrlKey = ev.ctrlKey;
     latestToolArgs.ctrlKey = ev.ctrlKey;
     latestToolArgs.shiftKey = ev.shiftKey;
     latestToolArgs.mousePos = [x, y];
-    latestToolArgs.mouseButton = ev.button;
-    let i = Math.floor(x);
-    let j = Math.floor(y);
-    lastMouseBlock = [i, j];
+    requestAnimationFrame(draw);
 };
 
 canvas.onmouseout = ev => {
-    lastMouseBlock = undefined;
-    lastCtrlKey = ev.ctrlKey;
     latestToolArgs.ctrlKey = ev.ctrlKey;
     latestToolArgs.shiftKey = ev.shiftKey;
     latestToolArgs.mousePos = undefined;
+    requestAnimationFrame(draw);
 };
 
 canvas.onmouseup = ev => {
     let b = canvas.getBoundingClientRect();
-
     let x = (ev.x - config.canvasPadding - b.left) / config.diam;
     let y = (ev.y - config.canvasPadding - b.top) / config.diam;
     latestToolArgs.ctrlKey = ev.ctrlKey;
     latestToolArgs.shiftKey = ev.shiftKey;
     latestToolArgs.mousePos = [x, y];
     latestToolArgs.mouseButton = ev.button;
-    SquareHoleMaker.applyEffect(latestToolArgs);
-    ErrorPathMaker.applyEffect(latestToolArgs);
+
+    for (let e of activeTools) {
+        if (e.canApply(latestToolArgs)) {
+            e.applyEffect(latestToolArgs);
+            surface.cycle();
+            break;
+        }
+    }
 
     latestToolArgs.dragStartPos = undefined;
-
-    let i = Math.floor(x);
-    let j = Math.floor(y);
-
-    lastCtrlKey = ev.ctrlKey;
-    lastMouseBlock = [i, j];
+    latestToolArgs.mouseButton = undefined;
+    requestAnimationFrame(draw);
 };
 
 canvas.onmousedown = ev => {
@@ -286,29 +234,8 @@ canvas.onmousedown = ev => {
     latestToolArgs.dragStartPos = [x, y];
     latestToolArgs.mousePos = [x, y];
     latestToolArgs.mouseButton = ev.button;
-    let i = Math.floor(x);
-    let j = Math.floor(y);
-    lastMouseBlock = [i, j];
-    lastCtrlKey = ev.ctrlKey;
     latestToolArgs.ctrlKey = ev.ctrlKey;
     latestToolArgs.shiftKey = ev.shiftKey;
 
-    if (ev.ctrlKey) {
-        for (let xz of [false, true]) {
-            if (surface.isCheckQubit(i, j, xz)) {
-                for (let [i2, j2] of surface.neighbors(i, j)) {
-                    surface.doXZ(i2, j2, xz, ev.altKey);
-                }
-            }
-        }
-    } else {
-        if (ev.button === 0) {
-            if (surface.isCheckQubit(i, j, undefined, true) && surface.isHole(i, j)) {
-                surface.holes[i][j] = true;
-            }
-        }
-    }
-
-    surface.cycle();
-    draw();
+    requestAnimationFrame(draw);
 };

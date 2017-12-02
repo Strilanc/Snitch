@@ -203,6 +203,13 @@ class SurfaceCode {
     }
 
     shouldBeHole(i, j, holeOverlayFunc = () => false) {
+        if (!this.isInBounds(i, j)) {
+            return {
+                shouldBeHole: undefined,
+                hasX: undefined,
+                hasZ: undefined
+            };
+        }
         if (this.isCheckQubit(i, j)) {
             return {
                 shouldBeHole: this.neighbors(i, j).length === 0 ? true : undefined,

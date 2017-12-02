@@ -1,5 +1,9 @@
+/**
+ * Implements an effect that can be applied to a surface code grid.
+ */
 import {config} from "src/config.js"
 import {Tool} from "src/tools/Tool.js"
+import {ToolEffectArgs} from "src/tools/ToolEffectArgs.js";
 
 function roundWithDeadZone(v, d, r) {
     let s = v < 0 ? -1 : +1;
@@ -35,16 +39,29 @@ function* area(x, y, w, h, pad=0) {
     }
 }
 
-/**
- * Implements an effect that can be applied to a surface code grid.
- */
 class SquareHoleMakerType extends Tool {
-    _checkArgs(args) {
+    canApply(args) {
         return args.mousePos !== undefined &&
             args.dragStartPos !== undefined &&
             !args.ctrlKey &&
             args.mouseButton === 0 &&
             args.surface.isCheckQubit(Math.floor(args.dragStartPos[0]), Math.floor(args.dragStartPos[1]), undefined);
+    }
+
+    canHoverHint(args) {
+        return args.mousePos !== undefined &&
+            args.dragStartPos === undefined &&
+            !args.ctrlKey &&
+            args.mouseButton === undefined &&
+            args.surface.isCheckQubit(Math.floor(args.mousePos[0]), Math.floor(args.mousePos[1]), undefined);
+    }
+
+    drawHoverHint(ctx, args) {
+        let i = Math.floor(args.mousePos[0]);
+        let j = Math.floor(args.mousePos[1]);
+        ctx.strokeStyle = '#000';
+        ctx.lineWidth = 3;
+        ctx.strokeRect(i * config.diam + 0.5, j * config.diam + 0.5, config.diam, config.diam);
     }
 
     /**
@@ -66,9 +83,6 @@ class SquareHoleMakerType extends Tool {
     }
 
     drawPreview(ctx, args) {
-        if (!this._checkArgs(args)) {
-            return;
-        }
         let {i: x, j: y, w, h} = this._argsToRect(args);
 
         ctx.fillStyle = config.holeColor;
@@ -82,9 +96,6 @@ class SquareHoleMakerType extends Tool {
     }
 
     applyEffect(args) {
-        if (!this._checkArgs(args)) {
-            return;
-        }
         let {i: x, j: y, w, h} = this._argsToRect(args);
 
         for (let [i, j] of area(x, y, w, h)) {

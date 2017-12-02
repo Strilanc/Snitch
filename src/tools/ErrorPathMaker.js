@@ -1,17 +1,6 @@
 import {config} from "src/config.js"
 import {Tool} from "src/tools/Tool.js"
 
-function roundWithDeadZone(v, d, r) {
-    let s = v < 0 ? -1 : +1;
-    v *= s;
-    if (v < d) {
-        return 0;
-    }
-    v -= d;
-    v /= r;
-    return Math.round(v) * r * s;
-}
-
 function strokeErrorCurveAt(ctx, surface, i, j, xz) {
     let x = i * config.diam + 0.5;
     let y = j * config.diam + 0.5;
@@ -29,12 +18,31 @@ function strokeErrorCurveAt(ctx, surface, i, j, xz) {
  * Implements an effect that can be applied to a surface code grid.
  */
 class ErrorPathMakerType extends Tool {
-    _checkArgs(args) {
+    canApply(args) {
         return args.mousePos !== undefined &&
             args.dragStartPos !== undefined &&
-            !args.ctrlKey &&
             args.mouseButton === 0 &&
             args.surface.isDataQubit(Math.floor(args.dragStartPos[0]), Math.floor(args.dragStartPos[1]), undefined);
+    }
+
+    canHoverHint(args) {
+        return args.mousePos !== undefined &&
+            args.dragStartPos === undefined &&
+            args.mouseButton === undefined &&
+            args.surface.isDataQubit(Math.floor(args.mousePos[0]), Math.floor(args.mousePos[1]), undefined);
+    }
+
+    drawHoverHint(ctx, args) {
+        let i = Math.floor(args.mousePos[0]);
+        let j = Math.floor(args.mousePos[1]);
+        let xz = !args.shiftKey;
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        strokeErrorCurveAt(ctx, args.surface, i, j, xz);
+        //noinspection JSUnresolvedFunction
+        ctx.setLineDash([6, 2]);
+        ctx.strokeStyle = xz ? config.zOnColor : config.xOnColor;
+        ctx.stroke();
     }
 
     /**
@@ -64,6 +72,7 @@ class ErrorPathMakerType extends Tool {
                     [i1 + dir1[0], j1 + dir1[1]],
                     [i1 - dir1[0], j1 - dir1[1]]
                 ],
+                controlPoints: [[i1, j1]]
             }
         }
 
@@ -81,39 +90,38 @@ class ErrorPathMakerType extends Tool {
         }
         path.splice(0, 0, [i1, j1]);
         path.push([i2, j2]);
-        return {path, xz, tears: [p0, p1]};
+        return {path, xz, tears: [p0, p1], controlPoints: [[i1, j1], [i2, j2]]};
     }
 
     drawPreview(ctx, args) {
-        if (!this._checkArgs(args)) {
-            return;
-        }
-        let {path, xz} = this._argsToXZPath(args);
+        let {path, xz, tears, controlPoints} = this._argsToXZPath(args);
 
-        ctx.save();
         ctx.beginPath();
         for (let [i, j] of path) {
             strokeErrorCurveAt(ctx, args.surface, i, j, xz);
         }
 
         ctx.fillStyle = '#800';
-        for (let [i, j] of [path[0], path[path.length - 1]]) {
+        for (let [i, j] of controlPoints) {
             ctx.fillRect((i + 0.3) * config.diam, (j + 0.3) * config.diam, config.diam * 0.4, config.diam * 0.4);
+        }
+        ctx.fillStyle = xz ? config.zOnColor : config.xOnColor;
+        ctx.strokeStyle = '#000';
+        for (let [i, j] of tears) {
+            ctx.fillRect((i + 0.3) * config.diam, (j + 0.3) * config.diam, config.diam * 0.4, config.diam * 0.4);
+            ctx.strokeRect((i + 0.3) * config.diam, (j + 0.3) * config.diam, config.diam * 0.4, config.diam * 0.4);
         }
 
         ctx.strokeStyle = '#800';
         ctx.stroke();
         ctx.strokeStyle = xz ? config.zOnColor : config.xOnColor;
+        //noinspection JSUnresolvedFunction
         ctx.setLineDash([4, 4]);
         ctx.lineWidth = 3;
         ctx.stroke();
-        ctx.restore();
     }
 
     applyEffect(args) {
-        if (!this._checkArgs(args)) {
-            return;
-        }
         let {path, xz} = this._argsToXZPath(args);
         for (let [i, j] of path) {
             args.surface.doXZ(i, j, xz);
