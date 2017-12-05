@@ -12,12 +12,14 @@ import {SurfaceCode} from 'src/sim/SurfaceCode.js'
 import {ToolEffectArgs} from 'src/tools/ToolEffectArgs.js'
 import {SquareHoleMaker} from 'src/tools/SquareHoleMaker.js'
 import {SquareStabilizerFlipper} from 'src/tools/SquareStabilizerFlipper.js'
+import {HoleDragger} from 'src/tools/HoleDragger.js'
 import {ErrorPathMaker} from 'src/tools/ErrorPathMaker.js'
 import {describe} from "src/base/Describe.js";
 import {config} from "src/config.js"
+import {Revision} from "src/base/Revision.js";
 
 let canvas = /** @type {!HTMLCanvasElement} */ document.getElementById('main-canvas');
-let activeTools = [SquareHoleMaker, ErrorPathMaker, SquareStabilizerFlipper];
+let activeTools = [SquareHoleMaker, ErrorPathMaker, SquareStabilizerFlipper, HoleDragger];
 
 let surface = new SurfaceCode(50, 30);
 surface.cycle();
@@ -25,6 +27,7 @@ surface.zero();
 surface.cycle();
 surface.clearFlips();
 surface.cycle();
+let revision = Revision.startingAt(surface.clone());
 
 canvas.width = config.diam * surface.width + config.canvasPadding*2;
 canvas.height = config.diam * surface.height + config.canvasPadding*2;
@@ -174,10 +177,26 @@ document.onkeydown = ev => {
         ev.preventDefault();
         surface.correct();
         surface.cycle();
-    } else if (ev.keyCode === 65) {
+    } else if (ev.keyCode === 'Z'.charCodeAt(0) && ev.ctrlKey && !ev.shiftKey) {
+        ev.preventDefault();
+        if (!revision.isAtBeginningOfHistory()) {
+            if (revision.isWorkingOnCommit) {
+                revision.commit(surface.clone());
+            }
+            surface = revision.undo().clone();
+            latestToolArgs.surface = surface;
+        }
+    } else if ((ev.keyCode === 'Z'.charCodeAt(0) && ev.ctrlKey && ev.shiftKey) ||
+            (ev.keyCode === 'Y'.charCodeAt(0) && ev.ctrlKey && !ev.shiftKey)) {
+        ev.preventDefault();
+        if (!revision.isAtEndOfHistory()) {
+            surface = revision.redo().clone();
+            latestToolArgs.surface = surface;
+        }
+    } else if (ev.keyCode === 'A'.charCodeAt(0)) {
         ev.preventDefault();
         surface.clean_areas();
-    } else if (ev.keyCode === 69) {
+    } else if (ev.keyCode === 'E'.charCodeAt(0)) {
         ev.preventDefault();
         surface.error(0.001);
         surface.cycle();
@@ -213,6 +232,17 @@ canvas.onmouseup = ev => {
 
     for (let e of activeTools) {
         if (e.canApply(latestToolArgs)) {
+            if (revision.isWorkingOnCommit) {
+                revision.commit(surface.clone());
+            } else {
+                if (revision.isAtBeginningOfHistory()) {
+                    revision = Revision.startingAt(surface.clone());
+                } else {
+                    revision.undo();
+                    revision.commit(surface.clone());
+                }
+            }
+            revision.startedWorkingOnCommit();
             e.applyEffect(latestToolArgs);
             surface.cycle();
             break;

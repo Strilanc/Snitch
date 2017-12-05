@@ -29,6 +29,15 @@ class StabilizerCircuitState {
         this._idCounter = 0;
     }
 
+    clone() {
+        let r = new StabilizerCircuitState();
+        r._idCounter = this._idCounter;
+        for (let [k, v] of this.qubitMap.entries()) {
+            r.qubitMap.set(k, v.clone());
+        }
+        return r;
+    }
+
     /**
      * @returns {!int}
      * @private
@@ -127,7 +136,6 @@ class StabilizerCircuitState {
     xnot(index1, index2) {
         this._do2(index1, index2, (a, b) => a.inline_xnot(b));
     }
-
 
     /**
      * @param {!Array.<!ObservableProduct>} targets

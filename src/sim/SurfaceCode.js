@@ -38,6 +38,10 @@ function makeGrid(width, height, generatorFunc) {
     return grid;
 }
 
+function cloneGrid(grid) {
+    return grid.map(row => row.map(r => r));
+}
+
 function* _dataPoints(surface, ignoreHoles) {
     for (let pt of surface.points) {
         if (surface.isDataQubit(pt[0], pt[1], ignoreHoles)) {
@@ -92,6 +96,20 @@ class SurfaceCode {
             }
         }
     }
+
+    clone() {
+        let r = new SurfaceCode(this.width, this.height);
+        r.state = this.state.clone();
+        r.holes = cloneGrid(this.holes);
+        r.xFlips = cloneGrid(this.xFlips);
+        r.zFlips = cloneGrid(this.zFlips);
+        r.last_result = cloneGrid(this.last_result);
+        r.expected_result = cloneGrid(this.expected_result);
+        r.qubits = cloneGrid(this.qubits);
+        r.points = this.points.map(e => e);
+        return r;
+    }
+
 
     xzFlips(xz) {
         return xz ? this.xFlips : this.zFlips;
@@ -200,6 +218,24 @@ class SurfaceCode {
     measure(i, j) {
         this.last_result[i][j] = this.state.measure(this.qubits[i][j], true);
         return this.last_result[i][j];
+    }
+
+    holeFloodFill(x, y) {
+        let q = [[x, y]];
+        let seen = makeGrid(this.width, this.height, () => false);
+        let result = [];
+        while (q.length > 0) {
+            let [i, j] = q.pop();
+            if (!this.isInBounds(i, j) || !this.isHole(i, j) || seen[i][j]) {
+                continue;
+            }
+            seen[i][j] = true;
+            for (let pt of this.neighbors(i, j, true)) {
+                q.push(pt)
+            }
+            result.push([i, j]);
+        }
+        return result;
     }
 
     shouldBeHole(i, j, holeOverlayFunc = () => false) {
@@ -482,6 +518,9 @@ class SurfaceCode {
      * @param {!boolean=} doNotMarkFlip
      */
     doXZ(i, j, xz, doNotMarkFlip=false) {
+        if (!this.isDataQubit(i, j)) {
+            return;
+        }
         if (xz) {
             this.state.x(this.qubits[i][j]);
         } else {
