@@ -123,7 +123,7 @@ class SquareStabilizerFlipperType extends Tool {
 
         for (let [i, j] of border(x, y, w, h)) {
             if (args.surface.layout.isDataQubit(i, j)) {
-                args.surface.doXZ(i, j, axis.isZ());
+                args.surface.doXZ(i, j, axis.opposite());
             }
         }
     }

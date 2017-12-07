@@ -113,7 +113,7 @@ class ErrorPathMakerType extends Tool {
     applyEffect(args) {
         let {path, axis} = this.argsToUseful(args);
         for (let [i, j] of path) {
-            args.surface.doXZ(i, j, axis.isZ());
+            args.surface.doXZ(i, j, axis.opposite());
         }
     }
 }

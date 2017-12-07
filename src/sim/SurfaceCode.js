@@ -159,7 +159,7 @@ class SurfaceCode {
                     let axis = Axis.zx(this.layout.isXCheckRow(i2));
                     let m = this.squareMeasure(i2, j2, axis);
                     if (m !== this.expected_result[i2][j2]) {
-                        this.doXZ(i, j, axis.isZ(), true);
+                        this.doXZ(i, j, axis.opposite(), true);
                     }
                 }
             }
@@ -341,11 +341,10 @@ class SurfaceCode {
     /**
      * @param {!int} i
      * @param {!int} j
-     * @param {!boolean} zx
+     * @param {!Axis} axis
      * @param {!boolean=} doNotMarkFlip
      */
-    doXZ(i, j, zx, doNotMarkFlip=false) {
-        let axis = Axis.zx(zx);
+    doXZ(i, j, axis, doNotMarkFlip=false) {
         if (!this.layout.isDataQubit(i, j)) {
             return;
         }
@@ -428,10 +427,11 @@ class SurfaceCode {
         return vertical ? [0, 1] : [1, 0];
     }
 
-    chain(x1, y1, x2, y2, xz) {
+    chain(x1, y1, x2, y2, zx) {
+        let axis = Axis.zx(zx);
         for (let [i, j] of this.pathAlongCheckQubits(x1, y1, x2, y2, false)) {
             if (!this.layout.isHole(i, j)) {
-                this.doXZ(i, j, xz);
+                this.doXZ(i, j, axis);
             }
         }
     }
