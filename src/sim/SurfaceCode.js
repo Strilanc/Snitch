@@ -4,7 +4,7 @@ import {StabilizerCircuitState} from 'src/sim/StabilizerCircuitState.js'
 import {seq} from "src/base/Seq.js";
 import {squaredDistanceFromLine, makeGrid, cloneGrid} from 'src/sim/Util.js'
 import {SurfaceCodeLayout} from "src/sim/SurfaceCodeLayout.js";
-import {Axis, AXES} from "src/sim/Util.js";
+import {Axis, AXES, Z_AXIS, X_AXIS} from "src/sim/Util.js";
 
 
 /**
@@ -85,10 +85,10 @@ class SurfaceCode {
     /**
      * @param {!int} i
      * @param {!int} j
-     * @param {!boolean} zx
+     * @param {!Axis} axis
      * @returns {!boolean}
      */
-    squareMeasure(i, j, zx) {
+    squareMeasure(i, j, axis) {
         let neighborXs = [];
         let neighborZs = [];
         for (let [i2, j2] of this.layout.neighbors(i, j)) {
@@ -97,7 +97,7 @@ class SurfaceCode {
             neighborZs.push(q.obsZ);
         }
 
-        if (zx) {
+        if (axis.isX()) {
             return this.state.measureObservable(neighborXs, neighborZs);
         }
         return this.state.measureObservable(neighborZs, neighborXs);
@@ -156,10 +156,10 @@ class SurfaceCode {
                 }
             } else {
                 for (let [i2, j2] of this.layout.neighbors(i, j)) {
-                    let zx = this.layout.isXCheckRow(i2);
-                    let m = this.squareMeasure(i2, j2, zx);
+                    let axis = Axis.zx(this.layout.isXCheckRow(i2));
+                    let m = this.squareMeasure(i2, j2, axis);
                     if (m !== this.expected_result[i2][j2]) {
-                        this.doXZ(i, j, !zx, true);
+                        this.doXZ(i, j, axis.isZ(), true);
                     }
                 }
             }
@@ -173,9 +173,9 @@ class SurfaceCode {
         for (let i = 0; i < this.layout.width; i++) {
             for (let j = 0; j < this.layout.height; j++) {
                 if (this.layout.isXCheckQubit(i, j)) {
-                    this.last_result[i][j] = this.squareMeasure(i, j, true);
+                    this.last_result[i][j] = this.squareMeasure(i, j, X_AXIS);
                 } else if (this.layout.isZCheckQubit(i, j)) {
-                    this.last_result[i][j] = this.squareMeasure(i, j, false);
+                    this.last_result[i][j] = this.squareMeasure(i, j, Z_AXIS);
                 }
             }
         }
