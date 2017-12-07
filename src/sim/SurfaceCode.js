@@ -4,6 +4,7 @@ import {StabilizerCircuitState} from 'src/sim/StabilizerCircuitState.js'
 import {seq} from "src/base/Seq.js";
 import {squaredDistanceFromLine, makeGrid, cloneGrid} from 'src/sim/Util.js'
 import {SurfaceCodeLayout} from "src/sim/SurfaceCodeLayout.js";
+import {Axis, AXES} from "src/sim/Util.js";
 
 
 /**
@@ -45,9 +46,12 @@ class SurfaceCode {
         return r;
     }
 
-
-    xzFlips(xz) {
-        return xz ? this.xFlips : this.zFlips;
+    /**
+     * @param {!Axis} axis
+     * @returns {!Array.<!Array.<!boolean>>}
+     */
+    xzFlips(axis) {
+        return axis.isX() ? this.xFlips : this.zFlips;
     }
 
     checkQubitsWithResult(xz, result) {
@@ -254,8 +258,9 @@ class SurfaceCode {
     }
 
     clean_areas() {
-        for (let xz of [false, true]) {
-            let flips = this.xzFlips(xz);
+        for (let axis of AXES) {
+            let flips = this.xzFlips(axis.opposite());
+            let xz = axis.isZ();
 
             let areas = new Map();
             let areaVals = [];
@@ -328,20 +333,22 @@ class SurfaceCode {
     /**
      * @param {!int} i
      * @param {!int} j
-     * @param {!boolean} xz
+     * @param {!boolean} zx
      * @param {!boolean=} doNotMarkFlip
      */
-    doXZ(i, j, xz, doNotMarkFlip=false) {
+    doXZ(i, j, zx, doNotMarkFlip=false) {
+        let axis = Axis.zx(zx);
         if (!this.layout.isDataQubit(i, j)) {
             return;
         }
-        if (xz) {
+        if (axis.isX()) {
             this.state.x(this.qubits[i][j]);
         } else {
             this.state.z(this.qubits[i][j]);
         }
         if (!doNotMarkFlip) {
-            this.xzFlips(xz)[i][j] ^= true;
+            let flips = this.xzFlips(axis);
+            flips[i][j] = !flips[i][j];
         }
     }
 

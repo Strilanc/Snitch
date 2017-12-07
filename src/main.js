@@ -130,7 +130,7 @@ function drawHoleBorders(ctx) {
 function drawErrorCurves(ctx) {
     for (let axis of AXES) {
         ctx.beginPath();
-        let flips = surface.xzFlips(axis.isZ());
+        let flips = surface.xzFlips(axis.opposite());
         for (let [i, j] of surface.layout.dataPoints()) {
             if (flips[i][j]) {
                 strokeErrorCurveAt(ctx, surface, i, j, axis);

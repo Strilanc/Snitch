@@ -81,6 +81,13 @@ class Axis {
     /**
      * @returns {!Axis}
      */
+    opposite() {
+        return this.isX() ? Z_AXIS : X_AXIS;
+    }
+
+    /**
+     * @returns {!Axis}
+     */
     static xz(xz) {
         return xz ? Z_AXIS : X_AXIS;
     }
