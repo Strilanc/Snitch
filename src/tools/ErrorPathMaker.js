@@ -1,10 +1,11 @@
-import {config} from "src/config.js"
-import {strokeErrorCurveAt} from "src/draw/Common.js";
-import {Tool} from "src/tools/Tool.js"
-
 /**
  * Implements an effect that can be applied to a surface code grid.
  */
+import {config} from "src/config.js"
+import {strokeErrorCurveAt} from "src/draw/Common.js";
+import {Tool} from "src/tools/Tool.js"
+import {Axis} from "src/sim/Util.js";
+
 class ErrorPathMakerType extends Tool {
     canApply(args) {
         return args.mousePos !== undefined &&
@@ -23,22 +24,22 @@ class ErrorPathMakerType extends Tool {
     drawHoverHint(ctx, args) {
         let i = Math.floor(args.mousePos[0]);
         let j = Math.floor(args.mousePos[1]);
-        let xz = !args.shiftKey;
+        let axis = Axis.xz(!args.shiftKey);
         ctx.lineWidth = 3;
         ctx.beginPath();
-        strokeErrorCurveAt(ctx, args.surface, i, j, xz);
+        strokeErrorCurveAt(ctx, args.surface, i, j, axis);
         //noinspection JSUnresolvedFunction
         ctx.setLineDash([6, 2]);
-        ctx.strokeStyle = xz ? config.zOnColor : config.xOnColor;
+        ctx.strokeStyle = axis.isZ() ? config.zOnColor : config.xOnColor;
         ctx.stroke();
     }
 
     /**
      * @param {!ToolEffectArgs} args
-     * @returns {!{path: !Array.<![!int, !int]>, xz: !boolean, tears: !Array.<![!int, !int]>}}
+     * @returns {!{path: !Array.<![!int, !int]>, axis: !Axis, tears: !Array.<![!int, !int]>}}
      * @private
      */
-    _argsToXZPath(args) {
+    argsToUseful(args) {
         let i1 = Math.floor(args.dragStartPos[0]);
         let j1 = Math.floor(args.dragStartPos[1]);
         let di = args.mousePos[0] - i1 - 0.5;
@@ -48,14 +49,14 @@ class ErrorPathMakerType extends Tool {
         let i2 = i1 + da + db;
         let j2 = j1 + da - db;
 
-        let xz = !args.shiftKey;
-        let dir1 = args.surface.errorOrientation(i1, j1, xz);
-        let dir2 = args.surface.errorOrientation(i2, j2, xz);
+        let axis = Axis.xz(!args.shiftKey);
+        let dir1 = args.surface.errorOrientation(i1, j1, axis.isZ());
+        let dir2 = args.surface.errorOrientation(i2, j2, axis.isZ());
 
         if (i1 === i2 && j1 === j2) {
             return {
                 path: [[i1, j1]],
-                xz,
+                axis,
                 tears: [
                     [i1 + dir1[0], j1 + dir1[1]],
                     [i1 - dir1[0], j1 - dir1[1]]
@@ -78,22 +79,22 @@ class ErrorPathMakerType extends Tool {
         }
         path.splice(0, 0, [i1, j1]);
         path.push([i2, j2]);
-        return {path, xz, tears: [p0, p1], controlPoints: [[i1, j1], [i2, j2]]};
+        return {path, axis, tears: [p0, p1], controlPoints: [[i1, j1], [i2, j2]]};
     }
 
     drawPreview(ctx, args) {
-        let {path, xz, tears, controlPoints} = this._argsToXZPath(args);
+        let {path, axis, tears, controlPoints} = this.argsToUseful(args);
 
         ctx.beginPath();
         for (let [i, j] of path) {
-            strokeErrorCurveAt(ctx, args.surface, i, j, xz);
+            strokeErrorCurveAt(ctx, args.surface, i, j, axis);
         }
 
         ctx.fillStyle = '#800';
         for (let [i, j] of controlPoints) {
             ctx.fillRect((i + 0.3) * config.diam, (j + 0.3) * config.diam, config.diam * 0.4, config.diam * 0.4);
         }
-        ctx.fillStyle = xz ? config.zOnColor : config.xOnColor;
+        ctx.fillStyle = axis.isZ() ? config.zOnColor : config.xOnColor;
         ctx.strokeStyle = '#000';
         for (let [i, j] of tears) {
             ctx.fillRect((i + 0.3) * config.diam, (j + 0.3) * config.diam, config.diam * 0.4, config.diam * 0.4);
@@ -102,7 +103,7 @@ class ErrorPathMakerType extends Tool {
 
         ctx.strokeStyle = '#800';
         ctx.stroke();
-        ctx.strokeStyle = xz ? config.zOnColor : config.xOnColor;
+        ctx.strokeStyle = axis.isZ() ? config.zOnColor : config.xOnColor;
         //noinspection JSUnresolvedFunction
         ctx.setLineDash([4, 4]);
         ctx.lineWidth = 3;
@@ -110,9 +111,9 @@ class ErrorPathMakerType extends Tool {
     }
 
     applyEffect(args) {
-        let {path, xz} = this._argsToXZPath(args);
+        let {path, axis} = this.argsToUseful(args);
         for (let [i, j] of path) {
-            args.surface.doXZ(i, j, xz);
+            args.surface.doXZ(i, j, axis.isZ());
         }
     }
 }

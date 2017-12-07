@@ -5,6 +5,7 @@ import {config} from "src/config.js"
 import {strokeErrorCurveAt} from "src/draw/Common.js";
 import {Tool} from "src/tools/Tool.js"
 import {ToolEffectArgs} from "src/tools/ToolEffectArgs.js";
+import {Axis} from "src/sim/Util.js";
 
 function roundWithDeadZone(v, d, r) {
     let s = v < 0 ? -1 : +1;
@@ -48,18 +49,18 @@ class SquareStabilizerFlipperType extends Tool {
     drawHoverHint(ctx, args) {
         let x = Math.floor(args.mousePos[0]);
         let y = Math.floor(args.mousePos[1]);
-        let xz = args.surface.layout.isCheckQubit(x, y, true, true);
+        let axis = Axis.xz(args.surface.layout.isCheckQubit(x, y, true, true));
 
         ctx.beginPath();
         for (let [i, j] of border(x, y, 1, 1)) {
             if (args.surface.layout.isDataQubit(i, j)) {
-                strokeErrorCurveAt(ctx, args.surface, i, j, xz);
+                strokeErrorCurveAt(ctx, args.surface, i, j, axis);
             }
         }
 
         ctx.strokeStyle = '#800';
         ctx.stroke();
-        ctx.strokeStyle = xz ? config.zOnColor : config.xOnColor;
+        ctx.strokeStyle = axis.isZ() ? config.zOnColor : config.xOnColor;
         //noinspection JSUnresolvedFunction
         ctx.setLineDash([4, 4]);
         ctx.lineWidth = 3;
@@ -68,39 +69,40 @@ class SquareStabilizerFlipperType extends Tool {
 
     /**
      * @param {!ToolEffectArgs} args
-     * @returns {!{i: !int, j: !int, w: !int, h: !int}}
+     * @returns {!{i: !int, j: !int, w: !int, h: !int, axis: !Axis}}
      * @private
      */
-    _argsToRect(args) {
+    argsToUseful(args) {
         let i1 = Math.floor(args.dragStartPos[0]);
         let j1 = Math.floor(args.dragStartPos[1]);
         let i2 = roundWithDeadZone(args.mousePos[0] - i1 - 0.5, 0.5, 2) + i1;
         let j2 = roundWithDeadZone(args.mousePos[1] - j1 - 0.5, 0.5, 2) + j1;
         let i = Math.min(i1, i2);
         let j = Math.min(j1, j2);
+        let axis = Axis.xz(args.surface.layout.isCheckQubit(i, j, true, true));
         return {
             controlPoints: [[i1, j1], [i2, j2]],
             i,
             j,
             w: Math.abs(i2 - i1) + 1,
             h: Math.abs(j2 - j1) + 1,
-            xz: args.surface.layout.isCheckQubit(i, j, true, true)
+            axis
         };
     }
 
     drawPreview(ctx, args) {
-        let {i: x, j: y, controlPoints, w, h, xz} = this._argsToRect(args);
+        let {i: x, j: y, controlPoints, w, h, axis} = this.argsToUseful(args);
 
         ctx.beginPath();
         for (let [i, j] of border(x, y, w, h)) {
             if (args.surface.layout.isDataQubit(i, j)) {
-                strokeErrorCurveAt(ctx, args.surface, i, j, xz);
+                strokeErrorCurveAt(ctx, args.surface, i, j, axis);
             }
         }
 
         ctx.strokeStyle = '#800';
         ctx.stroke();
-        ctx.strokeStyle = xz ? config.zOnColor : config.xOnColor;
+        ctx.strokeStyle = axis.isZ() ? config.zOnColor : config.xOnColor;
         //noinspection JSUnresolvedFunction
         ctx.setLineDash([4, 4]);
         ctx.lineWidth = 3;
@@ -117,11 +119,11 @@ class SquareStabilizerFlipperType extends Tool {
     }
 
     applyEffect(args) {
-        let {i: x, j: y, w, h, xz} = this._argsToRect(args);
+        let {i: x, j: y, w, h, axis} = this.argsToUseful(args);
 
         for (let [i, j] of border(x, y, w, h)) {
             if (args.surface.layout.isDataQubit(i, j)) {
-                args.surface.doXZ(i, j, xz);
+                args.surface.doXZ(i, j, axis.isZ());
             }
         }
     }

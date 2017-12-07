@@ -59,4 +59,46 @@ let CARDINALS = [
     [0, -1]
 ];
 
-export {squaredDistanceFromLine, makeGrid, cloneGrid, CARDINALS}
+class Axis {
+    constructor(label) {
+        this.label = label;
+    }
+
+    /**
+     * @returns {!boolean}
+     */
+    isX() {
+        return this.label === 'X';
+    }
+
+    /**
+     * @returns {!boolean}
+     */
+    isZ() {
+        return this.label === 'Z';
+    }
+
+    /**
+     * @returns {!Axis}
+     */
+    static xz(xz) {
+        return xz ? Z_AXIS : X_AXIS;
+    }
+
+    /**
+     * @returns {!Axis}
+     */
+    static zx(zx) {
+        return zx ? X_AXIS : Z_AXIS;
+    }
+
+    toString() {
+        return this.label;
+    }
+}
+
+const X_AXIS = new Axis('X');
+const Z_AXIS = new Axis('Z');
+const AXES = [X_AXIS, Z_AXIS];
+
+export {squaredDistanceFromLine, makeGrid, cloneGrid, CARDINALS, Axis, X_AXIS, Z_AXIS, AXES}

@@ -5,13 +5,13 @@ import {config} from "src/config.js"
  * @param {!SurfaceCode} surface
  * @param {!int} i
  * @param {!int} j
- * @param {!boolean} xz
+ * @param {!Axis} axis
  */
-function strokeErrorCurveAt(ctx, surface, i, j, xz) {
+function strokeErrorCurveAt(ctx, surface, i, j, axis) {
     let x = i * config.diam + 0.5;
     let y = j * config.diam + 0.5;
 
-    if (surface.layout.isXCheckRow(j) === xz) {
+    if (surface.layout.isXCheckRow(j) === axis.isZ()) {
         ctx.moveTo(x + config.diam / 2, y - config.diam / 2);
         ctx.lineTo(x + config.diam / 2, y + config.diam * 3 / 2);
     } else {

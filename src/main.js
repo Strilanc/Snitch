@@ -19,6 +19,7 @@ import {describe} from "src/base/Describe.js";
 import {config} from "src/config.js"
 import {Revision} from "src/base/Revision.js";
 import {strokeErrorCurveAt} from "src/draw/Common.js";
+import {AXES, X_AXIS, Z_AXIS} from "src/sim/Util.js";
 
 let canvas = /** @type {!HTMLCanvasElement} */ document.getElementById('main-canvas');
 /** @type {!Array.<!Tool>} */
@@ -127,15 +128,15 @@ function drawHoleBorders(ctx) {
 }
 
 function drawErrorCurves(ctx) {
-    for (let xz of [false, true]) {
+    for (let axis of AXES) {
         ctx.beginPath();
-        let flips = surface.xzFlips(xz);
+        let flips = surface.xzFlips(axis.isZ());
         for (let [i, j] of surface.layout.dataPoints()) {
             if (flips[i][j]) {
-                strokeErrorCurveAt(ctx, surface, i, j, xz);
+                strokeErrorCurveAt(ctx, surface, i, j, axis);
             }
         }
-        ctx.strokeStyle = xz ? config.zOnColor : config.xOnColor;
+        ctx.strokeStyle = axis.isZ() ? config.zOnColor : config.xOnColor;
         ctx.stroke();
     }
 }
