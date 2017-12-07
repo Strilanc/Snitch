@@ -86,19 +86,16 @@ class Axis {
     }
 
     /**
+     * @param {!boolean} useZAxis
      * @returns {!Axis}
      */
-    static xz(xz) {
-        return xz ? Z_AXIS : X_AXIS;
+    static zIf(useZAxis) {
+        return useZAxis ? Z_AXIS : X_AXIS;
     }
 
     /**
-     * @returns {!Axis}
+     * @returns {!string}
      */
-    static zx(zx) {
-        return zx ? X_AXIS : Z_AXIS;
-    }
-
     toString() {
         return this.label;
     }

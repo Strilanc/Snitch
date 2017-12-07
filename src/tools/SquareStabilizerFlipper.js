@@ -49,7 +49,7 @@ class SquareStabilizerFlipperType extends Tool {
     drawHoverHint(ctx, args) {
         let x = Math.floor(args.mousePos[0]);
         let y = Math.floor(args.mousePos[1]);
-        let axis = Axis.xz(args.surface.layout.isCheckQubit(x, y, X_AXIS, true));
+        let axis = Axis.zIf(args.surface.layout.isCheckQubit(x, y, X_AXIS, true));
 
         ctx.beginPath();
         for (let [i, j] of border(x, y, 1, 1)) {
@@ -79,7 +79,7 @@ class SquareStabilizerFlipperType extends Tool {
         let j2 = roundWithDeadZone(args.mousePos[1] - j1 - 0.5, 0.5, 2) + j1;
         let i = Math.min(i1, i2);
         let j = Math.min(j1, j2);
-        let axis = Axis.xz(args.surface.layout.isCheckQubit(i, j, X_AXIS, true));
+        let axis = Axis.zIf(args.surface.layout.isCheckQubit(i, j, X_AXIS, true));
         return {
             controlPoints: [[i1, j1], [i2, j2]],
             i,

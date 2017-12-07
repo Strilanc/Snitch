@@ -24,7 +24,7 @@ class ErrorPathMakerType extends Tool {
     drawHoverHint(ctx, args) {
         let i = Math.floor(args.mousePos[0]);
         let j = Math.floor(args.mousePos[1]);
-        let axis = Axis.xz(!args.shiftKey);
+        let axis = Axis.zIf(!args.shiftKey);
         ctx.lineWidth = 3;
         ctx.beginPath();
         strokeErrorCurveAt(ctx, args.surface, i, j, axis);
@@ -49,9 +49,9 @@ class ErrorPathMakerType extends Tool {
         let i2 = i1 + da + db;
         let j2 = j1 + da - db;
 
-        let axis = Axis.xz(!args.shiftKey);
-        let dir1 = args.surface.errorOrientation(i1, j1, axis.isZ());
-        let dir2 = args.surface.errorOrientation(i2, j2, axis.isZ());
+        let axis = Axis.zIf(!args.shiftKey);
+        let dir1 = args.surface.errorOrientation(i1, j1, axis);
+        let dir2 = args.surface.errorOrientation(i2, j2, axis);
 
         if (i1 === i2 && j1 === j2) {
             return {

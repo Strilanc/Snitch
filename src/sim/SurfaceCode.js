@@ -51,7 +51,7 @@ class SurfaceCode {
      * @param {!Axis} axis
      * @returns {!Array.<!Array.<!boolean>>}
      */
-    xzFlips(axis) {
+    flipsForAxis(axis) {
         return axis.isX() ? this.xFlips : this.zFlips;
     }
 
@@ -265,7 +265,7 @@ class SurfaceCode {
 
     clean_areas() {
         for (let axis of AXES) {
-            let flips = this.xzFlips(axis.opposite());
+            let flips = this.flipsForAxis(axis.opposite());
 
             let areas = new Map();
             let areaVals = [];
@@ -303,7 +303,7 @@ class SurfaceCode {
                     let best_n = false;
                     for (let [i, j] of area) {
                         if (!this.layout.isDataQubit(i, j)) {
-                            let n = !this.layout.neighbors(i, j).every(([i2, j2]) => !this.xzFlips(axis.opposite())[i2][j2]);
+                            let n = !this.layout.neighbors(i, j).every(([i2, j2]) => !this.flipsForAxis(axis.opposite())[i2][j2]);
                             let m = Math.max(Infinity,
                                 ...this.layout.neighbors(i, j).
                                     filter(([i2, j2]) => area.length - 1 !== areas.get(j2*this.layout.width + i2)).
@@ -354,7 +354,7 @@ class SurfaceCode {
             this.state.z(this.qubits[i][j]);
         }
         if (!doNotMarkFlip) {
-            let flips = this.xzFlips(axis);
+            let flips = this.flipsForAxis(axis);
             flips[i][j] = !flips[i][j];
         }
     }
@@ -416,11 +416,10 @@ class SurfaceCode {
     /**
      * @param {!int} i
      * @param {!int} j
-     * @param {!boolean} xz
+     * @param {!Axis} axis
      * @returns {!Array.<![!int, !int]>}
      */
-    errorOrientation(i, j, xz) {
-        let axis = Axis.xz(xz);
+    errorOrientation(i, j, axis) {
         if (!this.layout.isDataQubit(i, j, true, true)) {
             throw new DetailedError('Not an error route', {i, j, axis});
         }
