@@ -67,16 +67,16 @@ class SurfaceCode {
     /**
      * @param {!number} x
      * @param {!number} y
-     * @param {!boolean} xz
+     * @param {!Axis} axis
      * @returns {[!int, !int]}
      */
-    nearestCheckQubitCoord(x, y, xz) {
+    nearestCheckQubitCoord(x, y, axis) {
         let i = Math.round(x);
         let j = Math.round(y);
-        if (!this.layout.isCheckCol(i, xz)) {
+        if (this.layout.colCheckType(i) !== axis) {
             i -= 1;
         }
-        if (!this.layout.isCheckRow(j, xz)) {
+        if (this.layout.rowCheckType(j) !== axis) {
             j -= 1;
         }
         return [i, j];
@@ -156,7 +156,7 @@ class SurfaceCode {
                 }
             } else {
                 for (let [i2, j2] of this.layout.neighbors(i, j)) {
-                    let axis = Axis.zx(this.layout.isXCheckRow(i2));
+                    let axis = this.layout.rowCheckType(i2);
                     let m = this.squareMeasure(i2, j2, axis);
                     if (m !== this.expected_result[i2][j2]) {
                         this.doXZ(i, j, axis.opposite(), true);
@@ -420,10 +420,11 @@ class SurfaceCode {
      * @returns {!Array.<![!int, !int]>}
      */
     errorOrientation(i, j, xz) {
+        let axis = Axis.xz(xz);
         if (!this.layout.isDataQubit(i, j, true, true)) {
-            throw new DetailedError('Not an error route', {i, j, xz});
+            throw new DetailedError('Not an error route', {i, j, axis});
         }
-        let vertical = this.layout.isXCheckCol(i) !== xz;
+        let vertical = this.layout.colCheckType(i) === axis;
         return vertical ? [0, 1] : [1, 0];
     }
 

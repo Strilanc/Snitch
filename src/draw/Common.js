@@ -11,7 +11,7 @@ function strokeErrorCurveAt(ctx, surface, i, j, axis) {
     let x = i * config.diam + 0.5;
     let y = j * config.diam + 0.5;
 
-    if (surface.layout.isXCheckRow(j) === axis.isZ()) {
+    if (surface.layout.rowCheckType(j) === axis.opposite()) {
         ctx.moveTo(x + config.diam / 2, y - config.diam / 2);
         ctx.lineTo(x + config.diam / 2, y + config.diam * 3 / 2);
     } else {

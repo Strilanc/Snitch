@@ -80,52 +80,18 @@ class SurfaceCodeLayout {
 
     /**
      * @param {!int} col
-     * @param {!boolean} zx
-     * @returns {!boolean}
+     * @returns {!Axis}
      */
-    isCheckCol(col, zx) {
-        return ((col & 1) === (zx ? 0 : 1)) === this.firstColIsX;
+    colCheckType(col) {
+        return ((col & 1) === 0) !== this.firstColIsX ? Z_AXIS : X_AXIS;
     }
 
     /**
      * @param {!int} row
-     * @param {!boolean} zx
-     * @returns {!boolean}
+     * @returns {!Axis}
      */
-    isCheckRow(row, zx) {
-        return ((row & 1) === (zx ? 0 : 1)) === this.firstRowIsX;
-    }
-
-    /**
-     * @param {!int} col
-     * @returns {!boolean}
-     */
-    isXCheckCol(col) {
-        return this.isCheckCol(col, true);
-    }
-
-    /**
-     * @param {!int} col
-     * @returns {!boolean}
-     */
-    isZCheckCol(col) {
-        return this.isCheckCol(col, false);
-    }
-
-    /**
-     * @param {!int} row
-     * @returns {!boolean}
-     */
-    isXCheckRow(row) {
-        return this.isCheckRow(row, true);
-    }
-
-    /**
-     * @param {!int} row
-     * @returns {!boolean}
-     */
-    isZCheckRow(row) {
-        return this.isCheckRow(row, false);
+    rowCheckType(row) {
+        return ((row & 1) === 0) !== this.firstRowIsX ? Z_AXIS : X_AXIS;
     }
 
     /**
@@ -243,12 +209,12 @@ class SurfaceCodeLayout {
         if (axis === undefined) {
             return (ignoreHole || !this.isHole(i, j)) &&
                 (ignoreBounds || this.isInBounds(i, j)) &&
-                this.isXCheckCol(i) === this.isXCheckRow(j);
+                this.colCheckType(i) === this.rowCheckType(j);
         }
         return (ignoreHole || !this.isHole(i, j)) &&
             (ignoreBounds || this.isInBounds(i, j)) &&
-            this.isCheckCol(i, axis.isX()) &&
-            this.isCheckRow(j, axis.isX());
+            this.colCheckType(i) === axis &&
+            this.rowCheckType(j) === axis;
     }
 
     /**
@@ -283,7 +249,7 @@ class SurfaceCodeLayout {
     isDataQubit(i, j, ignoreHoles=false, ignoreBounds=false) {
         return (ignoreHoles || !this.isHole(i, j)) &&
             (ignoreBounds || this.isInBounds(i, j)) &&
-            this.isXCheckCol(i) !== this.isXCheckRow(j);
+            this.colCheckType(i) !== this.rowCheckType(j);
     }
 
     /**
