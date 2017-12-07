@@ -9,14 +9,15 @@ import {Axis, AXES} from "src/sim/Util.js";
 
 /**
  * @param {!SurfaceCode} surface
- * @param {!boolean } xz
+ * @param {!Axis} axis
  * @param {!boolean} result
  * @yields {![!int, !int]}
  * @private
  */
-function* _checkQubitsWithResult(surface, xz, result) {
+function* _checkQubitsWithResult(surface, axis, result) {
     for (let [i, j] of surface.layout.points) {
-        if ((surface.last_result[i][j] !== surface.expected_result[i][j]) === result && surface.layout.isCheckQubit(i, j, xz)) {
+        if ((surface.last_result[i][j] !== surface.expected_result[i][j]) === result &&
+                surface.layout.isCheckQubit(i, j, axis)) {
             yield [i, j];
         }
     }
@@ -54,8 +55,13 @@ class SurfaceCode {
         return axis.isX() ? this.xFlips : this.zFlips;
     }
 
-    checkQubitsWithResult(xz, result) {
-        return _checkQubitsWithResult(this, xz, result);
+    /**
+     * @param {!Axis} axis
+     * @param {!boolean} result
+     * @returns {!Iterable.<![!int, !int]>}
+     */
+    checkQubitsWithResult(axis, result) {
+        return _checkQubitsWithResult(this, axis, result);
     }
 
     /**
@@ -260,7 +266,6 @@ class SurfaceCode {
     clean_areas() {
         for (let axis of AXES) {
             let flips = this.xzFlips(axis.opposite());
-            let xz = axis.isZ();
 
             let areas = new Map();
             let areaVals = [];
@@ -271,11 +276,14 @@ class SurfaceCode {
                 let hitOppositeTypeSide = false;
                 while (queue.length > 0) {
                     let [i, j] = queue.pop();
-                    if (xz ? (i < 0 || j < 0) : (i >= this.layout.width || j >= this.layout.height)) {
+                    if (axis.isZ() ? (i < 0 || j < 0) : (i >= this.layout.width || j >= this.layout.height)) {
                         hitOppositeTypeSide = true;
                     }
                     let k = j * this.layout.width + i;
-                    if (areas.has(k) || this.layout.isHole(i, j) || flips[i][j] || this.layout.isCheckQubit(i, j, !xz)) {
+                    if (areas.has(k) ||
+                            this.layout.isHole(i, j) ||
+                            flips[i][j] ||
+                            this.layout.isCheckQubit(i, j, axis)) {
                         continue;
                     }
                     areas.set(k, areaVals.length);
@@ -295,7 +303,7 @@ class SurfaceCode {
                     let best_n = false;
                     for (let [i, j] of area) {
                         if (!this.layout.isDataQubit(i, j)) {
-                            let n = !this.layout.neighbors(i, j).every(([i2, j2]) => !(xz ? this.xFlips : this.zFlips)[i2][j2]);
+                            let n = !this.layout.neighbors(i, j).every(([i2, j2]) => !this.xzFlips(axis.opposite())[i2][j2]);
                             let m = Math.max(Infinity,
                                 ...this.layout.neighbors(i, j).
                                     filter(([i2, j2]) => area.length - 1 !== areas.get(j2*this.layout.width + i2)).
@@ -312,7 +320,7 @@ class SurfaceCode {
                             }
                         }
                     }
-                    if (best_i !== undefined && this.layout.isCheckQubit(best_i, best_j, xz)) {
+                    if (best_i !== undefined && this.layout.isCheckQubit(best_i, best_j, axis.opposite())) {
                         reps.push([best_i, best_j]);
                     }
                 }
@@ -429,9 +437,9 @@ class SurfaceCode {
     }
 
     correct() {
-        for (let xz of [false, true]) {
+        for (let axis of AXES) {
             let points = [];
-            for (let [i, j] of this.layout.checkQubits(xz)) {
+            for (let [i, j] of this.layout.checkQubits(axis)) {
                 if (this.last_result[i][j] !== this.expected_result[i][j]) {
                     points.push([i, j]);
                 }
@@ -439,7 +447,7 @@ class SurfaceCode {
 
             let pairs = this.pairs(points);
             for (let [[x1, y1], [x2, y2]] of pairs) {
-                this.chain(x1, y1, x2, y2, !xz);
+                this.chain(x1, y1, x2, y2, axis.isX());
             }
         }
     }

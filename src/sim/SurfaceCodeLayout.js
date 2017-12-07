@@ -1,6 +1,7 @@
 import {seq} from "src/base/Seq.js";
 import {squaredDistanceFromLine, makeGrid, cloneGrid} from 'src/sim/Util.js'
 import {CARDINALS} from 'src/sim/Util.js'
+import {Axis, X_AXIS, Z_AXIS} from "src/sim/Util.js";
 
 
 /**
@@ -35,13 +36,13 @@ function* _holes(layout, pad=1) {
 
 /**
  * @param {!SurfaceCodeLayout} layout
- * @param {!boolean} xz
+ * @param {!Axis} axis
  * @yields {![!int, !int]}
  * @private
  */
-function* _checkQubits(layout, xz) {
+function* _checkQubits(layout, axis) {
     for (let pt of layout.points) {
-        if (layout.isCheckQubit(pt[0], pt[1], xz)) {
+        if (layout.isCheckQubit(pt[0], pt[1], axis.opposite())) {
             yield pt;
         }
     }
@@ -151,11 +152,11 @@ class SurfaceCodeLayout {
     }
 
     /**
-     * @param {!boolean} xz
+     * @param {!Axis} axis
      * @returns {!Iterable.<[!int, !int]>}
      */
-    checkQubits(xz) {
-        return _checkQubits(this, xz);
+    checkQubits(axis) {
+        return _checkQubits(this, axis);
     }
 
     /**
@@ -233,21 +234,21 @@ class SurfaceCodeLayout {
     /**
      * @param {!int} i
      * @param {!int} j
-     * @param {!boolean} zx
+     * @param {undefined|!Axis} axis
      * @param {!boolean} ignoreHole
      * @param {!boolean} ignoreBounds
      * @returns {!boolean}
      */
-    isCheckQubit(i, j, zx=undefined, ignoreHole=false, ignoreBounds=false) {
-        if (zx === undefined) {
+    isCheckQubit(i, j, axis=undefined, ignoreHole=false, ignoreBounds=false) {
+        if (axis === undefined) {
             return (ignoreHole || !this.isHole(i, j)) &&
                 (ignoreBounds || this.isInBounds(i, j)) &&
                 this.isXCheckCol(i) === this.isXCheckRow(j);
         }
         return (ignoreHole || !this.isHole(i, j)) &&
             (ignoreBounds || this.isInBounds(i, j)) &&
-            this.isCheckCol(i, zx) &&
-            this.isCheckRow(j, zx);
+            this.isCheckCol(i, axis.isX()) &&
+            this.isCheckRow(j, axis.isX());
     }
 
     /**
@@ -258,7 +259,7 @@ class SurfaceCodeLayout {
      * @returns {!boolean}
      */
     isZCheckQubit(i, j, ignoreHole=false, ignoreBounds=false) {
-        return this.isCheckQubit(i, j, false, ignoreHole, ignoreBounds);
+        return this.isCheckQubit(i, j, Z_AXIS, ignoreHole, ignoreBounds);
     }
 
     /**
@@ -269,7 +270,7 @@ class SurfaceCodeLayout {
      * @returns {!boolean}
      */
     isXCheckQubit(i, j, ignoreHole=false, ignoreBounds=false) {
-        return this.isCheckQubit(i, j, true, ignoreHole, ignoreBounds);
+        return this.isCheckQubit(i, j, X_AXIS, ignoreHole, ignoreBounds);
     }
 
     /**

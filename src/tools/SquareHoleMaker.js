@@ -45,7 +45,7 @@ class SquareHoleMakerType extends Tool {
             args.dragStartPos !== undefined &&
             !args.ctrlKey &&
             args.mouseButton === 0 &&
-            args.surface.layout.isCheckQubit(Math.floor(args.dragStartPos[0]), Math.floor(args.dragStartPos[1]), undefined);
+            args.surface.layout.isCheckQubit(Math.floor(args.dragStartPos[0]), Math.floor(args.dragStartPos[1]));
     }
 
     canHoverHint(args) {
@@ -53,7 +53,7 @@ class SquareHoleMakerType extends Tool {
             args.dragStartPos === undefined &&
             !args.ctrlKey &&
             args.mouseButton === undefined &&
-            args.surface.layout.isCheckQubit(Math.floor(args.mousePos[0]), Math.floor(args.mousePos[1]), undefined);
+            args.surface.layout.isCheckQubit(Math.floor(args.mousePos[0]), Math.floor(args.mousePos[1]));
     }
 
     drawHoverHint(ctx, args) {
@@ -99,7 +99,7 @@ class SquareHoleMakerType extends Tool {
         let {i: x, j: y, w, h} = this._argsToRect(args);
 
         for (let [i, j] of area(x, y, w, h)) {
-            if (args.surface.layout.isCheckQubit(i, j, undefined)) {
+            if (args.surface.layout.isCheckQubit(i, j)) {
                 args.surface.layout.holes[i][j] = true;
             }
         }

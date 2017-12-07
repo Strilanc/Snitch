@@ -14,6 +14,7 @@
 
 import {Suite, assertThat, assertThrows, assertTrue, assertFalse} from 'test/TestUtil.js'
 import {SurfaceCodeLayout} from 'src/sim/SurfaceCodeLayout.js'
+import {X_AXIS, Z_AXIS} from "src/sim/Util.js";
 
 let suite = new Suite('StabilizerQubit');
 
@@ -32,21 +33,21 @@ suite.test('data-vs-check-types', () => {
 
     assertFalse(s.isDataQubit(0, 0));
     assertTrue(s.isCheckQubit(0, 0));
-    assertFalse(s.isCheckQubit(0, 0, false));
-    assertTrue(s.isCheckQubit(0, 0, true));
+    assertTrue(s.isCheckQubit(0, 0, Z_AXIS));
+    assertFalse(s.isCheckQubit(0, 0, X_AXIS));
 
     assertTrue(s.isDataQubit(0, 1));
     assertFalse(s.isCheckQubit(0, 1));
-    assertFalse(s.isCheckQubit(0, 1, false));
-    assertFalse(s.isCheckQubit(0, 1, true));
+    assertFalse(s.isCheckQubit(0, 1, Z_AXIS));
+    assertFalse(s.isCheckQubit(0, 1, X_AXIS));
 
     assertTrue(s.isDataQubit(1, 0));
     assertFalse(s.isCheckQubit(1, 0));
-    assertFalse(s.isCheckQubit(1, 0, false));
-    assertFalse(s.isCheckQubit(1, 0, true));
+    assertFalse(s.isCheckQubit(1, 0, Z_AXIS));
+    assertFalse(s.isCheckQubit(1, 0, X_AXIS));
 
     assertFalse(s.isDataQubit(1, 1));
     assertTrue(s.isCheckQubit(1, 1));
-    assertTrue(s.isCheckQubit(1, 1, false));
-    assertFalse(s.isCheckQubit(1, 1, true));
+    assertFalse(s.isCheckQubit(1, 1, Z_AXIS));
+    assertTrue(s.isCheckQubit(1, 1, X_AXIS));
 });

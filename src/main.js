@@ -93,10 +93,10 @@ function drawQubitBlocksOfType(ctx, points, color) {
 function drawQubitBlocks(ctx) {
     ctx.fillStyle = config.dataQubitColor;
     ctx.fillRect(0, 0, surface.layout.width * config.diam, surface.layout.height * config.diam);
-    drawQubitBlocksOfType(ctx, surface.checkQubitsWithResult(true, false), config.xOffColor);
-    drawQubitBlocksOfType(ctx, surface.checkQubitsWithResult(true, true), config.xOnColor);
-    drawQubitBlocksOfType(ctx, surface.checkQubitsWithResult(false, false), config.zOffColor);
-    drawQubitBlocksOfType(ctx, surface.checkQubitsWithResult(false, true), config.zOnColor);
+    drawQubitBlocksOfType(ctx, surface.checkQubitsWithResult(X_AXIS, false), config.xOffColor);
+    drawQubitBlocksOfType(ctx, surface.checkQubitsWithResult(X_AXIS, true), config.xOnColor);
+    drawQubitBlocksOfType(ctx, surface.checkQubitsWithResult(Z_AXIS, false), config.zOffColor);
+    drawQubitBlocksOfType(ctx, surface.checkQubitsWithResult(Z_AXIS, true), config.zOnColor);
     drawQubitBlocksOfType(ctx, surface.layout.holePoints(0), config.holeColor);
 }
 
