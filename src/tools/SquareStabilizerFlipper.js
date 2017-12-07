@@ -2,6 +2,7 @@
  * Implements an effect that can be applied to a surface code grid.
  */
 import {config} from "src/config.js"
+import {strokeErrorCurveAt} from "src/draw/Common.js";
 import {Tool} from "src/tools/Tool.js"
 import {ToolEffectArgs} from "src/tools/ToolEffectArgs.js";
 
@@ -24,19 +25,6 @@ function* border(x, y, w, h) {
     for (let j = 0; j < h; j++) {
         yield [x - 1, y + j];
         yield [x + w, y + j];
-    }
-}
-
-function strokeErrorCurveAt(ctx, surface, i, j, xz) {
-    let x = i * config.diam + 0.5;
-    let y = j * config.diam + 0.5;
-
-    if (surface.layout.isXCheckRow(j) === xz) {
-        ctx.moveTo(x + config.diam / 2, y - config.diam / 2);
-        ctx.lineTo(x + config.diam / 2, y + config.diam * 3 / 2);
-    } else {
-        ctx.moveTo(x - config.diam / 2, y + config.diam / 2);
-        ctx.lineTo(x + config.diam * 3 / 2, y + config.diam / 2);
     }
 }
 

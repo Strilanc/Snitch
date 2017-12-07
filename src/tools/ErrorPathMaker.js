@@ -1,18 +1,6 @@
 import {config} from "src/config.js"
+import {strokeErrorCurveAt} from "src/draw/Common.js";
 import {Tool} from "src/tools/Tool.js"
-
-function strokeErrorCurveAt(ctx, surface, i, j, xz) {
-    let x = i * config.diam + 0.5;
-    let y = j * config.diam + 0.5;
-
-    if (surface.layout.isXCheckRow(j) === xz) {
-        ctx.moveTo(x + config.diam / 2, y - config.diam / 2);
-        ctx.lineTo(x + config.diam / 2, y + config.diam * 3 / 2);
-    } else {
-        ctx.moveTo(x - config.diam / 2, y + config.diam / 2);
-        ctx.lineTo(x + config.diam * 3 / 2, y + config.diam / 2);
-    }
-}
 
 /**
  * Implements an effect that can be applied to a surface code grid.

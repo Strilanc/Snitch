@@ -86,7 +86,7 @@ module.exports = function(grunt) {
                 /\bimport (.+) from (['"].+['"])/,
                 'g'),
                 function(match, vals, key) {
-                    return 'let ' + vals + ' = _gen_package_get(' + key + ');'
+                    return 'const ' + vals + ' = _gen_package_get(' + key + ');'
                 });
 
             return '///////////////////////////////////////////////////////////////////////////////////////////////\n' +

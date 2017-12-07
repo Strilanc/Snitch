@@ -18,6 +18,7 @@ import {ErrorPathMaker} from 'src/tools/ErrorPathMaker.js'
 import {describe} from "src/base/Describe.js";
 import {config} from "src/config.js"
 import {Revision} from "src/base/Revision.js";
+import {strokeErrorCurveAt} from "src/draw/Common.js";
 
 let canvas = /** @type {!HTMLCanvasElement} */ document.getElementById('main-canvas');
 /** @type {!Array.<!Tool>} */
@@ -125,26 +126,13 @@ function drawHoleBorders(ctx) {
     }
 }
 
-function strokeErrorCurveAt(ctx, i, j, xz) {
-    let x = i * config.diam + 0.5;
-    let y = j * config.diam + 0.5;
-
-    if (surface.layout.isXCheckRow(j) === xz) {
-        ctx.moveTo(x + config.diam / 2, y - config.diam / 2);
-        ctx.lineTo(x + config.diam / 2, y + config.diam * 3 / 2);
-    } else {
-        ctx.moveTo(x - config.diam / 2, y + config.diam / 2);
-        ctx.lineTo(x + config.diam * 3 / 2, y + config.diam / 2);
-    }
-}
-
 function drawErrorCurves(ctx) {
     for (let xz of [false, true]) {
         ctx.beginPath();
         let flips = surface.xzFlips(xz);
         for (let [i, j] of surface.layout.dataPoints()) {
             if (flips[i][j]) {
-                strokeErrorCurveAt(ctx, i, j, xz);
+                strokeErrorCurveAt(ctx, surface, i, j, xz);
             }
         }
         ctx.strokeStyle = xz ? config.zOnColor : config.xOnColor;
