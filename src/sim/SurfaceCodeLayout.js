@@ -1,5 +1,6 @@
 import {seq} from "src/base/Seq.js";
 import {squaredDistanceFromLine, makeGrid, cloneGrid} from 'src/sim/Util.js'
+import {DetailedError} from 'src/base/DetailedError.js'
 import {CARDINALS} from 'src/sim/Util.js'
 import {Axis, X_AXIS, Z_AXIS} from "src/sim/Util.js";
 
@@ -250,6 +251,20 @@ class SurfaceCodeLayout {
         return (ignoreHoles || !this.isHole(i, j)) &&
             (ignoreBounds || this.isInBounds(i, j)) &&
             this.colCheckType(i) !== this.rowCheckType(j);
+    }
+
+    /**
+     * @param {!int} i
+     * @param {!int} j
+     * @param {!Axis} axis
+     * @returns {!Array.<![!int, !int]>}
+     */
+    errorCurveOrientation(i, j, axis) {
+        if (!this.isDataQubit(i, j, true, true)) {
+            throw new DetailedError('Not an error route', {i, j, axis});
+        }
+        let vertical = this.colCheckType(i) === axis;
+        return vertical ? [0, 1] : [1, 0];
     }
 
     /**

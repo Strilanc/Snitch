@@ -50,8 +50,8 @@ class ErrorPathMakerType extends Tool {
         let j2 = j1 + da - db;
 
         let axis = Axis.zIf(!args.shiftKey);
-        let dir1 = args.surface.errorOrientation(i1, j1, axis);
-        let dir2 = args.surface.errorOrientation(i2, j2, axis);
+        let dir1 = args.surface.layout.errorCurveOrientation(i1, j1, axis);
+        let dir2 = args.surface.layout.errorCurveOrientation(i2, j2, axis);
 
         if (i1 === i2 && j1 === j2) {
             return {
@@ -73,9 +73,9 @@ class ErrorPathMakerType extends Tool {
         let p1 = [i2 - dir2[0]*coal(-si), j2 - dir2[1]*coal(-sj)];
         let q0 = [i1 + dir1[0]*coal(si), j1 + dir1[1]*coal(sj)];
         let q1 = [i2 + dir2[0]*coal(-si), j2 + dir2[1]*coal(-sj)];
-        let path = args.surface.pathAlongCheckQubits(q0[0], q0[1], q1[0], q1[1], false);
+        let path = args.surface.layout.pathAlongCheckQubits(q0[0], q0[1], q1[0], q1[1], false);
         if (path.length === 0) {
-            path = args.surface.pathAlongCheckQubits(q0[0], q0[1], q1[0], q1[1], false, true);
+            path = args.surface.layout.pathAlongCheckQubits(q0[0], q0[1], q1[0], q1[1], false, true);
         }
         path.splice(0, 0, [i1, j1]);
         path.push([i2, j2]);
@@ -113,7 +113,7 @@ class ErrorPathMakerType extends Tool {
     applyEffect(args) {
         let {path, axis} = this.argsToUseful(args);
         for (let [i, j] of path) {
-            args.surface.doXZ(i, j, axis.opposite());
+            args.surface.errorOverlay.flipQubit(i, j, axis.opposite());
         }
     }
 }

@@ -30,8 +30,8 @@ let surface = new SurfaceCode(50, 30);
 surface.cycle();
 surface.zero();
 surface.cycle();
-surface.clearFlips();
-surface.cycle();
+surface.errorOverlay.clearFlips();
+
 /** @type {!Revision} */
 let revision = Revision.startingAt(surface.clone());
 
@@ -155,8 +155,8 @@ function drawHoleBorders(ctx) {
 function drawErrorCurves(ctx) {
     for (let axis of AXES) {
         ctx.beginPath();
-        let flips = surface.flipsForAxis(axis.opposite());
-        for (let [i, j] of surface.layout.dataPoints()) {
+        let flips = surface.errorOverlay.flipsForAxis(axis.opposite());
+        for (let [i, j] of surface.layout.dataPoints(true)) {
             if (flips[i][j]) {
                 strokeErrorCurveAt(ctx, surface, i, j, axis);
             }
@@ -214,10 +214,10 @@ document.onkeydown = ev => {
         }
     } else if (ev.keyCode === 'A'.charCodeAt(0)) {
         ev.preventDefault();
-        surface.clean_areas();
+        surface.errorOverlay.shrinkCurves();
     } else if (ev.keyCode === 'E'.charCodeAt(0)) {
         ev.preventDefault();
-        surface.error(0.001);
+        surface.errorOverlay.error(0.001);
         surface.cycle();
     }
     requestAnimationFrame(draw);
