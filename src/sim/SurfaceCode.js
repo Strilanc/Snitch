@@ -427,8 +427,14 @@ class SurfaceCode {
         return vertical ? [0, 1] : [1, 0];
     }
 
-    chain(x1, y1, x2, y2, zx) {
-        let axis = Axis.zx(zx);
+    /**
+     * @param {!int} x1
+     * @param {!int} y1
+     * @param {!int} x2
+     * @param {!int} y2
+     * @param {!Axis} axis
+     */
+    chain(x1, y1, x2, y2, axis) {
         for (let [i, j] of this.pathAlongCheckQubits(x1, y1, x2, y2, false)) {
             if (!this.layout.isHole(i, j)) {
                 this.doXZ(i, j, axis);
@@ -447,7 +453,7 @@ class SurfaceCode {
 
             let pairs = this.pairs(points);
             for (let [[x1, y1], [x2, y2]] of pairs) {
-                this.chain(x1, y1, x2, y2, axis.isX());
+                this.chain(x1, y1, x2, y2, axis);
             }
         }
     }

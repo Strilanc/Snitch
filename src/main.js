@@ -57,6 +57,9 @@ function draw() {
     }
 }
 
+/**
+ * @param {!CanvasRenderingContext2D} ctx
+ */
 function drawMouseHint(ctx) {
     ctx.save();
     try {
@@ -75,6 +78,12 @@ function drawMouseHint(ctx) {
         ctx.restore();
     }
 }
+
+/**
+ * @param {!CanvasRenderingContext2D} ctx
+ * @param {!Iterable.<![!int, !int]>} points
+ * @param {!string} color
+ */
 function drawQubitBlocksOfType(ctx, points, color) {
     ctx.beginPath();
     for (let [i, j] of points) {
@@ -90,6 +99,9 @@ function drawQubitBlocksOfType(ctx, points, color) {
     ctx.fill();
 }
 
+/**
+ * @param {!CanvasRenderingContext2D} ctx
+ */
 function drawQubitBlocks(ctx) {
     ctx.fillStyle = config.dataQubitColor;
     ctx.fillRect(0, 0, surface.layout.width * config.diam, surface.layout.height * config.diam);
@@ -100,6 +112,13 @@ function drawQubitBlocks(ctx) {
     drawQubitBlocksOfType(ctx, surface.layout.holePoints(0), config.holeColor);
 }
 
+/**
+ * @param {!CanvasRenderingContext2D} ctx
+ * @param {!int} i
+ * @param {!int} j
+ * @param {!int} di
+ * @param {!int} dj
+ */
 function drawSingleBorder(ctx, i, j, di, dj) {
     let type = surface.layout.borderType(i, j, di, dj);
     if (type === undefined) {
@@ -119,6 +138,9 @@ function drawSingleBorder(ctx, i, j, di, dj) {
 }
 
 
+/**
+ * @param {!CanvasRenderingContext2D} ctx
+ */
 function drawHoleBorders(ctx) {
     for (let [i, j] of surface.layout.holePoints()) {
         for (let [di, dj] of CARDINALS) {
@@ -127,6 +149,9 @@ function drawHoleBorders(ctx) {
     }
 }
 
+/**
+ * @param {!CanvasRenderingContext2D} ctx
+ */
 function drawErrorCurves(ctx) {
     for (let axis of AXES) {
         ctx.beginPath();
