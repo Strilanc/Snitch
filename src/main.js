@@ -15,6 +15,7 @@ import {SquareHoleMaker} from 'src/tools/SquareHoleMaker.js'
 import {SquareStabilizerFlipper} from 'src/tools/SquareStabilizerFlipper.js'
 import {HoleDragger} from 'src/tools/HoleDragger.js'
 import {ErrorPathMaker} from 'src/tools/ErrorPathMaker.js'
+import {StatePeeker} from 'src/tools/StatePeeker.js'
 import {describe} from "src/base/Describe.js";
 import {config} from "src/config.js"
 import {Revision} from "src/base/Revision.js";
@@ -35,8 +36,8 @@ surface.errorOverlay.clearFlips();
 /** @type {!Revision} */
 let revision = Revision.startingAt(surface.clone());
 
-canvas.width = config.diam * surface.layout.width + config.canvasPadding*2;
-canvas.height = config.diam * surface.layout.height + config.canvasPadding*2;
+canvas.width = config.diam * surface.layout.width + config.canvasPadding*2 + 100;
+canvas.height = config.diam * surface.layout.height + config.canvasPadding*2 + 100;
 
 /** @type {!ToolEffectArgs} */
 let latestToolArgs = new ToolEffectArgs(surface, undefined, undefined, undefined, false, false);

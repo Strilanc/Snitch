@@ -101,11 +101,18 @@ class ObservableProduct {
      * Describes the observable product.
      * @returns {!string}
      */
-    toString() {
+    toString(maxCount=Infinity) {
         if (this.ids.size === 0) {
             return '' + this.sign;
         }
-        return (this.sign === 1 ? '' : '-') + seq(this.ids).sorted().join('*');
+        let prefix = this.sign === 1 ? '' : '-';
+        let suffix = '';
+        let ids = seq(this.ids).sorted();
+        if (this.ids.size > maxCount) {
+            suffix = `*... [${this.ids.size} total]`;
+            ids = ids.take(maxCount);
+        }
+        return prefix + ids.join('*') + suffix;
     }
 
     /**
