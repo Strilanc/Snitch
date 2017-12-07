@@ -31,7 +31,7 @@ function strokeErrorCurveAt(ctx, surface, i, j, xz) {
     let x = i * config.diam + 0.5;
     let y = j * config.diam + 0.5;
 
-    if (surface.isXCheckRow(j) === xz) {
+    if (surface.layout.isXCheckRow(j) === xz) {
         ctx.moveTo(x + config.diam / 2, y - config.diam / 2);
         ctx.lineTo(x + config.diam / 2, y + config.diam * 3 / 2);
     } else {
@@ -46,7 +46,7 @@ class SquareStabilizerFlipperType extends Tool {
             args.dragStartPos !== undefined &&
             args.ctrlKey &&
             args.mouseButton === 0 &&
-            args.surface.isCheckQubit(Math.floor(args.dragStartPos[0]), Math.floor(args.dragStartPos[1]), undefined);
+            args.surface.layout.isCheckQubit(Math.floor(args.dragStartPos[0]), Math.floor(args.dragStartPos[1]), undefined);
     }
 
     canHoverHint(args) {
@@ -54,17 +54,17 @@ class SquareStabilizerFlipperType extends Tool {
             args.dragStartPos === undefined &&
             args.ctrlKey &&
             args.mouseButton === undefined &&
-            args.surface.isCheckQubit(Math.floor(args.mousePos[0]), Math.floor(args.mousePos[1]), undefined);
+            args.surface.layout.isCheckQubit(Math.floor(args.mousePos[0]), Math.floor(args.mousePos[1]), undefined);
     }
 
     drawHoverHint(ctx, args) {
         let x = Math.floor(args.mousePos[0]);
         let y = Math.floor(args.mousePos[1]);
-        let xz = args.surface.isCheckQubit(x, y, true, true);
+        let xz = args.surface.layout.isCheckQubit(x, y, true, true);
 
         ctx.beginPath();
         for (let [i, j] of border(x, y, 1, 1)) {
-            if (args.surface.isDataQubit(i, j)) {
+            if (args.surface.layout.isDataQubit(i, j)) {
                 strokeErrorCurveAt(ctx, args.surface, i, j, xz);
             }
         }
@@ -96,7 +96,7 @@ class SquareStabilizerFlipperType extends Tool {
             j,
             w: Math.abs(i2 - i1) + 1,
             h: Math.abs(j2 - j1) + 1,
-            xz: args.surface.isCheckQubit(i, j, true, true)
+            xz: args.surface.layout.isCheckQubit(i, j, true, true)
         };
     }
 
@@ -105,7 +105,7 @@ class SquareStabilizerFlipperType extends Tool {
 
         ctx.beginPath();
         for (let [i, j] of border(x, y, w, h)) {
-            if (args.surface.isDataQubit(i, j)) {
+            if (args.surface.layout.isDataQubit(i, j)) {
                 strokeErrorCurveAt(ctx, args.surface, i, j, xz);
             }
         }
@@ -132,7 +132,7 @@ class SquareStabilizerFlipperType extends Tool {
         let {i: x, j: y, w, h, xz} = this._argsToRect(args);
 
         for (let [i, j] of border(x, y, w, h)) {
-            if (args.surface.isDataQubit(i, j)) {
+            if (args.surface.layout.isDataQubit(i, j)) {
                 args.surface.doXZ(i, j, xz);
             }
         }

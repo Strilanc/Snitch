@@ -9,6 +9,7 @@ window.onerror = function(msg, url, line, col, error) {
 
 import {DetailedError} from 'src/base/DetailedError.js'
 import {SurfaceCode} from 'src/sim/SurfaceCode.js'
+import {CARDINALS} from 'src/sim/Util.js'
 import {ToolEffectArgs} from 'src/tools/ToolEffectArgs.js'
 import {SquareHoleMaker} from 'src/tools/SquareHoleMaker.js'
 import {SquareStabilizerFlipper} from 'src/tools/SquareStabilizerFlipper.js'
@@ -19,19 +20,23 @@ import {config} from "src/config.js"
 import {Revision} from "src/base/Revision.js";
 
 let canvas = /** @type {!HTMLCanvasElement} */ document.getElementById('main-canvas');
+/** @type {!Array.<!Tool>} */
 let activeTools = [SquareHoleMaker, ErrorPathMaker, SquareStabilizerFlipper, HoleDragger];
 
+/** @type {!SurfaceCode} */
 let surface = new SurfaceCode(50, 30);
 surface.cycle();
 surface.zero();
 surface.cycle();
 surface.clearFlips();
 surface.cycle();
+/** @type {!Revision} */
 let revision = Revision.startingAt(surface.clone());
 
-canvas.width = config.diam * surface.width + config.canvasPadding*2;
-canvas.height = config.diam * surface.height + config.canvasPadding*2;
+canvas.width = config.diam * surface.layout.width + config.canvasPadding*2;
+canvas.height = config.diam * surface.layout.height + config.canvasPadding*2;
 
+/** @type {!ToolEffectArgs} */
 let latestToolArgs = new ToolEffectArgs(surface, undefined, undefined, undefined, false, false);
 
 function draw() {
@@ -85,16 +90,16 @@ function drawQubitBlocksOfType(ctx, points, color) {
 
 function drawQubitBlocks(ctx) {
     ctx.fillStyle = config.dataQubitColor;
-    ctx.fillRect(0, 0, surface.width * config.diam, surface.height * config.diam);
+    ctx.fillRect(0, 0, surface.layout.width * config.diam, surface.layout.height * config.diam);
     drawQubitBlocksOfType(ctx, surface.checkQubitsWithResult(true, false), config.xOffColor);
     drawQubitBlocksOfType(ctx, surface.checkQubitsWithResult(true, true), config.xOnColor);
     drawQubitBlocksOfType(ctx, surface.checkQubitsWithResult(false, false), config.zOffColor);
     drawQubitBlocksOfType(ctx, surface.checkQubitsWithResult(false, true), config.zOnColor);
-    drawQubitBlocksOfType(ctx, surface.holePoints(0), config.holeColor);
+    drawQubitBlocksOfType(ctx, surface.layout.holePoints(0), config.holeColor);
 }
 
 function drawSingleBorder(ctx, i, j, di, dj) {
-    let type = surface.borderType(i, j, di, dj);
+    let type = surface.layout.borderType(i, j, di, dj);
     if (type === undefined) {
         return;
     }
@@ -113,8 +118,8 @@ function drawSingleBorder(ctx, i, j, di, dj) {
 
 
 function drawHoleBorders(ctx) {
-    for (let [i, j] of surface.holePoints()) {
-        for (let [di, dj] of SurfaceCode.cardinals()) {
+    for (let [i, j] of surface.layout.holePoints()) {
+        for (let [di, dj] of CARDINALS) {
             drawSingleBorder(ctx, i, j, di, dj);
         }
     }
@@ -124,7 +129,7 @@ function strokeErrorCurveAt(ctx, i, j, xz) {
     let x = i * config.diam + 0.5;
     let y = j * config.diam + 0.5;
 
-    if (surface.isXCheckRow(j) === xz) {
+    if (surface.layout.isXCheckRow(j) === xz) {
         ctx.moveTo(x + config.diam / 2, y - config.diam / 2);
         ctx.lineTo(x + config.diam / 2, y + config.diam * 3 / 2);
     } else {
@@ -137,7 +142,7 @@ function drawErrorCurves(ctx) {
     for (let xz of [false, true]) {
         ctx.beginPath();
         let flips = surface.xzFlips(xz);
-        for (let [i, j] of surface.dataPoints()) {
+        for (let [i, j] of surface.layout.dataPoints()) {
             if (flips[i][j]) {
                 strokeErrorCurveAt(ctx, i, j, xz);
             }

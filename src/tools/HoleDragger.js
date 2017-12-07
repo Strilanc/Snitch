@@ -16,35 +16,12 @@ function roundWithDeadZone(v, d, r) {
     return Math.round(v) * r * s;
 }
 
-function inRect(x, y, w, h, i, j) {
-    return i >= x && i < x + w && j >= y && j < y + h;
-}
-
-function* border(x, y, w, h) {
-    for (let i = 0; i < w; i++) {
-        yield [x + i, y - 1];
-        yield [x + i, y + h];
-    }
-    for (let j = 0; j < h; j++) {
-        yield [x - 1, y + j];
-        yield [x + w, y + j];
-    }
-}
-
-function* area(x, y, w, h, pad=0) {
-    for (let i = -pad; i < w + pad; i++) {
-        for (let j = -pad; j < h + pad; j++) {
-            yield [i + x, j + y];
-        }
-    }
-}
-
 class HoleDraggerType extends Tool {
     canApply(args) {
         return args.mousePos !== undefined &&
             args.dragStartPos !== undefined &&
             args.mouseButton === 0 &&
-            args.surface.isHole(Math.floor(args.dragStartPos[0]), Math.floor(args.dragStartPos[1]));
+            args.surface.layout.isHole(Math.floor(args.dragStartPos[0]), Math.floor(args.dragStartPos[1]));
     }
 
     canHoverHint(args) {
@@ -82,10 +59,10 @@ class HoleDraggerType extends Tool {
             di = 0;
         }
 
-        let startArea = args.surface.holeFloodFill(i, j);
+        let startArea = args.surface.layout.holeFloodFill(i, j);
         let endArea = startArea.
             map(([x, y]) => [x + di, y + dj]).
-            filter(([x, y]) => args.surface.isInBounds(x, y));
+            filter(([x, y]) => args.surface.layout.isInBounds(x, y));
         return {
             i,
             j,
@@ -117,10 +94,10 @@ class HoleDraggerType extends Tool {
     applyEffect(args) {
         let {startArea, endArea} = this._argsToUseful(args);
         for (let [i, j] of startArea) {
-            args.surface.holes[i][j] = false;
+            args.surface.layout.holes[i][j] = false;
         }
         for (let [i, j] of endArea) {
-            args.surface.holes[i][j] = true;
+            args.surface.layout.holes[i][j] = true;
         }
     }
 }

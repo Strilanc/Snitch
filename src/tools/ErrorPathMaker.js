@@ -5,7 +5,7 @@ function strokeErrorCurveAt(ctx, surface, i, j, xz) {
     let x = i * config.diam + 0.5;
     let y = j * config.diam + 0.5;
 
-    if (surface.isXCheckRow(j) === xz) {
+    if (surface.layout.isXCheckRow(j) === xz) {
         ctx.moveTo(x + config.diam / 2, y - config.diam / 2);
         ctx.lineTo(x + config.diam / 2, y + config.diam * 3 / 2);
     } else {
@@ -22,14 +22,14 @@ class ErrorPathMakerType extends Tool {
         return args.mousePos !== undefined &&
             args.dragStartPos !== undefined &&
             args.mouseButton === 0 &&
-            args.surface.isDataQubit(Math.floor(args.dragStartPos[0]), Math.floor(args.dragStartPos[1]), undefined);
+            args.surface.layout.isDataQubit(Math.floor(args.dragStartPos[0]), Math.floor(args.dragStartPos[1]), undefined);
     }
 
     canHoverHint(args) {
         return args.mousePos !== undefined &&
             args.dragStartPos === undefined &&
             args.mouseButton === undefined &&
-            args.surface.isDataQubit(Math.floor(args.mousePos[0]), Math.floor(args.mousePos[1]), undefined);
+            args.surface.layout.isDataQubit(Math.floor(args.mousePos[0]), Math.floor(args.mousePos[1]), undefined);
     }
 
     drawHoverHint(ctx, args) {

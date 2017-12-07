@@ -1,76 +1,21 @@
+import {CARDINALS} from 'src/sim/Util.js'
 import {DetailedError} from 'src/base/DetailedError.js'
-import {ObservableProduct} from 'src/sim/ObservableProduct.js'
-import {MeasurementResult} from 'src/sim/MeasurementResult.js'
-import {StabilizerQubit} from 'src/sim/StabilizerQubit.js'
 import {StabilizerCircuitState} from 'src/sim/StabilizerCircuitState.js'
 import {seq} from "src/base/Seq.js";
+import {squaredDistanceFromLine, makeGrid, cloneGrid} from 'src/sim/Util.js'
+import {SurfaceCodeLayout} from "src/sim/SurfaceCodeLayout.js";
 
 
 /**
- * @param {!number} x
- * @param {!number} y
- * @param {!number} x1
- * @param {!number} y1
- * @param {!number} x2
- * @param {!number} y2
- * @returns {!number}
+ * @param {!SurfaceCode} surface
+ * @param {!boolean } xz
+ * @param {!boolean} result
+ * @yields {![!int, !int]}
+ * @private
  */
-function squaredDistanceFromLine(x, y, x1, y1, x2, y2) {
-    let ax = x - x1;
-    let ay = y - y1;
-    let bx = x2 - x1;
-    let by = y2 - y1;
-    let s = (ax*bx + ay*by) / (bx*bx + by*by);
-    ax -= s*bx;
-    ay -= s*by;
-    return ax*ax + ay*ay;
-}
-
-function makeGrid(width, height, generatorFunc) {
-    let grid = [];
-    for (let i = 0; i < width; i++) {
-        let row = [];
-        for (let j = 0; j < height; j++) {
-            row.push(generatorFunc(i, j));
-        }
-        grid.push(row);
-    }
-    return grid;
-}
-
-function cloneGrid(grid) {
-    return grid.map(row => row.map(r => r));
-}
-
-function* _dataPoints(surface, ignoreHoles) {
-    for (let pt of surface.points) {
-        if (surface.isDataQubit(pt[0], pt[1], ignoreHoles)) {
-            yield pt;
-        }
-    }
-}
-
-function* _holes(surface, pad=1) {
-    for (let i = -pad; i < surface.width+pad; i++) {
-        for (let j = -pad; j < surface.height+pad; j++) {
-            if (surface.isHole(i, j)) {
-                yield [i, j];
-            }
-        }
-    }
-}
-
-function* _checkQubits(surface, xz) {
-    for (let pt of surface.points) {
-        if (surface.isCheckQubit(pt[0], pt[1], xz)) {
-            yield pt;
-        }
-    }
-}
-
 function* _checkQubitsWithResult(surface, xz, result) {
-    for (let [i, j] of surface.points) {
-        if ((surface.last_result[i][j] !== surface.expected_result[i][j]) === result && surface.isCheckQubit(i, j, xz)) {
+    for (let [i, j] of surface.layout.points) {
+        if ((surface.last_result[i][j] !== surface.expected_result[i][j]) === result && surface.layout.isCheckQubit(i, j, xz)) {
             yield [i, j];
         }
     }
@@ -78,35 +23,25 @@ function* _checkQubitsWithResult(surface, xz, result) {
 
 class SurfaceCode {
     constructor(width, height) {
-        this.width = width;
-        this.height = height;
+        this.layout = new SurfaceCodeLayout(width, height);
         this.state = new StabilizerCircuitState();
-        this.holes = makeGrid(width, height, () => false);
         this.xFlips = makeGrid(width, height, () => false);
         this.zFlips = makeGrid(width, height, () => false);
         this.last_result = makeGrid(width, height, () => false);
         this.expected_result = makeGrid(width, height, () => false);
         this.qubits = makeGrid(width, height,
-            (i, j) => this.isDataQubit(i, j) ? this.state.addOffQubit() : undefined);
-
-        this.points = [];
-        for (let i = 0; i < this.width; i++) {
-            for (let j = 0; j < this.height; j++) {
-                this.points.push([i, j]);
-            }
-        }
+            (i, j) => this.layout.isDataQubit(i, j) ? this.state.addOffQubit() : undefined);
     }
 
     clone() {
-        let r = new SurfaceCode(this.width, this.height);
+        let r = new SurfaceCode(0, 0);
+        r.layout = this.layout.clone();
         r.state = this.state.clone();
-        r.holes = cloneGrid(this.holes);
         r.xFlips = cloneGrid(this.xFlips);
         r.zFlips = cloneGrid(this.zFlips);
         r.last_result = cloneGrid(this.last_result);
         r.expected_result = cloneGrid(this.expected_result);
         r.qubits = cloneGrid(this.qubits);
-        r.points = this.points.map(e => e);
         return r;
     }
 
@@ -115,65 +50,8 @@ class SurfaceCode {
         return xz ? this.xFlips : this.zFlips;
     }
 
-    checkQubits(xz) {
-        return _checkQubits(this, xz);
-    }
-
     checkQubitsWithResult(xz, result) {
         return _checkQubitsWithResult(this, xz, result);
-    }
-
-    isXCheckCol(col) {
-        return (col & 1) === 1;
-    }
-
-    isCheckCol(col, xz) {
-        return (col & 1) === (xz ? 0 : 1);
-    }
-
-    isCheckRow(row, xz) {
-        return (row & 1) === (xz ? 0 : 1);
-    }
-
-    isZCheckCol(col) {
-        return (col & 1) === 0;
-    }
-
-    isXCheckRow(row) {
-        return (row & 1) === 1;
-    }
-
-    isZCheckRow(row) {
-        return (row & 1) === 0;
-    }
-
-    dataPoints(ignoreHoles=false) {
-        return _dataPoints(this, ignoreHoles);
-    }
-
-    static cardinals() {
-        return [
-            [1, 0],
-            [-1, 0],
-            [0, 1],
-            [0, -1]
-        ];
-    }
-
-    holePoints(pad=1) {
-        return _holes(this, pad);
-    }
-
-    neighbors(i, j, ignoreHoles=false) {
-        let result = [];
-        for (let [di, dj] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
-            let i2 = i + di;
-            let j2 = j + dj;
-            if (i2 >= 0 && i2 < this.width && j2 >= 0 && j2 < this.height && (ignoreHoles || !this.isHole(i2, j2))) {
-                result.push([i2, j2]);
-            }
-        }
-        return result;
     }
 
     /**
@@ -185,10 +63,10 @@ class SurfaceCode {
     nearestCheckQubitCoord(x, y, xz) {
         let i = Math.round(x);
         let j = Math.round(y);
-        if (!this.isCheckCol(i, xz)) {
+        if (!this.layout.isCheckCol(i, xz)) {
             i -= 1;
         }
-        if (!this.isCheckRow(j, xz)) {
+        if (!this.layout.isCheckRow(j, xz)) {
             j -= 1;
         }
         return [i, j];
@@ -203,7 +81,7 @@ class SurfaceCode {
     squareMeasure(i, j, zx) {
         let neighborXs = [];
         let neighborZs = [];
-        for (let [i2, j2] of this.neighbors(i, j)) {
+        for (let [i2, j2] of this.layout.neighbors(i, j)) {
             let q = this.state.qubitMap.get(this.qubits[i2][j2]);
             neighborXs.push(q.obsX);
             neighborZs.push(q.obsZ);
@@ -220,35 +98,17 @@ class SurfaceCode {
         return this.last_result[i][j];
     }
 
-    holeFloodFill(x, y) {
-        let q = [[x, y]];
-        let seen = makeGrid(this.width, this.height, () => false);
-        let result = [];
-        while (q.length > 0) {
-            let [i, j] = q.pop();
-            if (!this.isInBounds(i, j) || !this.isHole(i, j) || seen[i][j]) {
-                continue;
-            }
-            seen[i][j] = true;
-            for (let pt of this.neighbors(i, j, true)) {
-                q.push(pt)
-            }
-            result.push([i, j]);
-        }
-        return result;
-    }
-
     shouldBeHole(i, j, holeOverlayFunc = () => false) {
-        if (!this.isInBounds(i, j)) {
+        if (!this.layout.isInBounds(i, j)) {
             return {
                 shouldBeHole: undefined,
                 hasX: undefined,
                 hasZ: undefined
             };
         }
-        if (this.isCheckQubit(i, j)) {
+        if (this.layout.isCheckQubit(i, j)) {
             return {
-                shouldBeHole: this.neighbors(i, j).length === 0 ? true : undefined,
+                shouldBeHole: this.layout.neighbors(i, j).length === 0 ? true : undefined,
                 hasX: false,
                 hasZ: false,
             };
@@ -256,10 +116,10 @@ class SurfaceCode {
 
         let hasX = false;
         let hasZ = false;
-        for (let [i2, j2] of this.neighbors(i, j)) {
+        for (let [i2, j2] of this.layout.neighbors(i, j)) {
             if (!holeOverlayFunc(i2, j2)) {
-                hasX = hasX || this.isXCheckQubit(i2, j2);
-                hasZ = hasZ || this.isZCheckQubit(i2, j2);
+                hasX = hasX || this.layout.isXCheckQubit(i2, j2);
+                hasZ = hasZ || this.layout.isZCheckQubit(i2, j2);
             }
         }
         return {shouldBeHole: !hasX || !hasZ, hasX, hasZ};
@@ -268,25 +128,25 @@ class SurfaceCode {
     updateDataHoleBasedOnNeighbors(i, j) {
         let {shouldBeHole, hasX} = this.shouldBeHole(i, j);
 
-        if (shouldBeHole === undefined || this.holes[i][j] === shouldBeHole) {
+        if (shouldBeHole === undefined || this.layout.holes[i][j] === shouldBeHole) {
             return;
         }
 
-        this.holes[i][j] = shouldBeHole;
-        if (this.isDataQubit(i, j, true)) {
+        this.layout.holes[i][j] = shouldBeHole;
+        if (this.layout.isDataQubit(i, j, true)) {
             if (shouldBeHole) {
                 if (hasX) {
                     this.state.h(this.qubits[i][j]);
                 }
                 let m = this.measure(i, j);
                 if (m) {
-                    for (let [i2, j2] of this.neighbors(i, j)) {
+                    for (let [i2, j2] of this.layout.neighbors(i, j)) {
                         this.expected_result[i2][j2] = !this.expected_result[i2][j2];
                     }
                 }
             } else {
-                for (let [i2, j2] of this.neighbors(i, j)) {
-                    let zx = this.isXCheckRow(i2);
+                for (let [i2, j2] of this.layout.neighbors(i, j)) {
+                    let zx = this.layout.isXCheckRow(i2);
                     let m = this.squareMeasure(i2, j2, zx);
                     if (m !== this.expected_result[i2][j2]) {
                         this.doXZ(i, j, !zx, true);
@@ -299,58 +159,12 @@ class SurfaceCode {
     }
 
 
-    isHole(i, j) {
-        return !this.isInBounds(i, j) || this.holes[i][j];
-    }
-
-    isInBounds(i, j, padding=0) {
-        return i >= -padding && j >= -padding && i < this.width+padding && j < this.height + padding;
-    }
-
-    //noinspection JSMethodCanBeStatic
-    isZCheckQubit(i, j, ignoreHole=false, ignoreBounds=false) {
-        return (ignoreHole || !this.isHole(i, j)) && (ignoreBounds || this.isInBounds(i, j)) && (i & 1) === 0 && (j & 1) === 0;
-    }
-
-    borderType(i, j, di, dj) {
-        let i2 = i + di;
-        let j2 = j + dj;
-        let h1 = this.isHole(i, j);
-        let h2 = this.isHole(i2, j2);
-        if (h1 === h2) {
-            return undefined;
-        }
-        if (h2) {
-            [i, j, i2, j2] = [i2, j2, i, j];
-        }
-        let z1 = this.isZCheckQubit(i, j, true, true);
-        let x2 = this.isXCheckQubit(i2, j2, true, true);
-        return z1 || x2 ? 'Z' : 'X';
-    }
-
-    //noinspection JSMethodCanBeStatic
-    isXCheckQubit(i, j, ignoreHole=false, ignoreBounds=false) {
-        return (ignoreHole || !this.isHole(i, j)) && (ignoreBounds || this.isInBounds(i, j)) && (i & 1) === 1 && (j & 1) === 1;
-    }
-
-    isCheckQubit(i, j, xz=undefined, ignoreHole=false) {
-        if (xz === undefined) {
-            return this.isXCheckQubit(i, j, ignoreHole) || this.isZCheckQubit(i, j, ignoreHole);
-        }
-        return xz ? this.isXCheckQubit(i, j, ignoreHole) : this.isZCheckQubit(i, j, ignoreHole);
-    }
-
-    //noinspection JSMethodCanBeStatic
-    isDataQubit(i, j, ignoreHoles=false, ignoreBounds=false) {
-        return (ignoreHoles || !this.isHole(i, j)) && (ignoreBounds || this.isInBounds(i, j)) && (i & 1) !== (j & 1);
-    }
-
     cycle() {
-        for (let i = 0; i < this.width; i++) {
-            for (let j = 0; j < this.height; j++) {
-                if (this.isXCheckQubit(i, j)) {
+        for (let i = 0; i < this.layout.width; i++) {
+            for (let j = 0; j < this.layout.height; j++) {
+                if (this.layout.isXCheckQubit(i, j)) {
                     this.last_result[i][j] = this.squareMeasure(i, j, true);
-                } else if (this.isZCheckQubit(i, j)) {
+                } else if (this.layout.isZCheckQubit(i, j)) {
                     this.last_result[i][j] = this.squareMeasure(i, j, false);
                 }
             }
@@ -358,7 +172,7 @@ class SurfaceCode {
     }
 
     error(p = 0.0001) {
-        for (let [i, j] of this.dataPoints()) {
+        for (let [i, j] of this.layout.dataPoints()) {
             if (Math.random() < p) {
                 if (Math.random() < 0.5) {
                     this.state.x(this.qubits[i][j]);
@@ -373,18 +187,18 @@ class SurfaceCode {
     }
 
     zero() {
-        for (let i = 0; i < this.width; i += 2) {
+        for (let i = 0; i < this.layout.width; i += 2) {
             let b = false;
-            for (let j = 0; j < this.height; j += 2) {
+            for (let j = 0; j < this.layout.height; j += 2) {
                 b ^= this.last_result[i][j] !== this.expected_result[i][j];
-                if (b && j < this.height - 1) {
+                if (b && j < this.layout.height - 1) {
                     this.state.x(this.qubits[i][j + 1]);
                 }
             }
         }
 
-        let max_i = (this.width - (this.width % 1)) - 1;
-        for (let j = 1; j < this.height; j += 2) {
+        let max_i = (this.layout.width - (this.layout.width % 1)) - 1;
+        for (let j = 1; j < this.layout.height; j += 2) {
             let b = false;
             for (let i = max_i; i >= 0; i -= 2) {
                 b ^= this.last_result[i][j] !== this.expected_result[i][j];
@@ -397,11 +211,11 @@ class SurfaceCode {
 
     pairs(points) {
         let pairs = [];
-        let grid = makeGrid(this.width, this.height, () => undefined);
+        let grid = makeGrid(this.layout.width, this.layout.height, () => undefined);
         let queue = points.map(e => [e, e]);
 
         let clear = pt => {
-            for (let [i, j] of this.points) {
+            for (let [i, j] of this.layout.points) {
                 if (grid[i][j] === pt) {
                     grid[i][j] = undefined;
                 }
@@ -413,7 +227,7 @@ class SurfaceCode {
             let [[x, y], src] = queue[0];
             queue.splice(0, 1);
 
-            if (this.isHole(x, y)) {
+            if (this.layout.isHole(x, y)) {
                 clear(src);
                 pairs.push([src, [x, y]]);
                 continue;
@@ -429,8 +243,8 @@ class SurfaceCode {
                 pairs.push([src, dst])
             } else {
                 grid[x][y] = src;
-                for (let [di, dj] of SurfaceCode.cardinals()) {
-                    if (!this.isHole(x + di, y + dj)) {
+                for (let [di, dj] of CARDINALS) {
+                    if (!this.layout.isHole(x + di, y + dj)) {
                         queue.push([[x + 2*di, y + 2*dj], src]);
                     }
                 }
@@ -446,22 +260,22 @@ class SurfaceCode {
             let areas = new Map();
             let areaVals = [];
             let reps = [];
-            for (let pt of this.points) {
+            for (let pt of this.layout.points) {
                 let queue = [pt];
                 let area = [];
                 let hitOppositeTypeSide = false;
                 while (queue.length > 0) {
                     let [i, j] = queue.pop();
-                    if (xz ? (i < 0 || j < 0) : (i >= this.width || j >= this.height)) {
+                    if (xz ? (i < 0 || j < 0) : (i >= this.layout.width || j >= this.layout.height)) {
                         hitOppositeTypeSide = true;
                     }
-                    let k = j * this.width + i;
-                    if (areas.has(k) || this.isHole(i, j) || flips[i][j] || this.isCheckQubit(i, j, !xz)) {
+                    let k = j * this.layout.width + i;
+                    if (areas.has(k) || this.layout.isHole(i, j) || flips[i][j] || this.layout.isCheckQubit(i, j, !xz)) {
                         continue;
                     }
                     areas.set(k, areaVals.length);
                     area.push([i, j]);
-                    for (let [di, dj] of SurfaceCode.cardinals()) {
+                    for (let [di, dj] of CARDINALS) {
                         queue.push([i + di, j + dj]);
                     }
                 }
@@ -475,16 +289,16 @@ class SurfaceCode {
                     let best_d = -Infinity;
                     let best_n = false;
                     for (let [i, j] of area) {
-                        if (!this.isDataQubit(i, j)) {
-                            let n = !this.neighbors(i, j).every(([i2, j2]) => !(xz ? this.xFlips : this.zFlips)[i2][j2]);
+                        if (!this.layout.isDataQubit(i, j)) {
+                            let n = !this.layout.neighbors(i, j).every(([i2, j2]) => !(xz ? this.xFlips : this.zFlips)[i2][j2]);
                             let m = Math.max(Infinity,
-                                ...this.neighbors(i, j).
-                                    filter(([i2, j2]) => area.length - 1 !== areas.get(j2*this.width + i2)).
-                                    map(([i2, j2]) => areaVals[areas.get(j2*this.width + i2)]));
+                                ...this.layout.neighbors(i, j).
+                                    filter(([i2, j2]) => area.length - 1 !== areas.get(j2*this.layout.width + i2)).
+                                    map(([i2, j2]) => areaVals[areas.get(j2*this.layout.width + i2)]));
                             if (m <= area.length) {
                                 continue;
                             }
-                            let d = Math.min(i, j, this.width - i - 1, this.height - j - 1);
+                            let d = Math.min(i, j, this.layout.width - i - 1, this.layout.height - j - 1);
                             if ((n && !best_n) || (n === best_n && d > best_d)) {
                                 best_i = i;
                                 best_j = j;
@@ -493,17 +307,17 @@ class SurfaceCode {
                             }
                         }
                     }
-                    if (best_i !== undefined && this.isCheckQubit(best_i, best_j, xz)) {
+                    if (best_i !== undefined && this.layout.isCheckQubit(best_i, best_j, xz)) {
                         reps.push([best_i, best_j]);
                     }
                 }
             }
 
             for (let [i, j] of reps) {
-                for (let [di, dj] of SurfaceCode.cardinals()) {
+                for (let [di, dj] of CARDINALS) {
                     let i2 = i + di;
                     let j2 = j + dj;
-                    if (this.isDataQubit(i2, j2)) {
+                    if (this.layout.isDataQubit(i2, j2)) {
                         flips[i2][j2] ^= true;
                     }
                 }
@@ -518,7 +332,7 @@ class SurfaceCode {
      * @param {!boolean=} doNotMarkFlip
      */
     doXZ(i, j, xz, doNotMarkFlip=false) {
-        if (!this.isDataQubit(i, j)) {
+        if (!this.layout.isDataQubit(i, j)) {
             return;
         }
         if (xz) {
@@ -542,11 +356,11 @@ class SurfaceCode {
      */
     pathAlongCheckQubits(x1, y1, x2, y2, returnCheckQubitsAlongPathInsteadOfDataQubits, ignoreHoles=false) {
         let queue = [[x1, y1, undefined]];
-        let dirs = makeGrid(this.width + 2, this.height + 2, () => undefined);
+        let dirs = makeGrid(this.layout.width + 2, this.layout.height + 2, () => undefined);
         while (queue.length > 0) {
             let [i, j, dir] = queue[0];
             queue.splice(0, 1);
-            if (!this.isInBounds(i, j, 1) || dirs[i+1][j+1] !== undefined) {
+            if (!this.layout.isInBounds(i, j, 1) || dirs[i+1][j+1] !== undefined) {
                 continue;
             }
             dirs[i+1][j+1] = dir;
@@ -554,11 +368,11 @@ class SurfaceCode {
                 break;
             }
 
-            let pts = seq(SurfaceCode.cardinals()).
+            let pts = seq(CARDINALS).
                 sortedBy(([di, dj]) => squaredDistanceFromLine(i + di*2, j + dj*2, x1, y1, x2, y2)).
                 toArray();
             for (let [di, dj] of pts) {
-                if (this.isDataQubit(i + di, j + dj, ignoreHoles) || this.isHole(i, j)) {
+                if (this.layout.isDataQubit(i + di, j + dj, ignoreHoles) || this.layout.isHole(i, j)) {
                     queue.push([i + di*2, j + dj*2, [-di, -dj]]);
                 }
             }
@@ -592,16 +406,16 @@ class SurfaceCode {
      * @returns {!Array.<![!int, !int]>}
      */
     errorOrientation(i, j, xz) {
-        if (!this.isDataQubit(i, j, true, true)) {
+        if (!this.layout.isDataQubit(i, j, true, true)) {
             throw new DetailedError('Not an error route', {i, j, xz});
         }
-        let vertical = this.isXCheckCol(i) !== xz;
+        let vertical = this.layout.isXCheckCol(i) !== xz;
         return vertical ? [0, 1] : [1, 0];
     }
 
     chain(x1, y1, x2, y2, xz) {
         for (let [i, j] of this.pathAlongCheckQubits(x1, y1, x2, y2, false)) {
-            if (!this.isHole(i, j)) {
+            if (!this.layout.isHole(i, j)) {
                 this.doXZ(i, j, xz);
             }
         }
@@ -610,7 +424,7 @@ class SurfaceCode {
     correct() {
         for (let xz of [false, true]) {
             let points = [];
-            for (let [i, j] of this.checkQubits(xz)) {
+            for (let [i, j] of this.layout.checkQubits(xz)) {
                 if (this.last_result[i][j] !== this.expected_result[i][j]) {
                     points.push([i, j]);
                 }
@@ -624,8 +438,8 @@ class SurfaceCode {
     }
 
     clearFlips() {
-        this.xFlips = makeGrid(this.width, this.height, () => false);
-        this.zFlips = makeGrid(this.width, this.height, () => false);
+        this.xFlips = makeGrid(this.layout.width, this.layout.height, () => false);
+        this.zFlips = makeGrid(this.layout.width, this.layout.height, () => false);
     }
 }
 
