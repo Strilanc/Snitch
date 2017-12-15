@@ -99,13 +99,7 @@ class SquareHoleMakerType extends Tool {
         let {i: x, j: y, w, h} = this._argsToRect(args);
 
         for (let [i, j] of area(x, y, w, h)) {
-            if (args.surface.layout.isCheckQubit(i, j)) {
-                args.surface.layout.holes[i][j] = true;
-            }
-        }
-
-        for (let [i, j] of area(x, y, w, h, 1)) {
-            args.surface.updateDataHoleBasedOnNeighbors(i, j);
+            args.surface.extendHole(i, j);
         }
 
         for (let [i, j] of area(x, y, w, h, 1)) {

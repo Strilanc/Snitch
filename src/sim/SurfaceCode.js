@@ -257,6 +257,23 @@ class SurfaceCode {
             }
         }
     }
+
+    extendHole(i, j) {
+        if (!this.layout.isCheckQubit(i, j)) {
+            return;
+        }
+
+        for (let [di, dj] of CARDINALS) {
+            let i2 = i + di;
+            let j2 = j + dj;
+            if (this.layout.isDataQubit(i2, j2) && this.layout.isHole(i + di*2, j + dj*2)) {
+                this.errorOverlay.measureDataButClearByConditionallyFlippingStabilizer(i2, j2, i, j);
+                this.layout.holes[i2][j2] = true;
+            }
+        }
+        this.layout.holes[i][j] = true;
+    }
+
 }
 
 export {SurfaceCode}

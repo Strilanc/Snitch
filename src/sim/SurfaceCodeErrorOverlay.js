@@ -144,9 +144,11 @@ class SurfaceCodeErrorOverlay {
      * @param {!int} i
      * @param {!int} j
      * @param {!Axis} axis
+     * @param {!boolean} flipMark
+     * @param {!boolean} flipQubit
      */
-    flipQubit(i, j, axis) {
-        if (this.surface.layout.isDataQubit(i, j)) {
+    flipQubit(i, j, axis, flipMark=true, flipQubit=true) {
+        if (flipQubit && this.surface.layout.isDataQubit(i, j)) {
             if (axis.isX()) {
                 this.surface.state.x(this.surface.qubits[i][j]);
             } else {
@@ -154,9 +156,17 @@ class SurfaceCodeErrorOverlay {
             }
         }
 
-        if (this.surface.layout.isInBounds(i, j)) {
+        if (flipMark && this.surface.layout.isInBounds(i, j)) {
             let flips = this.flipsForAxis(axis);
             flips[i][j] = !flips[i][j];
+        }
+    }
+
+    flipStabilizer(i, j, flipMarks=true, flipQubits=true) {
+        let axis = this.surface.layout.colCheckType(i);
+        console.log(axis.toString());
+        for (let [i2, j2] of this.surface.layout.neighbors(i, j)) {
+            this.flipQubit(i2, j2, axis, flipMarks, flipQubits);
         }
     }
 
@@ -173,6 +183,20 @@ class SurfaceCodeErrorOverlay {
                 this.flipQubit(i, j, axis);
             }
         }
+    }
+
+    measureDataButClearByConditionallyFlippingStabilizer(iData, jData, iCheck, jCheck) {
+        let axis = this.surface.layout.colCheckType(iCheck);
+        let marked = this.flipsForAxis(axis)[iData][jData];
+        let q = this.surface.qubits[iData][jData];
+        if (axis === X_AXIS) {
+            this.surface.state.h(q);
+        }
+        let on = this.surface.state.measure(q);
+        if (axis === X_AXIS) {
+            this.surface.state.h(q);
+        }
+        this.flipStabilizer(iCheck, jCheck, marked, on);
     }
 
     clearFlips() {
