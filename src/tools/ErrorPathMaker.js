@@ -7,23 +7,40 @@ import {Tool} from "src/tools/Tool.js"
 import {Axis} from "src/sim/Util.js";
 
 class ErrorPathMakerType extends Tool {
+    constructor() {
+        super('C');
+    }
+
+    drawButtonContents(ctx, w, h, active, axis) {
+        ctx.strokeStyle = axis.isX() ? config.xOnColor : config.zOnColor;
+        //noinspection JSUnresolvedFunction
+        ctx.lineWidth = 2;
+        let p = 3;
+        ctx.moveTo(p, p);
+        ctx.lineTo(p, h-p);
+        ctx.lineTo(w-p, h-p);
+        ctx.stroke();
+        ctx.fillStyle = axis.isX() ? config.xOnColor : config.zOnColor;
+        ctx.fillRect(0, 0, 2*p, 2*p);
+        ctx.fillRect(w-2*p, h-2*p, 2*p, 2*p);
+    }
+
     canApply(args) {
         return args.mousePos !== undefined &&
             args.dragStartPos !== undefined &&
             args.mouseButton === 0 &&
-            args.surface.layout.isDataQubit(Math.floor(args.dragStartPos[0]), Math.floor(args.dragStartPos[1]), undefined);
+            args.surface.layout.isDataQubit(...args.surface.layout.nearestDataCoord(...args.dragStartPos), undefined);
     }
 
     canHoverHint(args) {
         return args.mousePos !== undefined &&
             args.dragStartPos === undefined &&
             args.mouseButton === undefined &&
-            args.surface.layout.isDataQubit(Math.floor(args.mousePos[0]), Math.floor(args.mousePos[1]), undefined);
+            args.surface.layout.isDataQubit(...args.surface.layout.nearestDataCoord(...args.mousePos), undefined);
     }
 
     drawHoverHint(ctx, args) {
-        let i = Math.floor(args.mousePos[0]);
-        let j = Math.floor(args.mousePos[1]);
+        let [i, j] = args.surface.layout.nearestDataCoord(...args.mousePos);
         let axis = Axis.zIf(!args.shiftKey);
         ctx.lineWidth = 3;
         ctx.beginPath();
@@ -40,8 +57,7 @@ class ErrorPathMakerType extends Tool {
      * @private
      */
     argsToUseful(args) {
-        let i1 = Math.floor(args.dragStartPos[0]);
-        let j1 = Math.floor(args.dragStartPos[1]);
+        let [i1, j1] = args.surface.layout.nearestDataCoord(...args.dragStartPos);
         let di = args.mousePos[0] - i1 - 0.5;
         let dj = args.mousePos[1] - j1 - 0.5;
         let da = Math.round((di + dj) / 2);

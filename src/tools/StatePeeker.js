@@ -5,6 +5,21 @@ import {config} from "src/config.js"
 import {Tool} from "src/tools/Tool.js"
 
 class StatePeekerType extends Tool {
+    constructor() {
+        super('M');
+    }
+
+    drawButtonContents(ctx, w, h, active, axis) {
+        ctx.strokeStyle = 'black';
+        ctx.beginPath();
+        ctx.arc(w/2, h/2, w/2, 0, Math.PI*2);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.arc(w/2, h/2, w/4, 0, Math.PI*2);
+        ctx.fillStyle = 'black';
+        ctx.fill();
+    }
+
     canApply(args) {
         return false;
     }

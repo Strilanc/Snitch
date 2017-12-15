@@ -4,6 +4,7 @@
 import {config} from "src/config.js"
 import {Tool} from "src/tools/Tool.js"
 import {ToolEffectArgs} from "src/tools/ToolEffectArgs.js";
+import {Axis} from "src/sim/Util.js";
 
 function roundWithDeadZone(v, d, r) {
     let s = v < 0 ? -1 : +1;
@@ -40,25 +41,45 @@ function* area(x, y, w, h, pad=0) {
 }
 
 class SquareHoleMakerType extends Tool {
+    constructor() {
+        super('H');
+    }
+
+    drawButtonContents(ctx, w, h, active, axis) {
+        ctx.fillStyle = 'black';
+        ctx.fillRect(0, 0, w, h);
+
+        ctx.strokeStyle = axis.isX() ? config.xBorderColor : config.zBorderColor;
+        ctx.lineWidth = 2;
+        ctx.strokeRect(0, 0, w, h);
+    }
+
     canApply(args) {
         return args.mousePos !== undefined &&
             args.dragStartPos !== undefined &&
-            !args.ctrlKey &&
             args.mouseButton === 0 &&
-            args.surface.layout.isCheckQubit(Math.floor(args.dragStartPos[0]), Math.floor(args.dragStartPos[1]));
+            args.surface.layout.isCheckQubit(...args.surface.layout.nearestCheckCoord(
+                args.dragStartPos[0],
+                args.dragStartPos[1],
+                Axis.zIf(!args.shiftKey)));
     }
 
     canHoverHint(args) {
         return args.mousePos !== undefined &&
             args.dragStartPos === undefined &&
-            !args.ctrlKey &&
             args.mouseButton === undefined &&
-            args.surface.layout.isCheckQubit(Math.floor(args.mousePos[0]), Math.floor(args.mousePos[1]));
+            args.surface.layout.isCheckQubit(...args.surface.layout.nearestCheckCoord(
+                args.mousePos[0],
+                args.mousePos[1],
+                Axis.zIf(!args.shiftKey)));
     }
 
     drawHoverHint(ctx, args) {
-        let i = Math.floor(args.mousePos[0]);
-        let j = Math.floor(args.mousePos[1]);
+        let axis = Axis.zIf(!args.shiftKey);
+        let [i, j] = args.surface.layout.nearestCheckCoord(
+            args.mousePos[0],
+            args.mousePos[1],
+            axis);
         ctx.strokeStyle = '#000';
         ctx.lineWidth = 3;
         ctx.strokeRect(i * config.diam + 0.5, j * config.diam + 0.5, config.diam, config.diam);
@@ -70,8 +91,11 @@ class SquareHoleMakerType extends Tool {
      * @private
      */
     _argsToRect(args) {
-        let i1 = Math.floor(args.dragStartPos[0]);
-        let j1 = Math.floor(args.dragStartPos[1]);
+        let axis = Axis.zIf(!args.shiftKey);
+        let [i1, j1] = args.surface.layout.nearestCheckCoord(
+            args.dragStartPos[0],
+            args.dragStartPos[1],
+            axis);
         let i2 = roundWithDeadZone(args.mousePos[0] - i1 - 0.5, 0.5, 2) + i1;
         let j2 = roundWithDeadZone(args.mousePos[1] - j1 - 0.5, 0.5, 2) + j1;
         return {

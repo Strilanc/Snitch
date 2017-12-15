@@ -51,3 +51,54 @@ suite.test('data-vs-check-types', () => {
     assertFalse(s.isCheckQubit(1, 1, Z_AXIS));
     assertTrue(s.isCheckQubit(1, 1, X_AXIS));
 });
+
+suite.test('nearestDataCoord', () => {
+    let s = new SurfaceCodeLayout(4, 4);
+
+    // Directly on the center.
+    assertThat(s.nearestDataCoord(0.5, 1.5)).isEqualTo([0, 1]);
+    assertThat(s.nearestDataCoord(1.5, 0.5)).isEqualTo([1, 0]);
+    assertThat(s.nearestDataCoord(0.5, 3.5)).isEqualTo([0, 3]);
+
+    // Perturbed.
+    assertThat(s.nearestDataCoord(0.52, 1.48)).isEqualTo([0, 1]);
+
+    // Slightly closer.
+    assertThat(s.nearestDataCoord(0.5, 0.6)).isEqualTo([0, 1]);
+    assertThat(s.nearestDataCoord(0.6, 0.5)).isEqualTo([1, 0]);
+    assertThat(s.nearestDataCoord(1.4, 1.5)).isEqualTo([0, 1]);
+    assertThat(s.nearestDataCoord(1.6, 1.5)).isEqualTo([2, 1]);
+    assertThat(s.nearestDataCoord(1.5, 1.4)).isEqualTo([1, 0]);
+    assertThat(s.nearestDataCoord(1.5, 1.6)).isEqualTo([1, 2]);
+});
+
+suite.test('nearestCheckCoord-either', () => {
+    let s = new SurfaceCodeLayout(4, 4);
+
+    // Directly on the center.
+    assertThat(s.nearestCheckCoord(0.5, 0.5)).isEqualTo([0, 0]);
+    assertThat(s.nearestCheckCoord(1.5, 1.5)).isEqualTo([1, 1]);
+    assertThat(s.nearestCheckCoord(0.5, 2.5)).isEqualTo([0, 2]);
+
+    // Perturbed.
+    assertThat(s.nearestCheckCoord(0.52, 0.48)).isEqualTo([0, 0]);
+
+    // Slightly closer.
+    assertThat(s.nearestCheckCoord(1.5, 0.6)).isEqualTo([1, 1]);
+    assertThat(s.nearestCheckCoord(1.5, 2.4)).isEqualTo([1, 1]);
+    assertThat(s.nearestCheckCoord(1.5, 2.6)).isEqualTo([1, 3]);
+});
+
+suite.test('nearestCheckCoord-xz', () => {
+    let s = new SurfaceCodeLayout(4, 4);
+
+    // Round to nearest Z.
+    assertThat(s.nearestCheckCoord(0.52, 0.52, Z_AXIS)).isEqualTo([0, 0]);
+    assertThat(s.nearestCheckCoord(1.48, 0.52, Z_AXIS)).isEqualTo([0, 0]);
+    assertThat(s.nearestCheckCoord(1.52, 0.52, Z_AXIS)).isEqualTo([2, 0]);
+
+    // Round to nearest X.
+    assertThat(s.nearestCheckCoord(0.52, 0.52, X_AXIS)).isEqualTo([1, 1]);
+    assertThat(s.nearestCheckCoord(0.52, 2.48, X_AXIS)).isEqualTo([1, 1]);
+    assertThat(s.nearestCheckCoord(0.52, 2.52, X_AXIS)).isEqualTo([1, 3]);
+});

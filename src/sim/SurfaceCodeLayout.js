@@ -320,6 +320,41 @@ class SurfaceCodeLayout {
         }
         return result;
     }
+
+    /**
+     * @param {!number} x
+     * @param {!number} y
+     * @returns {![!int, !int]}
+     */
+    nearestDataCoord(x, y) {
+        let d = this.firstRowIsX === this.firstColIsX ? 1 : 0;
+        x -= d + 0.5;
+        y -= 0.5;
+        let s = Math.round((x + y) / 2);
+        let t = Math.round((x - y) / 2);
+        return [s + t + d, s - t];
+    }
+
+    /**
+     * @param {!number} x
+     * @param {!number} y
+     * @param {undefined|!Axis} axis
+     * @returns {![!int, !int]}
+     */
+    nearestCheckCoord(x, y, axis=undefined) {
+        if (axis === undefined) {
+            let [i, j] = this.nearestDataCoord(x + 1, y);
+            return [i - 1, j];
+        }
+
+        let dx = this.firstColIsX !== axis.isX() ? 1 : 0;
+        let dy = this.firstRowIsX !== axis.isX() ? 1 : 0;
+        x -= dx + 0.5;
+        y -= dy + 0.5;
+        let i = Math.round(x / 2) * 2;
+        let j = Math.round(y / 2) * 2;
+        return [i + dx, j + dy];
+    }
 }
 
 export {SurfaceCodeLayout}

@@ -30,26 +30,44 @@ function* border(x, y, w, h) {
 }
 
 class SquareStabilizerFlipperType extends Tool {
+    constructor() {
+        super('S');
+    }
+
+    drawButtonContents(ctx, w, h, active, axis) {
+        ctx.strokeStyle = axis.isX() ? config.xOnColor : config.zOnColor;
+        //noinspection JSUnresolvedFunction
+        ctx.setLineDash([4, 4]);
+        ctx.lineWidth = 2;
+        ctx.strokeRect(0, 0, w, h);
+    }
+
     canApply(args) {
         return args.mousePos !== undefined &&
             args.dragStartPos !== undefined &&
-            args.ctrlKey &&
             args.mouseButton === 0 &&
-            args.surface.layout.isCheckQubit(Math.floor(args.dragStartPos[0]), Math.floor(args.dragStartPos[1]));
+            args.surface.layout.isCheckQubit(...args.surface.layout.nearestCheckCoord(
+                args.dragStartPos[0],
+                args.dragStartPos[1],
+                Axis.zIf(args.shiftKey)));
     }
 
     canHoverHint(args) {
         return args.mousePos !== undefined &&
             args.dragStartPos === undefined &&
-            args.ctrlKey &&
             args.mouseButton === undefined &&
-            args.surface.layout.isCheckQubit(Math.floor(args.mousePos[0]), Math.floor(args.mousePos[1]));
+            args.surface.layout.isCheckQubit(...args.surface.layout.nearestCheckCoord(
+                args.mousePos[0],
+                args.mousePos[1],
+                Axis.zIf(args.shiftKey)));
     }
 
     drawHoverHint(ctx, args) {
-        let x = Math.floor(args.mousePos[0]);
-        let y = Math.floor(args.mousePos[1]);
-        let axis = Axis.zIf(args.surface.layout.isCheckQubit(x, y, X_AXIS, true));
+        let axis = Axis.zIf(!args.shiftKey);
+        let [x, y] = args.surface.layout.nearestCheckCoord(
+            args.mousePos[0],
+            args.mousePos[1],
+            axis.opposite());
 
         ctx.beginPath();
         for (let [i, j] of border(x, y, 1, 1)) {
@@ -73,13 +91,15 @@ class SquareStabilizerFlipperType extends Tool {
      * @private
      */
     argsToUseful(args) {
-        let i1 = Math.floor(args.dragStartPos[0]);
-        let j1 = Math.floor(args.dragStartPos[1]);
+        let axis = Axis.zIf(!args.shiftKey);
+        let [i1, j1] = args.surface.layout.nearestCheckCoord(
+            args.dragStartPos[0],
+            args.dragStartPos[1],
+            axis.opposite());
         let i2 = roundWithDeadZone(args.mousePos[0] - i1 - 0.5, 0.5, 2) + i1;
         let j2 = roundWithDeadZone(args.mousePos[1] - j1 - 0.5, 0.5, 2) + j1;
         let i = Math.min(i1, i2);
         let j = Math.min(j1, j2);
-        let axis = Axis.zIf(args.surface.layout.isCheckQubit(i, j, X_AXIS, true));
         return {
             controlPoints: [[i1, j1], [i2, j2]],
             i,

@@ -21,10 +21,13 @@ import {config} from "src/config.js"
 import {Revision} from "src/base/Revision.js";
 import {strokeErrorCurveAt} from "src/draw/Common.js";
 import {AXES, X_AXIS, Z_AXIS} from "src/sim/Util.js";
+import {Axis} from "src/sim/Util.js";
 
 let canvas = /** @type {!HTMLCanvasElement} */ document.getElementById('main-canvas');
 /** @type {!Array.<!Tool>} */
-let activeTools = [SquareHoleMaker, ErrorPathMaker, SquareStabilizerFlipper, HoleDragger];
+let availableTools = [SquareHoleMaker, ErrorPathMaker, SquareStabilizerFlipper, HoleDragger, StatePeeker];
+/** @type {!Array.<!Tool>} */
+let activeTools = [SquareHoleMaker];
 
 /** @type {!SurfaceCode} */
 let surface = new SurfaceCode(50, 30);
@@ -38,6 +41,10 @@ let revision = Revision.startingAt(surface.clone());
 
 canvas.width = config.diam * surface.layout.width + config.canvasPadding*2 + 100;
 canvas.height = config.diam * surface.layout.height + config.canvasPadding*2 + 100;
+let toolboxFullWidth = 64;
+let drawOffsetX = config.canvasPadding + toolboxFullWidth;
+let drawOffsetY = config.canvasPadding;
+let toolSpacing = 32;
 
 /** @type {!ToolEffectArgs} */
 let latestToolArgs = new ToolEffectArgs(surface, undefined, undefined, undefined, false, false);
@@ -48,13 +55,26 @@ function draw() {
     try {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         ctx.translate(config.canvasPadding, config.canvasPadding);
+        drawTools(ctx);
 
+        ctx.translate(toolboxFullWidth, 0);
         drawQubitBlocks(ctx);
         drawHoleBorders(ctx);
         drawErrorCurves(ctx);
         drawMouseHint(ctx);
     } finally {
         ctx.restore();
+    }
+}
+
+/**
+ * @param {!CanvasRenderingContext2D} ctx
+ */
+function drawTools(ctx) {
+    let axis = Axis.zIf(!latestToolArgs.shiftKey);
+    for (let i = 0; i < availableTools.length; i++) {
+        let isActive = activeTools.indexOf(availableTools[i]) !== -1;
+        availableTools[i].drawButton(ctx, 0, i*toolSpacing, toolSpacing-2, toolSpacing-2, isActive, axis);
     }
 }
 
@@ -220,14 +240,21 @@ document.onkeydown = ev => {
         ev.preventDefault();
         surface.errorOverlay.error(0.001);
         surface.cycle();
+    } else {
+        for (let e of availableTools) {
+            if (ev.keyCode === e.hotkey.charCodeAt(0)) {
+                ev.preventDefault();
+                activeTools = [e];
+            }
+        }
     }
     requestAnimationFrame(draw);
 };
 
 canvas.onmousemove = ev => {
     let b = canvas.getBoundingClientRect();
-    let x = (ev.x - config.canvasPadding - b.left) / config.diam;
-    let y = (ev.y - config.canvasPadding - b.top) / config.diam;
+    let x = (ev.x - drawOffsetX - b.left) / config.diam;
+    let y = (ev.y - drawOffsetY - b.top) / config.diam;
     latestToolArgs.ctrlKey = ev.ctrlKey;
     latestToolArgs.shiftKey = ev.shiftKey;
     latestToolArgs.mousePos = [x, y];
@@ -243,8 +270,8 @@ canvas.onmouseout = ev => {
 
 canvas.onmouseup = ev => {
     let b = canvas.getBoundingClientRect();
-    let x = (ev.x - config.canvasPadding - b.left) / config.diam;
-    let y = (ev.y - config.canvasPadding - b.top) / config.diam;
+    let x = (ev.x - drawOffsetX - b.left) / config.diam;
+    let y = (ev.y - drawOffsetY - b.top) / config.diam;
     latestToolArgs.ctrlKey = ev.ctrlKey;
     latestToolArgs.shiftKey = ev.shiftKey;
     latestToolArgs.mousePos = [x, y];
@@ -277,8 +304,8 @@ canvas.onmouseup = ev => {
 canvas.onmousedown = ev => {
     ev.preventDefault();
     let b = canvas.getBoundingClientRect();
-    let x = (ev.x - config.canvasPadding - b.left) / config.diam;
-    let y = (ev.y - config.canvasPadding - b.top) / config.diam;
+    let x = (ev.x - drawOffsetX - b.left) / config.diam;
+    let y = (ev.y - drawOffsetY - b.top) / config.diam;
     latestToolArgs.ctrlKey = ev.ctrlKey;
     latestToolArgs.shiftKey = ev.shiftKey;
     latestToolArgs.dragStartPos = [x, y];
@@ -286,6 +313,23 @@ canvas.onmousedown = ev => {
     latestToolArgs.mouseButton = ev.button;
     latestToolArgs.ctrlKey = ev.ctrlKey;
     latestToolArgs.shiftKey = ev.shiftKey;
+
+    requestAnimationFrame(draw);
+};
+
+canvas.onclick = ev => {
+    ev.preventDefault();
+    let b = canvas.getBoundingClientRect();
+    let x = ev.x - b.left - config.canvasPadding;
+    let y = ev.y - b.top - config.canvasPadding;
+    if (x > toolSpacing) {
+        return;
+    }
+
+    let i = Math.floor(y / toolSpacing);
+    if (i >= 0 && i < availableTools.length) {
+        activeTools = [availableTools[i]];
+    }
 
     requestAnimationFrame(draw);
 };

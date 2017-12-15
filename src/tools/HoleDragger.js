@@ -17,6 +17,29 @@ function roundWithDeadZone(v, d, r) {
 }
 
 class HoleDraggerType extends Tool {
+    constructor() {
+        super('D');
+    }
+
+    drawButtonContents(ctx, w, h, active, axis) {
+        ctx.fillStyle = 'black';
+        ctx.fillRect(0, 0, w/2, h/2);
+
+        ctx.strokeStyle = axis.isX() ? config.xBorderColor : config.zBorderColor;
+        ctx.lineWidth = 2;
+        ctx.strokeRect(0, 0, w/2, h/2);
+
+        ctx.strokeStyle = 'gray';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(w*0.25, h*0.25);
+        ctx.lineTo(w, h);
+        ctx.lineTo(w, h*0.5);
+        ctx.moveTo(w, h);
+        ctx.lineTo(w*0.5, h);
+        ctx.stroke();
+    }
+
     canApply(args) {
         return args.mousePos !== undefined &&
             args.dragStartPos !== undefined &&
