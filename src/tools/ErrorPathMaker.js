@@ -58,12 +58,7 @@ class ErrorPathMakerType extends Tool {
      */
     argsToUseful(args) {
         let [i1, j1] = args.surface.layout.nearestDataCoord(...args.dragStartPos);
-        let di = args.mousePos[0] - i1 - 0.5;
-        let dj = args.mousePos[1] - j1 - 0.5;
-        let da = Math.round((di + dj) / 2);
-        let db = Math.round((di - dj) / 2);
-        let i2 = i1 + da + db;
-        let j2 = j1 + da - db;
+        let [i2, j2] = args.surface.layout.nearestDataCoord(...args.mousePos);
 
         let axis = Axis.zIf(!args.shiftKey);
         let dir1 = args.surface.layout.errorCurveOrientation(i1, j1, axis);

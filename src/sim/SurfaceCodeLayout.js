@@ -299,7 +299,7 @@ class SurfaceCodeLayout {
                 }
             }
         }
-        if (dirs[x2+1][y2+1] === undefined) {
+        if (dirs[x2+1] === undefined || dirs[x2+1][y2+1] === undefined) {
             return [];
         }
 
