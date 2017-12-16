@@ -17,6 +17,7 @@ class ToolEffectArgs {
         this.dragStartPos = dragStartPos;
         this.ctrlKey = ctrlKey;
         this.shiftKey = shiftKey;
+        this.mousePointerOut = undefined;
     }
 }
 

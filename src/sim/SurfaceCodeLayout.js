@@ -37,13 +37,13 @@ function* _holes(layout, pad=1) {
 
 /**
  * @param {!SurfaceCodeLayout} layout
- * @param {!Axis} axis
+ * @param {undefined|!Axis} axis
  * @yields {![!int, !int]}
  * @private
  */
 function* _checkQubits(layout, axis) {
     for (let pt of layout.points) {
-        if (layout.isCheckQubit(pt[0], pt[1], axis.opposite())) {
+        if (layout.isCheckQubit(pt[0], pt[1], axis)) {
             yield pt;
         }
     }
@@ -119,10 +119,10 @@ class SurfaceCodeLayout {
     }
 
     /**
-     * @param {!Axis} axis
+     * @param {undefined|!Axis} axis
      * @returns {!Iterable.<[!int, !int]>}
      */
-    checkQubits(axis) {
+    checkQubits(axis=undefined) {
         return _checkQubits(this, axis);
     }
 
@@ -180,7 +180,7 @@ class SurfaceCodeLayout {
      * @param {!int} j
      * @param {!int} di
      * @param {!int} dj
-     * @returns {undefined|'X'|'Z'}
+     * @returns {undefined|!Axis}
      */
     borderType(i, j, di, dj) {
         let i2 = i + di;
@@ -195,7 +195,7 @@ class SurfaceCodeLayout {
         }
         let z1 = this.isZCheckQubit(i, j, true, true);
         let x2 = this.isXCheckQubit(i2, j2, true, true);
-        return z1 || x2 ? 'Z' : 'X';
+        return Axis.zIf(z1 || x2);
     }
 
     /**

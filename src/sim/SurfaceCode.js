@@ -13,10 +13,10 @@ import {Axis, AXES, Z_AXIS, X_AXIS} from "src/sim/Util.js";
  * @yields {![!int, !int]}
  * @private
  */
-function* _checkQubitsWithResult(surface, axis, result) {
+function* _checkQubitsWithResultVsExpected(surface, axis, result) {
     for (let [i, j] of surface.layout.points) {
-        if ((surface.last_result[i][j] !== surface.expected_result[i][j]) === result &&
-                surface.layout.isCheckQubit(i, j, axis)) {
+        let errorIndicated = surface.last_result[i][j] !== surface.expected_result[i][j];
+        if (errorIndicated === result && surface.layout.isCheckQubit(i, j, axis)) {
             yield [i, j];
         }
     }
@@ -57,8 +57,8 @@ class SurfaceCode {
      * @param {!boolean} result
      * @returns {!Iterable.<![!int, !int]>}
      */
-    checkQubitsWithResult(axis, result) {
-        return _checkQubitsWithResult(this, axis, result);
+    checkQubitsWithResultVsExpected(axis, result) {
+        return _checkQubitsWithResultVsExpected(this, axis, result);
     }
 
     /**
@@ -253,7 +253,7 @@ class SurfaceCode {
 
             let pairs = this.pairs(points);
             for (let [[x1, y1], [x2, y2]] of pairs) {
-                this.errorOverlay.flipQubitsAlongPath(x1, y1, x2, y2, axis);
+                this.errorOverlay.flipQubitsAlongPath(x1, y1, x2, y2, axis.opposite());
             }
         }
     }

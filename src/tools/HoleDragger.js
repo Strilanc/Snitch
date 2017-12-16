@@ -1,6 +1,3 @@
-/**
- * Implements an effect that can be applied to a surface code grid.
- */
 import {config} from "src/config.js"
 import {Tool} from "src/tools/Tool.js"
 import {ToolEffectArgs} from "src/tools/ToolEffectArgs.js";

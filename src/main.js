@@ -16,6 +16,7 @@ import {SquareStabilizerFlipper} from 'src/tools/SquareStabilizerFlipper.js'
 import {HoleDragger} from 'src/tools/HoleDragger.js'
 import {ErrorPathMaker} from 'src/tools/ErrorPathMaker.js'
 import {StatePeeker} from 'src/tools/StatePeeker.js'
+import {HoleResizer} from 'src/tools/HoleResizer.js'
 import {describe} from "src/base/Describe.js";
 import {config} from "src/config.js"
 import {Revision} from "src/base/Revision.js";
@@ -25,7 +26,7 @@ import {Axis} from "src/sim/Util.js";
 
 let canvas = /** @type {!HTMLCanvasElement} */ document.getElementById('main-canvas');
 /** @type {!Array.<!Tool>} */
-let availableTools = [SquareHoleMaker, ErrorPathMaker, SquareStabilizerFlipper, HoleDragger, StatePeeker];
+let availableTools = [SquareHoleMaker, ErrorPathMaker, SquareStabilizerFlipper, HoleDragger, StatePeeker, HoleResizer];
 /** @type {!Array.<!Tool>} */
 let activeTools = [SquareHoleMaker];
 
@@ -86,6 +87,7 @@ function drawMouseHint(ctx) {
     try {
         ctx.globalAlpha *= 0.5;
 
+        latestToolArgs.mousePointerOut = 'default';
         for (let e of activeTools) {
             if (e.canApply(latestToolArgs)) {
                 e.drawPreview(ctx, latestToolArgs);
@@ -95,6 +97,7 @@ function drawMouseHint(ctx) {
                 break;
             }
         }
+        canvas.style.cursor = latestToolArgs.mousePointerOut;
     } finally {
         ctx.restore();
     }
@@ -126,11 +129,23 @@ function drawQubitBlocksOfType(ctx, points, color) {
 function drawQubitBlocks(ctx) {
     ctx.fillStyle = config.dataQubitColor;
     ctx.fillRect(0, 0, surface.layout.width * config.diam, surface.layout.height * config.diam);
-    drawQubitBlocksOfType(ctx, surface.checkQubitsWithResult(X_AXIS, false), config.xOffColor);
-    drawQubitBlocksOfType(ctx, surface.checkQubitsWithResult(X_AXIS, true), config.xOnColor);
-    drawQubitBlocksOfType(ctx, surface.checkQubitsWithResult(Z_AXIS, false), config.zOffColor);
-    drawQubitBlocksOfType(ctx, surface.checkQubitsWithResult(Z_AXIS, true), config.zOnColor);
+    drawQubitBlocksOfType(ctx, surface.checkQubitsWithResultVsExpected(X_AXIS, false), config.xOffColor);
+    drawQubitBlocksOfType(ctx, surface.checkQubitsWithResultVsExpected(X_AXIS, true), config.xOnColor);
+    drawQubitBlocksOfType(ctx, surface.checkQubitsWithResultVsExpected(Z_AXIS, false), config.zOffColor);
+    drawQubitBlocksOfType(ctx, surface.checkQubitsWithResultVsExpected(Z_AXIS, true), config.zOnColor);
     drawQubitBlocksOfType(ctx, surface.layout.holePoints(0), config.holeColor);
+
+    ctx.beginPath();
+    for (let [i, j] of surface.layout.checkQubits()) {
+        if (surface.expected_result[i][j]) {
+            let x = i * config.diam;
+            let y = j * config.diam;
+            ctx.moveTo(x, y);
+            ctx.lineTo(x + config.diam, y + config.diam);
+        }
+    }
+    ctx.strokeStyle = 'red';
+    ctx.stroke();
 }
 
 /**
@@ -150,7 +165,7 @@ function drawSingleBorder(ctx, i, j, di, dj) {
     let aj = Math.abs(dj);
     let x = i * config.diam;
     let y = j * config.diam;
-    ctx.fillStyle = type === 'Z' ? config.zBorderColor : config.xBorderColor;
+    ctx.fillStyle = type.isZ() ? config.zBorderColor : config.xBorderColor;
     ctx.fillRect(
         x + (config.diam - config.borderWidth) * (di + 1) / 2 * ai,
         y + (config.diam - config.borderWidth) * (dj + 1) / 2 * aj,
@@ -242,7 +257,7 @@ document.onkeydown = ev => {
         surface.cycle();
     } else {
         for (let e of availableTools) {
-            if (ev.keyCode === e.hotkey.charCodeAt(0)) {
+            if (!ev.ctrlKey && ev.keyCode === e.hotkey.charCodeAt(0)) {
                 ev.preventDefault();
                 activeTools = [e];
             }

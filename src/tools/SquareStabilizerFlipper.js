@@ -1,6 +1,3 @@
-/**
- * Implements an effect that can be applied to a surface code grid.
- */
 import {config} from "src/config.js"
 import {strokeErrorCurveAt} from "src/draw/Common.js";
 import {Tool} from "src/tools/Tool.js"
