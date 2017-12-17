@@ -100,8 +100,6 @@ class HoleJoinerType extends Tool {
         }
 
         args.surface.layout.holes[i][j] = true;
-
-        // TODO: don't flip when adjacent to two borders instead of one. i.e. flip once per adjacent border.
     }
 }
 

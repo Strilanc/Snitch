@@ -127,6 +127,23 @@ class SurfaceCode {
     /**
      * @param {!int} i
      * @param {!int} j
+     * @param {!boolean} val
+     * @param {!Axis} axis
+     */
+    reset(i, j, axis=Z_AXIS, val=false) {
+        let q = this.qubits[i][j];
+        this.state.measure(q, true);
+        if (val) {
+            this.state.x(q);
+        }
+        if (axis.isX()) {
+            this.state.h(q);
+        }
+    }
+
+    /**
+     * @param {!int} i
+     * @param {!int} j
      * @param {!function(x: !int, y: !int): !boolean} holeOverlayFunc
      * @returns {!{shouldBeHole: !boolean, hasX: !boolean, hasZ: !boolean}}
      */
