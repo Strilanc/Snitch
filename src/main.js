@@ -14,6 +14,7 @@ import {ToolEffectArgs} from 'src/tools/ToolEffectArgs.js'
 import {SquareHoleMaker} from 'src/tools/SquareHoleMaker.js'
 import {SquareStabilizerFlipper} from 'src/tools/SquareStabilizerFlipper.js'
 import {ObservableStabilizerFlipper} from 'src/tools/ObservableStabilizerFlipper.js'
+import {ObservableStabilizerCutter} from 'src/tools/ObservableStabilizerCutter.js'
 import {HoleDragger} from 'src/tools/HoleDragger.js'
 import {ErrorPathMaker} from 'src/tools/ErrorPathMaker.js'
 import {StatePeeker} from 'src/tools/StatePeeker.js'
@@ -41,6 +42,7 @@ let availableTools = [
     HoleJoiner,
     HoleRetracter,
     ObservableStabilizerFlipper,
+    ObservableStabilizerCutter,
 ];
 /** @type {!Array.<!Tool>} */
 let activeTools = [SquareHoleMaker];
