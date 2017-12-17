@@ -2,7 +2,7 @@ import {config} from "src/config.js"
 import {strokeErrorCurveAt} from "src/draw/Common.js";
 import {Tool} from "src/tools/Tool.js"
 import {ToolEffectArgs} from "src/tools/ToolEffectArgs.js";
-import {Axis, X_AXIS} from "src/sim/Util.js";
+import {Axis, X_AXIS, makeGrid} from "src/sim/Util.js";
 
 function roundWithDeadZone(v, d, r) {
     let s = v < 0 ? -1 : +1;
@@ -15,14 +15,33 @@ function roundWithDeadZone(v, d, r) {
     return Math.round(v) * r * s;
 }
 
-function* border(x, y, w, h) {
-    for (let i = 0; i < w; i++) {
-        yield [x + i, y - 1];
-        yield [x + i, y + h];
+/**
+ * @param {!SurfaceCode} surface
+ * @param {!int} x
+ * @param {!int} y
+ * @param {!int} w
+ * @param {!int} h
+ * @param {!Axis} axis
+ */
+function* flippedByStabilizersInRect(surface, x, y, w, h, axis) {
+    let activated = makeGrid(surface.layout.width, surface.layout.height, () => false);
+
+    for (let di = 0; di < w; di++) {
+        for (let dj = 0; dj < h; dj++) {
+            if (surface.layout.isCheckQubit(x + di, y + dj, axis)) {
+                for (let [i2, j2] of surface.layout.neighbors(x + di, y + dj)) {
+                    activated[i2][j2] = !activated[i2][j2];
+                }
+            }
+        }
     }
-    for (let j = 0; j < h; j++) {
-        yield [x - 1, y + j];
-        yield [x + w, y + j];
+
+    for (let i = 0; i < surface.layout.width; i++) {
+        for (let j = 0; j < surface.layout.height; j++) {
+            if (activated[i][j]) {
+                yield [i, j];
+            }
+        }
     }
 }
 
@@ -67,10 +86,8 @@ class SquareStabilizerFlipperType extends Tool {
             axis.opposite());
 
         ctx.beginPath();
-        for (let [i, j] of border(x, y, 1, 1)) {
-            if (args.surface.layout.isDataQubit(i, j)) {
-                strokeErrorCurveAt(ctx, args.surface, i, j, axis);
-            }
+        for (let [i, j] of flippedByStabilizersInRect(args.surface, x, y, 1, 1, axis.opposite())) {
+            strokeErrorCurveAt(ctx, args.surface, i, j, axis);
         }
 
         ctx.strokeStyle = '#800';
@@ -111,10 +128,8 @@ class SquareStabilizerFlipperType extends Tool {
         let {i: x, j: y, controlPoints, w, h, axis} = this.argsToUseful(args);
 
         ctx.beginPath();
-        for (let [i, j] of border(x, y, w, h)) {
-            if (args.surface.layout.isDataQubit(i, j)) {
-                strokeErrorCurveAt(ctx, args.surface, i, j, axis);
-            }
+        for (let [i, j] of flippedByStabilizersInRect(args.surface, x, y, w, h, axis.opposite())) {
+            strokeErrorCurveAt(ctx, args.surface, i, j, axis);
         }
 
         ctx.strokeStyle = '#800';
@@ -138,10 +153,8 @@ class SquareStabilizerFlipperType extends Tool {
     applyEffect(args) {
         let {i: x, j: y, w, h, axis} = this.argsToUseful(args);
 
-        for (let [i, j] of border(x, y, w, h)) {
-            if (args.surface.layout.isDataQubit(i, j)) {
-                args.surface.errorOverlay.flipQubit(i, j, axis.opposite());
-            }
+        for (let [i, j] of flippedByStabilizersInRect(args.surface, x, y, w, h, axis.opposite())) {
+            args.surface.errorOverlay.flipQubit(i, j, axis.opposite());
         }
     }
 }
