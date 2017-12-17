@@ -184,6 +184,12 @@ class SurfaceCodeErrorOverlay {
         }
     }
 
+    /**
+     * @param {!int} iData
+     * @param {!int} jData
+     * @param {!int} iCheck
+     * @param {!int} jCheck
+     */
     measureDataButClearByConditionallyFlippingStabilizer(iData, jData, iCheck, jCheck) {
         let axis = this.surface.layout.colCheckType(iCheck);
         let marked = this.flipsForAxis(axis)[iData][jData];

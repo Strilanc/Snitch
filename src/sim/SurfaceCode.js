@@ -1,11 +1,3 @@
-import {CARDINALS} from 'src/sim/Util.js'
-import {StabilizerCircuitState} from 'src/sim/StabilizerCircuitState.js'
-import {makeGrid, cloneGrid} from 'src/sim/Util.js'
-import {SurfaceCodeLayout} from "src/sim/SurfaceCodeLayout.js";
-import {SurfaceCodeErrorOverlay} from "src/sim/SurfaceCodeErrorOverlay.js";
-import {Axis, AXES, Z_AXIS, X_AXIS} from "src/sim/Util.js";
-
-
 /**
  * @param {!SurfaceCode} surface
  * @param {!Axis} axis
@@ -13,6 +5,15 @@ import {Axis, AXES, Z_AXIS, X_AXIS} from "src/sim/Util.js";
  * @yields {![!int, !int]}
  * @private
  */
+import {CARDINALS} from 'src/sim/Util.js'
+import {StabilizerCircuitState} from 'src/sim/StabilizerCircuitState.js'
+import {makeGrid, cloneGrid} from 'src/sim/Util.js'
+import {SurfaceCodeLayout} from "src/sim/SurfaceCodeLayout.js";
+import {SurfaceCodeErrorOverlay} from "src/sim/SurfaceCodeErrorOverlay.js";
+import {Axis, AXES, Z_AXIS, X_AXIS} from "src/sim/Util.js";
+import {SurfaceCodeObservableOverlay} from "src/sim/SurfaceCodeObservableOverlay.js";
+
+
 function* _checkQubitsWithResultVsExpected(surface, axis, result) {
     for (let [i, j] of surface.layout.points) {
         let errorIndicated = surface.last_result[i][j] !== surface.expected_result[i][j];
@@ -35,6 +36,7 @@ class SurfaceCode {
         this.qubits = makeGrid(width, height,
             (i, j) => this.layout.isDataQubit(i, j) ? this.state.addOffQubit() : undefined);
         this.errorOverlay = new SurfaceCodeErrorOverlay(this);
+        this.observableOverlay = new SurfaceCodeObservableOverlay();
     }
 
     /**
@@ -49,6 +51,7 @@ class SurfaceCode {
         r.last_result = cloneGrid(this.last_result);
         r.expected_result = cloneGrid(this.expected_result);
         r.qubits = cloneGrid(this.qubits);
+        r.observableOverlay = this.observableOverlay.clone();
         return r;
     }
 
@@ -268,6 +271,7 @@ class SurfaceCode {
             let j2 = j + dj;
             if (this.layout.isDataQubit(i2, j2) && this.layout.isHole(i + di*2, j + dj*2)) {
                 this.errorOverlay.measureDataButClearByConditionallyFlippingStabilizer(i2, j2, i, j);
+                this.observableOverlay.measureDataButClearByConditionallyFlippingStabilizer(this, i2, j2, i, j);
                 this.layout.holes[i2][j2] = true;
             }
         }

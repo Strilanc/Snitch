@@ -176,6 +176,34 @@ class SurfaceCodeLayout {
     }
 
     /**
+     * @param {!int} x
+     * @param {!int} y
+     * @returns {!Array.<![!int, !int]>}
+     */
+    holeDataBorders(x, y) {
+        let q = [[x, y]];
+        let seen = makeGrid(this.width, this.height, () => false);
+        let result = [];
+        while (q.length > 0) {
+            let [i, j] = q.pop();
+            if (seen[i][j]) {
+                continue;
+            }
+            seen[i][j] = true;
+
+            if (this.isDataQubit(i, j)) {
+                result.push([i, j]);
+            }
+            if (this.isInBounds(i, j, 1) && this.isHole(i, j)) {
+                for (let pt of this.neighbors(i, j, true)) {
+                    q.push(pt)
+                }
+            }
+        }
+        return result;
+    }
+
+    /**
      * @param {!int} i
      * @param {!int} j
      * @param {!int} di

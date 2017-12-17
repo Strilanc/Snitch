@@ -62,6 +62,7 @@ function draw() {
         drawQubitBlocks(ctx);
         drawHoleBorders(ctx);
         drawErrorCurves(ctx);
+        surface.observableOverlay.draw(ctx, surface);
         drawMouseHint(ctx);
     } finally {
         ctx.restore();
