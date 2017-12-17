@@ -13,6 +13,7 @@ import {CARDINALS} from 'src/sim/Util.js'
 import {ToolEffectArgs} from 'src/tools/ToolEffectArgs.js'
 import {SquareHoleMaker} from 'src/tools/SquareHoleMaker.js'
 import {SquareStabilizerFlipper} from 'src/tools/SquareStabilizerFlipper.js'
+import {ObservableStabilizerFlipper} from 'src/tools/ObservableStabilizerFlipper.js'
 import {HoleDragger} from 'src/tools/HoleDragger.js'
 import {ErrorPathMaker} from 'src/tools/ErrorPathMaker.js'
 import {StatePeeker} from 'src/tools/StatePeeker.js'
@@ -39,6 +40,7 @@ let availableTools = [
     HoleExtender,
     HoleJoiner,
     HoleRetracter,
+    ObservableStabilizerFlipper,
 ];
 /** @type {!Array.<!Tool>} */
 let activeTools = [SquareHoleMaker];
