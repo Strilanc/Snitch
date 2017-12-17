@@ -22,6 +22,7 @@ import {HoleResizer} from 'src/tools/HoleResizer.js'
 import {HoleExtender} from 'src/tools/HoleExtender.js'
 import {HoleRetracter} from 'src/tools/HoleRetracter.js'
 import {HoleJoiner} from 'src/tools/HoleJoiner.js'
+import {HoleSplitter} from 'src/tools/HoleSplitter.js'
 import {describe} from "src/base/Describe.js";
 import {config} from "src/config.js"
 import {Revision} from "src/base/Revision.js";
@@ -40,6 +41,7 @@ let availableTools = [
     HoleResizer,
     HoleExtender,
     HoleJoiner,
+    HoleSplitter,
     HoleRetracter,
     ObservableStabilizerFlipper,
     ObservableStabilizerCutter,

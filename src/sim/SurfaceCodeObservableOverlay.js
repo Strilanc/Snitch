@@ -88,9 +88,10 @@ class SurfaceMultiObservable {
 
         ctx.save();
         try {
-            let offsets = this.qubitObservables.map(_ => [Math.random() * 2 - 1, Math.random() * 2 - 1]);
-            offsets.push([0, 0]);
-            offsets[0] = [0, 0];
+            let shifts = makeGrid(
+                surface.layout.width+2,
+                surface.layout.height+2,
+                () => [Math.random() * 2 - 1, Math.random() * 2 - 1]);
 
             // ctx.beginPath();
             // ctx.moveTo(
@@ -111,11 +112,11 @@ class SurfaceMultiObservable {
                 ctx.beginPath();
                 let [dx, dy] = surface.layout.errorCurveOrientation(q.i, q.j, q.axis.opposite());
                 ctx.moveTo(
-                    (q.i + 0.5 + dx) * config.diam + offsets[i][0],
-                    (q.j + 0.5 + dy) * config.diam + offsets[i][1]);
+                    (q.i + 0.5 + dx) * config.diam + shifts[q.i+dx+1][q.j+dy+1][0],
+                    (q.j + 0.5 + dy) * config.diam + shifts[q.i+dx+1][q.j+dy+1][1]);
                 ctx.lineTo(
-                    (q.i + 0.5 - dx) * config.diam + offsets[i+1][0],
-                    (q.j + 0.5 - dy) * config.diam + offsets[i+1][1]);
+                    (q.i + 0.5 - dx) * config.diam + shifts[q.i-dx+1][q.j-dy+1][0],
+                    (q.j + 0.5 - dy) * config.diam + shifts[q.i-dx+1][q.j-dy+1][1]);
                 ctx.lineWidth = 3;
                 ctx.strokeStyle = q.axis.opposite().isX() ? config.xOnColor : config.zOnColor;
                 ctx.stroke();
@@ -124,28 +125,31 @@ class SurfaceMultiObservable {
             for (let k = 0; k < this.qubitObservables.length; k++) {
                 let {i, j, axis} = this.qubitObservables[k];
                 ctx.fillStyle = axis.opposite().isX() ? config.xOnColor : config.zOnColor;
+                let [dx, dy] = surface.layout.errorCurveOrientation(i, j, axis.opposite());
                 ctx.fillRect(
-                    (i + 0.3) * config.diam + offsets[k][0],
-                    (j + 0.3) * config.diam + offsets[k][1],
+                    (i + 0.3) * config.diam + (shifts[i+dx+1][j+dy+1][0] + shifts[i-dx+1][j-dy+1][0])/2,
+                    (j + 0.3) * config.diam + (shifts[i+dx+1][j+dy+1][1] + shifts[i-dx+1][j-dy+1][1])/2,
                     0.4 * config.diam,
                     0.4 * config.diam);
             }
 
             let q = this.qubitObservables[this.qubitObservables.length >> 1];
             let stateVal = this.stateProductFrom(surface);
-            let state = stateVal.ids.size > 0 ? '?' : stateVal.sign === 1 ? 'OFF' : 'On';
+            let state = stateVal.ids.size > 0 ? 'unknown' : stateVal.sign === 1 ? 'OFF' : 'On';
+            let px = (q.i + 0.5) * config.diam;
+            let py = (q.j + 0.5) * config.diam;
             ctx.strokeStyle = '#000';
             ctx.lineWidth = 1;
-            ctx.fillStyle = '#FFF';
+            ctx.fillStyle = stateVal.ids.size > 0 ? 'red' : stateVal.sign === 1 ? 'white' : 'orange';
             ctx.textBaseline = 'middle';
-            ctx.font = '12pt monospace';
+            ctx.font = '16pt monospace';
             let w = ctx.measureText(state).width;
-            ctx.strokeRect((q.i + 1) * config.diam + 0.5, q.j * config.diam + 0.5, w + 6, config.diam);
-            ctx.globalAlpha = 0.5;
-            ctx.fillRect((q.i + 1) * config.diam + 0.5, q.j * config.diam + 0.5, w + 6, config.diam);
+            ctx.strokeRect(px + 0.5, py + 0.5, w + 6, config.diam);
+            ctx.globalAlpha = 0.8;
+            ctx.fillRect(px + 0.5, py + 0.5, w + 6, config.diam);
             ctx.globalAlpha = 1.0;
             ctx.fillStyle = '#000';
-            ctx.fillText(state, (q.i + 1) * config.diam + 3, (q.j + 0.5) * config.diam);
+            ctx.fillText(state, px + 3, py + config.diam*0.5);
         } finally {
             ctx.restore();
         }

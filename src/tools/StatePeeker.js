@@ -44,23 +44,24 @@ class StatePeekerType extends Tool {
             }
         }
 
-        let [i, j] = args.surface.layout.nearestDataCoord(...args.mousePos);
-        let q = args.surface.state.qubitMap.get(args.surface.qubits[i][j]);
-        ctx.strokeStyle = '#000';
-        ctx.strokeRect(i*config.diam, j*config.diam, config.diam, config.diam);
-        ctx.strokeStyle = '#000';
-        ctx.fillStyle = '#FFF';
-        ctx.textBaseline = 'middle';
-        ctx.font = '12pt monospace';
-        ctx.globalAlpha = 1.0;
-        let xs = q.obsX.toString(5);
-        let zs = q.obsZ.toString(5);
-        let w = Math.max(ctx.measureText(xs).width, ctx.measureText(zs).width);
-        ctx.strokeRect((i+1) * config.diam + 0.5, j * config.diam + 0.5, w + 6, config.diam*2);
-        ctx.fillRect((i+1) * config.diam + 0.5, j * config.diam + 0.5, w + 6, config.diam*2);
-        ctx.fillStyle = '#000';
-        ctx.fillText(xs, (i+1)*config.diam+3, (j+0.5)*config.diam);
-        ctx.fillText(zs, (i+1)*config.diam+3, (j+1.5)*config.diam);
+        // Show state of qubit stabilizer observables.
+        // let [i, j] = args.surface.layout.nearestDataCoord(...args.mousePos);
+        // let q = args.surface.state.qubitMap.get(args.surface.qubits[i][j]);
+        // ctx.strokeStyle = '#000';
+        // ctx.strokeRect(i*config.diam, j*config.diam, config.diam, config.diam);
+        // ctx.strokeStyle = '#000';
+        // ctx.fillStyle = '#FFF';
+        // ctx.textBaseline = 'middle';
+        // ctx.font = '12pt monospace';
+        // ctx.globalAlpha = 1.0;
+        // let xs = q.obsX.toString(5);
+        // let zs = q.obsZ.toString(5);
+        // let w = Math.max(ctx.measureText(xs).width, ctx.measureText(zs).width);
+        // ctx.strokeRect((i+1) * config.diam + 0.5, j * config.diam + 0.5, w + 6, config.diam*2);
+        // ctx.fillRect((i+1) * config.diam + 0.5, j * config.diam + 0.5, w + 6, config.diam*2);
+        // ctx.fillStyle = '#000';
+        // ctx.fillText(xs, (i+1)*config.diam+3, (j+0.5)*config.diam);
+        // ctx.fillText(zs, (i+1)*config.diam+3, (j+1.5)*config.diam);
     }
 
     _drawPreviewPath(ctx, args) {
