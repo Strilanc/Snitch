@@ -401,7 +401,8 @@ class SurfaceCodeLayout {
      * @returns {undefined|!BorderLoc}
      */
     nearestOutsideBorderLocFromPointInHole(x, y, keepBorderPiecesBetweenAHoleAndACheckQubit=true, axis=undefined) {
-        let [i, j] = this.nearestCheckCoord(x, y, axis);
+        let i = Math.floor(x);
+        let j = Math.floor(y);
         if (!this.isHole(i, j)) {
             return undefined;
         }

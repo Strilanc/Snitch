@@ -65,7 +65,6 @@ class HoleJoinerType extends Tool {
     }
 
     drawPreview(ctx, args) {
-        ctx.globalAlpha = 1 - 0.5*(1 - ctx.globalAlpha);
         this.drawHoverHint(ctx, args);
     }
 

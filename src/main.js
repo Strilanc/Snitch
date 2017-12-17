@@ -107,14 +107,15 @@ function drawTools(ctx) {
 function drawMouseHint(ctx) {
     ctx.save();
     try {
-        ctx.globalAlpha *= 0.5;
 
         latestToolArgs.mousePointerOut = 'default';
         for (let e of activeTools) {
             if (e.canApply(latestToolArgs)) {
+                ctx.globalAlpha *= 0.6;
                 e.drawPreview(ctx, latestToolArgs);
                 break;
             } else if (e.canHoverHint(latestToolArgs)) {
+                ctx.globalAlpha *= 0.3;
                 e.drawHoverHint(ctx, latestToolArgs);
                 break;
             }

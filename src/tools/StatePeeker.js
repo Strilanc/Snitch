@@ -56,7 +56,10 @@ class StatePeekerType extends Tool {
 
         let axis = r.pathType.opposite();
         if (r.path !== undefined) {
-            let obs = new SurfaceMultiObservable(r.path.map(([i, j]) => new SurfaceQubitObservable(i, j, axis)));
+            let obs = new SurfaceMultiObservable();
+            for (let e of r.path.map(([i, j]) => new SurfaceQubitObservable(i, j, axis))) {
+                obs.insertOrDeleteOther(0, e);
+            }
             obs.draw(ctx, args.surface);
         } else {
             ctx.beginPath();
@@ -71,7 +74,6 @@ class StatePeekerType extends Tool {
     }
 
     drawPreview(ctx, args) {
-        ctx.globalAlpha = 1 - 0.5*(1 - ctx.globalAlpha);
         this._drawPath(ctx, args, args.dragStartPos);
     }
 
