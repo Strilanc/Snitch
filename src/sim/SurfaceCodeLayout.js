@@ -49,7 +49,153 @@ function* _checkQubits(layout, axis) {
     }
 }
 
+/**
+ * The location of one of the edges beside a qubit in the surface code.
+ */
+class BorderLoc {
+    /**
+     * @param {!number} i
+     * @param {!number} j
+     * @param {!number} di
+     * @param {!number} dj
+     */
+    constructor(i, j, di, dj) {
+        if ((di !== 0 && dj !== 0) || (Math.abs(di) !== 1 && Math.abs(dj) !== 1)) {
+            throw new DetailedError('[di, dj] must be an axis-aligned unit vector.', {i, j, di, dj});
+        }
+
+        this.i = i;
+        this.j = j;
+        this.di = di;
+        this.dj = dj;
+    }
+
+    toString() {
+        let label = ['left', 'top', 'right', 'bottom'][this.di === -1 ? 0 : this.dj + 2];
+        return `${label}(${this.i}, ${this.j})`
+    }
+
+    /**
+     * @returns {![!number, !number]}
+     */
+    center() {
+        return [this.i + 0.5 + this.di * 0.5, this.j + 0.5 + this.dj * 0.5];
+    }
+
+    /**
+     * @param {!int} i
+     * @param {!int} j
+     * @returns {!BorderLoc}
+     */
+    static left(i, j) {
+        return new BorderLoc(i, j, -1, 0);
+    }
+
+    /**
+     * @param {!int} i
+     * @param {!int} j
+     * @returns {!BorderLoc}
+     */
+    static right(i, j) {
+        return new BorderLoc(i, j, +1, 0);
+    }
+
+    /**
+     * Warning: this is the top *when drawing* and *making diagrams*, not in the sense of larger-y-coordinate.
+     *
+     * @param {!int} i
+     * @param {!int} j
+     * @returns {!BorderLoc}
+     */
+    static top(i, j) {
+        return new BorderLoc(i, j, 0, -1);
+    }
+
+    /**
+     * Warning: this is the bottom *when drawing* and *making diagrams*, not in the sense of lesser-y-coordinate.
+     *
+     * @param {!int} i
+     * @param {!int} j
+     * @returns {!BorderLoc}
+     */
+    static bottom(i, j) {
+        return new BorderLoc(i, j, 0, +1);
+    }
+
+    /**
+     * @returns {!BorderLoc}
+     */
+    backside() {
+        return new BorderLoc(this.i + this.di, this.j + this.dj, -this.di, -this.dj);
+    }
+
+    /**
+     * @param {!BorderLoc|*} other
+     * @returns {!boolean}
+     */
+    isEqualTo(other) {
+        return other instanceof BorderLoc &&
+            this.i === other.i &&
+            this.j === other.j &&
+            this.di === other.di &&
+            this.dj === other.dj;
+    }
+
+    /**
+     * @returns {!BorderLoc}
+     */
+    nextCounterClockwiseWithinSameCell() {
+        return new BorderLoc(this.i, this.j, -this.dj, this.di);
+    }
+
+    /**
+     * @returns {!BorderLoc}
+     */
+    nextCounterClockwiseAlongWall() {
+        return new BorderLoc(this.i - this.dj, this.j + this.di, this.di, this.dj);
+    }
+
+    /**
+     * @returns {!BorderLoc}
+     */
+    nextCounterClockwiseAroundCorner() {
+        return this.nextCounterClockwiseAlongWall().
+            nextClockwiseWithinSameCell().
+            nextCounterClockwiseAlongWall();
+    }
+
+    /**
+     * @returns {!BorderLoc}
+     */
+    nextClockwiseWithinSameCell() {
+        return new BorderLoc(this.i, this.j, this.dj, -this.di);
+    }
+
+    /**
+     * @returns {!BorderLoc}
+     */
+    nextClockwiseAlongWall() {
+        return new BorderLoc(this.i + this.dj, this.j - this.di, this.di, this.dj);
+    }
+
+    /**
+     * @returns {!BorderLoc}
+     */
+    nextClockwiseAroundCorner() {
+        return this.nextClockwiseAlongWall().
+            nextCounterClockwiseWithinSameCell().
+            nextClockwiseAlongWall();
+    }
+}
+
+
 class SurfaceCodeLayout {
+    /**
+     * @param {!int} width
+     * @param {!int} height
+     * @param {!boolean} firstRowIsX
+     * @param {!boolean} firstColIsX
+     */
     constructor(width, height, firstRowIsX=false, firstColIsX=false) {
         this.width = width;
         this.height = height;
@@ -77,6 +223,71 @@ class SurfaceCodeLayout {
         r.firstColIsX = this.firstColIsX;
         r.points = this.points.map(e => e);
         return r;
+    }
+
+    /**
+     * @param {!BorderLoc} borderLoc
+     * @param {!Axis} type
+     * @param {!boolean} clockwise
+     * @returns {undefined|!BorderLoc}
+     * @private
+     */
+    _nextBorder(borderLoc, type, clockwise) {
+        let options = clockwise ? [
+            borderLoc.nextClockwiseWithinSameCell(),
+            borderLoc.nextClockwiseAlongWall(),
+            borderLoc.nextClockwiseAroundCorner()
+        ] : [
+            borderLoc.nextCounterClockwiseWithinSameCell(),
+            borderLoc.nextCounterClockwiseAlongWall(),
+            borderLoc.nextCounterClockwiseAroundCorner()
+        ];
+        for (let a of options) {
+            if (this.borderType(a.i, a.j, a.di, a.dj) === type) {
+                return a;
+            }
+        }
+        return undefined;
+    }
+
+    /**
+     * @param {!BorderLoc} borderLoc
+     * @param {!Axis} type
+     * @param {!boolean} clockwise
+     * @returns {!{locs: !Array.<!BorderLoc>, cycle: !boolean}}
+     * @private
+     */
+    _scanBorder(borderLoc, type, clockwise) {
+        let locs = [borderLoc];
+        let cur = borderLoc;
+        while (true) {
+            cur = this._nextBorder(cur, type, clockwise);
+            if (cur === undefined || cur.isEqualTo(borderLoc)) {
+                break;
+            }
+            locs.push(cur);
+        }
+        return {locs, cycle: cur !== undefined};
+    }
+
+    /**
+     * @param {!BorderLoc} borderLoc
+     * @returns {!{locs: !Array.<!BorderLoc>, cycle: !boolean, axis: !Axis}}
+     */
+    fullContiguousBorderTouching(borderLoc) {
+        let axis = this.borderType(borderLoc.i, borderLoc.j, borderLoc.di, borderLoc.dj);
+        if (axis === undefined) {
+            return undefined;
+        }
+
+        let {locs, cycle} = this._scanBorder(borderLoc, axis, true);
+        if (!cycle) {
+            let otherLocs = this._scanBorder(borderLoc, axis, false).locs;
+            otherLocs.splice(0, 1);
+            otherLocs.reverse();
+            locs.splice(0, 0, ...otherLocs);
+        }
+        return {locs, cycle, axis};
     }
 
     /**
@@ -177,36 +388,52 @@ class SurfaceCodeLayout {
     }
 
     /**
+     * @param {!number} x
+     * @param {!number} y
+     * @returns {undefined|!BorderLoc}
+     */
+    nearestBorderLocFromPointInHole(x, y) {
+        let i = Math.floor(x);
+        let j = Math.floor(y);
+        if (!this.isHole(i, j)) {
+            return undefined;
+        }
+
+        let borders = this.holeBorderLocs(i, j);
+        if (borders.length === 0) {
+            return undefined;
+        }
+
+        return seq(borders).minBy(loc => {
+            let [x2, y2] = loc.center();
+            return (x2 - x)*(x2 - x) + (y2 - y)*(y2 - y);
+        });
+    }
+
+    /**
      * @param {!int} x
      * @param {!int} y
-     * @param {!Axis} axis
-     * @returns {!Array.<![!int, !int]>}
+     * @returns {!Array.<!BorderLoc>}
      */
-    holeDataBorders(x, y, axis) {
+    holeBorderLocs(x, y) {
+        if (!this.isHole(x, y)) {
+            throw new DetailedError('Not a hole.', {x, y});
+        }
+
         let q = [[x, y]];
         let seen = makeGrid(this.width + 2, this.height + 2, () => false);
         let result = [];
         while (q.length > 0) {
             let [i, j] = q.pop();
-            if (!this.isInBounds(i, j, 1) || seen[i+1][j+1]) {
+            if (!this.isInBounds(i, j, 1) || !this.isHole(i, j) || seen[i+1][j+1]) {
                 continue;
             }
             seen[i+1][j+1] = true;
 
-            if (this.isDataQubit(i, j)) {
-                let matchesAxis = axis === undefined;
-                for (let [di, dj] of CARDINALS) {
-                    if (this.borderType(i, j, di, dj) === axis) {
-                        matchesAxis = true;
-                    }
-                }
-                if (matchesAxis) {
-                    result.push([i, j]);
-                }
-            }
-            if (this.isHole(i, j)) {
-                for (let pt of this.neighbors(i, j, true, true)) {
-                    q.push(pt)
+            for (let [di, dj] of CARDINALS) {
+                q.push([i + di, j + dj]);
+                if (this.borderType(i, j, di, dj) !== undefined) {
+                    result.push(new BorderLoc(i, j, di, dj).backside());
                 }
             }
         }
@@ -411,4 +638,4 @@ class SurfaceCodeLayout {
     }
 }
 
-export {SurfaceCodeLayout}
+export {SurfaceCodeLayout, BorderLoc}

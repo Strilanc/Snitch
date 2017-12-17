@@ -105,15 +105,45 @@ class StatePeekerType extends Tool {
         ctx.fillText(zs, (i2 + 1) * config.diam + 3, (j2 + 1.5) * config.diam);
     }
 
-    _drawPreviewLoop(ctx, args) {
-        let axis = Axis.zIf(!args.shiftKey);
-        let x = Math.floor(args.mousePos[0]);
-        let y = Math.floor(args.mousePos[1]);
-        let obs = new SurfaceMultiObservable();
-        for (let [i, j] of args.surface.layout.holeDataBorders(x, y, axis.opposite())) {
-            obs.qubitObservables.push(new SurfaceQubitObservable(i, j, axis.opposite()));
+    /**
+     * @param {!ToolEffectArgs} args
+     * @returns {undefined|!SurfaceMultiObservable}
+     */
+    _holePointToObservable(args) {
+        let closest = args.surface.layout.nearestBorderLocFromPointInHole(...args.mousePos);
+        if (closest === undefined) {
+            return undefined;
         }
-        if (obs.qubitObservables.length > 0) {
+
+        let border = args.surface.layout.fullContiguousBorderTouching(closest);
+        if (border === undefined) {
+            return undefined;
+        }
+
+        let {axis, locs} = border;
+        let obs = new SurfaceMultiObservable();
+        if (args.shiftKey) {
+            axis = axis.opposite();
+        }
+        for (let loc of locs) {
+            if (args.surface.layout.isDataQubit(loc.i, loc.j)) {
+                obs.insertOrDeleteOther(0, new SurfaceQubitObservable(loc.i, loc.j, axis));
+            }
+        }
+        if (obs.qubitObservables.length === 0) {
+            return undefined;
+        }
+        return obs;
+    }
+
+
+    /**
+     * @param {!CanvasRenderingContext2D} ctx
+     * @param {!ToolEffectArgs} args
+     */
+    _drawPreviewLoop(ctx, args) {
+        let obs = this._holePointToObservable(args);
+        if (obs !== undefined) {
             obs.draw(ctx, args.surface);
         }
     }
@@ -156,14 +186,8 @@ class StatePeekerType extends Tool {
      * @private
      */
     _applyEffectLoop(args) {
-        let axis = Axis.zIf(!args.shiftKey);
-        let x = Math.floor(args.dragStartPos[0]);
-        let y = Math.floor(args.dragStartPos[1]);
-        let obs = new SurfaceMultiObservable();
-        for (let [i, j] of args.surface.layout.holeDataBorders(x, y, axis.opposite())) {
-            obs.qubitObservables.push(new SurfaceQubitObservable(i, j, axis.opposite()));
-        }
-        if (obs.qubitObservables.length > 0) {
+        let obs = this._holePointToObservable(args);
+        if (obs !== undefined) {
             args.surface.observableOverlay.observables.push(obs);
         }
     }

@@ -2,6 +2,7 @@ import {config} from "src/config.js"
 import {Tool} from "src/tools/Tool.js"
 import {ToolEffectArgs} from "src/tools/ToolEffectArgs.js";
 import {SurfaceQubitObservable} from "src/sim/SurfaceCodeObservableOverlay.js";
+import {BorderLoc} from "src/sim/SurfaceCodeLayout.js";
 
 class HoleJoinerType extends Tool {
     constructor() {
@@ -70,23 +71,23 @@ class HoleJoinerType extends Tool {
 
     applyEffect(args) {
         let [i, j] = args.surface.layout.nearestDataCoord(...args.mousePos);
-        let [[x1, y1], [x2, y2]] = args.surface.layout.neighbors(i, j, true, true).
-            filter(pt => args.surface.layout.isHole(...pt));
-        let dx = (x2 - x1) / 2;
-        let dy = (y2 - y1) / 2;
-        let axis = args.surface.layout.borderType(i, j, dx, dy);
+        let [x1, y1] = args.surface.layout.neighbors(i, j, true, true).
+            filter(pt => args.surface.layout.isHole(...pt))[0];
+
+        let border = args.surface.layout.fullContiguousBorderTouching(new BorderLoc(i, j, x1 - i, y1 - j));
+        let axis = border.axis;
         let flipQubits = args.surface.measure(i, j, axis.opposite());
         let flipErrorMarks = args.surface.errorOverlay.flipsForAxis(axis)[i][j];
 
-        let border = args.surface.layout.holeDataBorders(x1, y1, axis);
-        for (let [x, y] of border) {
-            args.surface.errorOverlay.flipQubit(x, y, axis, flipErrorMarks, flipQubits);
+        for (let loc of border.locs) {
+            args.surface.errorOverlay.flipQubit(loc.i, loc.j, axis, flipErrorMarks, flipQubits);
         }
 
         let color = flipQubits ? 'red' : 'black';
         args.surface.sparkles.bang(i, j, color, 3);
-        for (let e of border) {
-            args.surface.sparkles.bang(e[0], e[1], color, 0.5);
+        for (let loc of border.locs) {
+            let c = loc.center();
+            args.surface.sparkles.bang(c[0] - 0.5, c[1] - 0.5, color, 0.5);
         }
 
         args.surface.observableOverlay.observables = args.surface.observableOverlay.observables.
