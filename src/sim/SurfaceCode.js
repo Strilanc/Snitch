@@ -261,12 +261,17 @@ class SurfaceCode {
         }
     }
 
-    extendHole(i, j) {
+    /**
+     * @param {!int} i
+     * @param {!int} j
+     * @param {undefined|![!int, !int]} dir
+     */
+    extendHole(i, j, dir=undefined) {
         if (!this.layout.isCheckQubit(i, j)) {
             return;
         }
 
-        for (let [di, dj] of CARDINALS) {
+        for (let [di, dj] of dir === undefined ? CARDINALS : [dir]) {
             let i2 = i + di;
             let j2 = j + dj;
             if (this.layout.isDataQubit(i2, j2) && this.layout.isHole(i + di*2, j + dj*2)) {

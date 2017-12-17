@@ -17,6 +17,7 @@ import {HoleDragger} from 'src/tools/HoleDragger.js'
 import {ErrorPathMaker} from 'src/tools/ErrorPathMaker.js'
 import {StatePeeker} from 'src/tools/StatePeeker.js'
 import {HoleResizer} from 'src/tools/HoleResizer.js'
+import {HoleExtender} from 'src/tools/HoleExtender.js'
 import {describe} from "src/base/Describe.js";
 import {config} from "src/config.js"
 import {Revision} from "src/base/Revision.js";
@@ -26,7 +27,15 @@ import {Axis} from "src/sim/Util.js";
 
 let canvas = /** @type {!HTMLCanvasElement} */ document.getElementById('main-canvas');
 /** @type {!Array.<!Tool>} */
-let availableTools = [SquareHoleMaker, ErrorPathMaker, SquareStabilizerFlipper, HoleDragger, StatePeeker, HoleResizer];
+let availableTools = [
+    SquareHoleMaker,
+    ErrorPathMaker,
+    SquareStabilizerFlipper,
+    HoleDragger,
+    StatePeeker,
+    HoleResizer,
+    HoleExtender
+];
 /** @type {!Array.<!Tool>} */
 let activeTools = [SquareHoleMaker];
 
