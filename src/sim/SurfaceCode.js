@@ -12,6 +12,7 @@ import {SurfaceCodeLayout} from "src/sim/SurfaceCodeLayout.js";
 import {SurfaceCodeErrorOverlay} from "src/sim/SurfaceCodeErrorOverlay.js";
 import {Axis, AXES, Z_AXIS, X_AXIS} from "src/sim/Util.js";
 import {SurfaceCodeObservableOverlay} from "src/sim/SurfaceCodeObservableOverlay.js";
+import {SurfaceCodeSparkles} from "src/sim/SurfaceCodeSparkles.js";
 
 
 function* _checkQubitsWithResultVsExpected(surface, axis, result) {
@@ -37,6 +38,7 @@ class SurfaceCode {
             (i, j) => this.layout.isDataQubit(i, j) ? this.state.addOffQubit() : undefined);
         this.errorOverlay = new SurfaceCodeErrorOverlay(this);
         this.observableOverlay = new SurfaceCodeObservableOverlay();
+        this.sparkles = new SurfaceCodeSparkles();
     }
 
     /**
@@ -52,6 +54,7 @@ class SurfaceCode {
         r.expected_result = cloneGrid(this.expected_result);
         r.qubits = cloneGrid(this.qubits);
         r.observableOverlay = this.observableOverlay.clone();
+        r.sparkles = this.sparkles.clone();
         return r;
     }
 

@@ -75,6 +75,7 @@ function draw() {
         drawErrorCurves(ctx);
         surface.observableOverlay.draw(ctx, surface);
         drawMouseHint(ctx);
+        surface.sparkles.draw(ctx, surface);
     } finally {
         ctx.restore();
     }
@@ -220,6 +221,7 @@ let timeUntilNextCycle = 0;
 function drawingCycle() {
     //noinspection JSUnresolvedVariable
     let dt = window.performance.now() - lastDrawTime;
+    surface.sparkles.advanceTime(dt / 1000);
     timeUntilNextCycle -= dt;
     lastDrawTime += dt;
     if (timeUntilNextCycle < 0) {

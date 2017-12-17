@@ -188,6 +188,11 @@ class SurfaceMultiObservable {
     measureDataButClearByConditionallyFlippingStabilizer(surface, iData, jData, iCheck, jCheck) {
         let axis = surface.layout.colCheckType(iCheck);
 
+        let k2 = this.indexOf(new SurfaceQubitObservable(iData, jData, axis.opposite()));
+        if (k2 !== undefined) {
+            this.qubitObservables.splice(k2, 1);
+        }
+
         let k = this.indexOf(new SurfaceQubitObservable(iData, jData, axis));
         if (k === undefined) {
             return;

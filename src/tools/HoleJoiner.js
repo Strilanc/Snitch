@@ -83,10 +83,24 @@ class HoleJoinerType extends Tool {
             args.surface.errorOverlay.flipQubit(x, y, axis, flipErrorMarks, flipQubits);
         }
 
+        let color = flipQubits ? 'red' : 'black';
+        args.surface.sparkles.bang(i, j, color, 3);
+        for (let e of border) {
+            args.surface.sparkles.bang(e[0], e[1], color, 0.5);
+        }
+
         args.surface.observableOverlay.observables = args.surface.observableOverlay.observables.
             filter(obs => obs.indexOf(new SurfaceQubitObservable(i, j, axis)) === undefined);
+        for (let obs of args.surface.observableOverlay.observables) {
+            let k2 = obs.indexOf(new SurfaceQubitObservable(i, j, axis.opposite()));
+            if (k2 !== undefined) {
+                obs.qubitObservables.splice(k2, 1);
+            }
+        }
 
         args.surface.layout.holes[i][j] = true;
+
+        // TODO: don't flip when adjacent to two borders instead of one. i.e. flip once per adjacent border.
     }
 }
 
