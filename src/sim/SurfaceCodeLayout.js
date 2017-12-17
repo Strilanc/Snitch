@@ -214,6 +214,22 @@ class SurfaceCodeLayout {
     }
 
     /**
+     * @param {!int} i1
+     * @param {!int} j1
+     * @param {!int} i2
+     * @param {!int} j2
+     * @returns {!boolean}
+     */
+    isSameHole(i1, j1, i2, j2) {
+        for (let [i, j] of this.holeFloodFill(i1, j1)) {
+            if (i === i2 && j === j2) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
      * @param {!int} i
      * @param {!int} j
      * @param {!int} di

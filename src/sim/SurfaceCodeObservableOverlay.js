@@ -82,6 +82,10 @@ class SurfaceMultiObservable {
      * @param {!SurfaceCode} surface
      */
     draw(ctx, surface) {
+        if (this.qubitObservables.length === 0) {
+            return;
+        }
+
         ctx.save();
         try {
             let offsets = this.qubitObservables.map(_ => [Math.random() * 2 - 1, Math.random() * 2 - 1]);

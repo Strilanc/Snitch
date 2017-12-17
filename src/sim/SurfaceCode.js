@@ -103,11 +103,30 @@ class SurfaceCode {
         return this.state.measureObservable(neighborZs, neighborXs);
     }
 
-    measure(i, j) {
-        this.last_result[i][j] = this.state.measure(this.qubits[i][j], true);
+    /**
+     * @param {!int} i
+     * @param {!int} j
+     * @param {!Axis} axis
+     * @returns {!boolean}
+     */
+    measure(i, j, axis=Z_AXIS) {
+        let q = this.qubits[i][j];
+        if (axis.isX()) {
+            this.state.h(q);
+        }
+        this.last_result[i][j] = this.state.measure(q, true);
+        if (axis.isX()) {
+            this.state.h(q);
+        }
         return this.last_result[i][j];
     }
 
+    /**
+     * @param {!int} i
+     * @param {!int} j
+     * @param {!function(x: !int, y: !int): !boolean} holeOverlayFunc
+     * @returns {!{shouldBeHole: !boolean, hasX: !boolean, hasZ: !boolean}}
+     */
     shouldBeHole(i, j, holeOverlayFunc = () => false) {
         if (!this.layout.isInBounds(i, j)) {
             return {
@@ -135,6 +154,10 @@ class SurfaceCode {
         return {shouldBeHole: !hasX || !hasZ, hasX, hasZ};
     }
 
+    /**
+     * @param {!int} i
+     * @param {!int} j
+     */
     updateDataHoleBasedOnNeighbors(i, j) {
         let {shouldBeHole, hasX} = this.shouldBeHole(i, j);
 
@@ -282,7 +305,6 @@ class SurfaceCode {
         }
         this.layout.holes[i][j] = true;
     }
-
 }
 
 export {SurfaceCode}

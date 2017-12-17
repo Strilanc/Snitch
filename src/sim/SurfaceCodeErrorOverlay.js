@@ -193,14 +193,7 @@ class SurfaceCodeErrorOverlay {
     measureDataButClearByConditionallyFlippingStabilizer(iData, jData, iCheck, jCheck) {
         let axis = this.surface.layout.colCheckType(iCheck);
         let marked = this.flipsForAxis(axis)[iData][jData];
-        let q = this.surface.qubits[iData][jData];
-        if (axis.isZ()) {
-            this.surface.state.h(q);
-        }
-        let on = this.surface.state.measure(q);
-        if (axis.isZ()) {
-            this.surface.state.h(q);
-        }
+        let on = this.surface.measure(iData, jData, axis.opposite());
         this.flipStabilizer(iCheck, jCheck, marked, on);
     }
 

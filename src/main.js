@@ -18,6 +18,7 @@ import {ErrorPathMaker} from 'src/tools/ErrorPathMaker.js'
 import {StatePeeker} from 'src/tools/StatePeeker.js'
 import {HoleResizer} from 'src/tools/HoleResizer.js'
 import {HoleExtender} from 'src/tools/HoleExtender.js'
+import {HoleJoiner} from 'src/tools/HoleJoiner.js'
 import {describe} from "src/base/Describe.js";
 import {config} from "src/config.js"
 import {Revision} from "src/base/Revision.js";
@@ -34,7 +35,8 @@ let availableTools = [
     HoleDragger,
     StatePeeker,
     HoleResizer,
-    HoleExtender
+    HoleExtender,
+    HoleJoiner
 ];
 /** @type {!Array.<!Tool>} */
 let activeTools = [SquareHoleMaker];

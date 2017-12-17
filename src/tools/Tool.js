@@ -41,8 +41,9 @@ class Tool {
         ctx.fillStyle = 'black';
         ctx.font = '16pt monospace';
         ctx.strokeStyle = 'white';
-        ctx.strokeText(this.hotkey, x, y + h, w);
-        ctx.fillText(this.hotkey, x, y + h, w);
+        ctx.textBaseline = 'middle';
+        ctx.strokeText(this.hotkey, x + w + 2, y + h/2, w);
+        ctx.fillText(this.hotkey, x + w + 2, y + h/2, w);
     }
 
     /**
