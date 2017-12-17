@@ -25,7 +25,7 @@ class MeasurementResult {
      * @param {!int} result The result of the measurement.
      */
     constructor(measuredObservable, result) {
-        if (!(measuredObservable instanceof  ObservableProduct) || (result !== -1 && result !== 1)) {
+        if (!(measuredObservable instanceof ObservableProduct) || (result !== -1 && result !== 1)) {
             throw new DetailedError('Bad args.', {measuredObservable, result});
         }
         this.result = result;
@@ -52,6 +52,18 @@ class MeasurementResult {
             return obs;
         }
         return obs.times(this.eliminationUnit);
+    }
+
+
+    /**
+     * @param {!ObservableProduct} obs The observable product to try to rewrite.
+     * @returns {!ObservableProduct}
+     */
+    inline_rewriteObservableProduct(obs) {
+        if (this.eliminatedId === undefined || !obs.ids.has(this.eliminatedId)) {
+            return obs;
+        }
+        return obs.inline_times(this.eliminationUnit);
     }
 
     /**

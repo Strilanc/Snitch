@@ -1,11 +1,3 @@
-import {DetailedError} from 'src/base/DetailedError.js'
-import {ObservableProduct} from 'src/sim/ObservableProduct.js'
-import {MeasurementResult} from 'src/sim/MeasurementResult.js'
-import {StabilizerQubit} from 'src/sim/StabilizerQubit.js'
-import {StabilizerCircuitState} from 'src/sim/StabilizerCircuitState.js'
-import {SurfaceCode} from 'src/sim/SurfaceCode.js'
-import {describe} from "src/base/Describe.js";
-
 window.onerror = function(msg, url, line, col, error) {
     document.getElementById('err_msg').textContent = describe(msg);
     document.getElementById('err_line').textContent = describe(line);
@@ -15,173 +7,368 @@ window.onerror = function(msg, url, line, col, error) {
     }
 };
 
-let canvas = /** @type {!HTMLCanvasElement} */ document.getElementById('main-canvas');
+import {DetailedError} from 'src/base/DetailedError.js'
+import {SurfaceCode} from 'src/sim/SurfaceCode.js'
+import {BorderLoc} from 'src/sim/SurfaceCodeLayout.js'
+import {CARDINALS} from 'src/sim/Util.js'
+import {ToolEffectArgs} from 'src/tools/ToolEffectArgs.js'
+import {SquareHoleMaker} from 'src/tools/SquareHoleMaker.js'
+import {SquareStabilizerFlipper} from 'src/tools/SquareStabilizerFlipper.js'
+import {ObservableStabilizerFlipper} from 'src/tools/ObservableStabilizerFlipper.js'
+import {ObservableStabilizerCutter} from 'src/tools/ObservableStabilizerCutter.js'
+import {HoleDragger} from 'src/tools/HoleDragger.js'
+import {ErrorPathMaker} from 'src/tools/ErrorPathMaker.js'
+import {StatePeeker} from 'src/tools/StatePeeker.js'
+import {HoleResizer} from 'src/tools/HoleResizer.js'
+import {HoleExtender} from 'src/tools/HoleExtender.js'
+import {HoleRetracter} from 'src/tools/HoleRetracter.js'
+import {HoleJoiner} from 'src/tools/HoleJoiner.js'
+import {HoleSplitter} from 'src/tools/HoleSplitter.js'
+import {describe} from "src/base/Describe.js";
+import {config} from "src/config.js"
+import {Revision} from "src/base/Revision.js";
+import {strokeErrorCurveAt} from "src/draw/Common.js";
+import {AXES, X_AXIS, Z_AXIS} from "src/sim/Util.js";
+import {Axis} from "src/sim/Util.js";
 
+let canvas = /** @type {!HTMLCanvasElement} */ document.getElementById('main-canvas');
+/** @type {!Array.<!Tool>} */
+let availableTools = [
+    SquareHoleMaker,
+    ErrorPathMaker,
+    SquareStabilizerFlipper,
+    HoleDragger,
+    StatePeeker,
+    HoleResizer,
+    HoleExtender,
+    HoleJoiner,
+    HoleSplitter,
+    HoleRetracter,
+    ObservableStabilizerFlipper,
+    ObservableStabilizerCutter,
+];
+/** @type {!Array.<!Tool>} */
+let activeTools = [SquareHoleMaker];
+
+/** @type {!SurfaceCode} */
 let surface = new SurfaceCode(50, 30);
 surface.cycle();
 surface.zero();
 surface.cycle();
-surface.clearFlips();
+surface.errorOverlay.clearFlips();
 
-let diam = 20;
-let canvas_padding = 10;
-canvas.width = diam * surface.width + canvas_padding*2;
-canvas.height = diam * surface.height + canvas_padding*2;
+/** @type {!Revision} */
+let revision = Revision.startingAt(surface.clone());
 
-const X_ON_COLOR = '#55F';
-const X_BORDER_COLOR = '#55F';
-const X_OFF_COLOR = '#E6E6FF';
+canvas.width = config.diam * surface.layout.width + config.canvasPadding*2 + 100;
+canvas.height = config.diam * surface.layout.height + config.canvasPadding*2 + 100;
+let toolboxFullWidth = 64;
+let drawOffsetX = config.canvasPadding + toolboxFullWidth;
+let drawOffsetY = config.canvasPadding;
+let toolSpacing = 32;
 
-const Z_ON_COLOR = '#0A0';
-const Z_BORDER_COLOR = '#0A0';
-const Z_OFF_COLOR = '#DFD';
-
-const D_COLOR = '#FFF';
-const H_COLOR = '#000';
+/** @type {!ToolEffectArgs} */
+let latestToolArgs = new ToolEffectArgs(surface, undefined, undefined, undefined, false, false);
 
 function draw() {
     let ctx = canvas.getContext('2d');
     ctx.save();
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    ctx.translate(canvas_padding, canvas_padding);
+    try {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.translate(config.canvasPadding, config.canvasPadding);
+        drawTools(ctx);
 
-    drawQubitBlocks(ctx);
-    drawHoleBorders(ctx);
-    drawErrorCurves(ctx);
-
-    ctx.restore();
-}
-
-function drawQubitBlocks(ctx) {
-    for (let [i, j] of surface.points) {
-        let x = i * diam;
-        let y = j * diam;
-        let b = surface.last_result[i][j];
-        if (surface.isDataQubit(i, j)) {
-            ctx.fillStyle = D_COLOR;
-        } else if (surface.isZCheckQubit(i, j)) {
-            ctx.fillStyle = b ? Z_ON_COLOR : Z_OFF_COLOR;
-        } else if (surface.isXCheckQubit(i, j)) {
-            ctx.fillStyle = b ? X_ON_COLOR : X_OFF_COLOR;
-        } else {
-            ctx.fillStyle = H_COLOR;
-        }
-        ctx.fillRect(x, y, diam, diam);
+        ctx.translate(toolboxFullWidth, 0);
+        drawQubitBlocks(ctx);
+        drawHoleBorders(ctx);
+        drawErrorCurves(ctx);
+        surface.observableOverlay.draw(ctx, surface);
+        drawMouseHint(ctx);
+        surface.sparkles.draw(ctx, surface);
+    } finally {
+        ctx.restore();
     }
 }
 
+/**
+ * @param {!CanvasRenderingContext2D} ctx
+ */
+function drawTools(ctx) {
+    let axis = Axis.zIf(!latestToolArgs.shiftKey);
+    for (let i = 0; i < availableTools.length; i++) {
+        let isActive = activeTools.indexOf(availableTools[i]) !== -1;
+        availableTools[i].drawButton(ctx, 0, i*toolSpacing, toolSpacing-2, toolSpacing-2, isActive, axis);
+    }
+}
+
+/**
+ * @param {!CanvasRenderingContext2D} ctx
+ */
+function drawMouseHint(ctx) {
+    ctx.save();
+    try {
+
+        latestToolArgs.mousePointerOut = 'default';
+        for (let e of activeTools) {
+            if (e.canApply(latestToolArgs)) {
+                ctx.globalAlpha *= 0.6;
+                e.drawPreview(ctx, latestToolArgs);
+                break;
+            } else if (e.canHoverHint(latestToolArgs)) {
+                ctx.globalAlpha *= 0.3;
+                e.drawHoverHint(ctx, latestToolArgs);
+                break;
+            }
+        }
+        canvas.style.cursor = latestToolArgs.mousePointerOut;
+    } finally {
+        ctx.restore();
+    }
+}
+
+/**
+ * @param {!CanvasRenderingContext2D} ctx
+ * @param {!Iterable.<![!int, !int]>} points
+ * @param {!string} color
+ */
+function drawQubitBlocksOfType(ctx, points, color) {
+    ctx.beginPath();
+    for (let [i, j] of points) {
+        let x = i * config.diam;
+        let y = j * config.diam;
+        ctx.moveTo(x, y);
+        ctx.lineTo(x + config.diam, y);
+        ctx.lineTo(x + config.diam, y + config.diam);
+        ctx.lineTo(x, y + config.diam);
+        ctx.lineTo(x, y);
+    }
+    ctx.fillStyle = color;
+    ctx.fill();
+}
+
+/**
+ * @param {!CanvasRenderingContext2D} ctx
+ */
+function drawQubitBlocks(ctx) {
+    ctx.fillStyle = config.dataQubitColor;
+    ctx.fillRect(0, 0, surface.layout.width * config.diam, surface.layout.height * config.diam);
+    drawQubitBlocksOfType(ctx, surface.checkQubitsWithResultVsExpected(X_AXIS, false), config.xOffColor);
+    drawQubitBlocksOfType(ctx, surface.checkQubitsWithResultVsExpected(X_AXIS, true), config.xOnColor);
+    drawQubitBlocksOfType(ctx, surface.checkQubitsWithResultVsExpected(Z_AXIS, false), config.zOffColor);
+    drawQubitBlocksOfType(ctx, surface.checkQubitsWithResultVsExpected(Z_AXIS, true), config.zOnColor);
+    drawQubitBlocksOfType(ctx, surface.layout.holePoints(0), config.holeColor);
+
+    ctx.beginPath();
+    for (let [i, j] of surface.layout.checkQubits()) {
+        if (surface.expected_result[i][j]) {
+            let x = i * config.diam;
+            let y = j * config.diam;
+            ctx.moveTo(x, y);
+            ctx.lineTo(x + config.diam, y + config.diam);
+        }
+    }
+    ctx.strokeStyle = 'red';
+    ctx.stroke();
+}
+
+/**
+ * @param {!CanvasRenderingContext2D} ctx
+ * @param {!int} i
+ * @param {!int} j
+ * @param {!int} di
+ * @param {!int} dj
+ */
 function drawSingleBorder(ctx, i, j, di, dj) {
-    let type = surface.borderType(i, j, di, dj);
+    let type = surface.layout.borderType(new BorderLoc(i, j, di, dj));
     if (type === undefined) {
         return;
     }
 
     let ai = Math.abs(di);
     let aj = Math.abs(dj);
-    let x = i * diam;
-    let y = j * diam;
-    ctx.fillStyle = type === 'Z' ? Z_BORDER_COLOR : X_BORDER_COLOR;
+    let x = i * config.diam;
+    let y = j * config.diam;
+    ctx.fillStyle = type.isZ() ? config.zBorderColor : config.xBorderColor;
     ctx.fillRect(
-        x + (diam - 3) * (di + 1) / 2 * ai,
-        y + (diam - 3) * (dj + 1) / 2 * aj,
-        aj * diam + 3 * ai,
-        ai * diam + 3 * aj);
+        x + (config.diam - config.borderWidth) * (di + 1) / 2 * ai,
+        y + (config.diam - config.borderWidth) * (dj + 1) / 2 * aj,
+        aj * config.diam + config.borderWidth * ai,
+        ai * config.diam + config.borderWidth * aj);
 }
 
 
+/**
+ * @param {!CanvasRenderingContext2D} ctx
+ */
 function drawHoleBorders(ctx) {
-    for (let [i, j] of surface.holePoints()) {
-        for (let [di, dj] of SurfaceCode.cardinals()) {
+    for (let [i, j] of surface.layout.holePoints()) {
+        for (let [di, dj] of CARDINALS) {
             drawSingleBorder(ctx, i, j, di, dj);
         }
     }
 }
 
+/**
+ * @param {!CanvasRenderingContext2D} ctx
+ */
 function drawErrorCurves(ctx) {
-    for (let xz of [false, true]) {
+    for (let axis of AXES) {
         ctx.beginPath();
-        let flips = surface.xzFlips(xz);
-        for (let [i, j] of surface.dataPoints()) {
-            let x = i * diam + 0.5;
-            let y = j * diam + 0.5;
-
+        let flips = surface.errorOverlay.flipsForAxis(axis.opposite());
+        for (let [i, j] of surface.layout.dataPoints(true)) {
             if (flips[i][j]) {
-                if (surface.isXCheckRow(j) === xz) {
-                    ctx.moveTo(x + diam / 2, y - diam / 2);
-                    ctx.lineTo(x + diam / 2, y + diam * 3 / 2);
-                } else {
-                    ctx.moveTo(x - diam / 2, y + diam / 2);
-                    ctx.lineTo(x + diam * 3 / 2, y + diam / 2);
-                }
+                strokeErrorCurveAt(ctx, surface, i, j, axis);
             }
         }
-        ctx.strokeStyle = xz ? Z_ON_COLOR : X_ON_COLOR;
+        ctx.strokeStyle = axis.isZ() ? config.zOnColor : config.xOnColor;
         ctx.stroke();
     }
 }
 
-setInterval(() => {
-    surface.error();
-    surface.cycle();
-    draw();
-}, 100);
+//noinspection JSUnresolvedVariable
+let lastDrawTime = window.performance.now();
+let timeUntilNextCycle = 0;
+function drawingCycle() {
+    //noinspection JSUnresolvedVariable
+    let dt = window.performance.now() - lastDrawTime;
+    surface.sparkles.advanceTime(dt / 1000);
+    timeUntilNextCycle -= dt;
+    lastDrawTime += dt;
+    if (timeUntilNextCycle < 0) {
+        surface.cycle();
+        timeUntilNextCycle %= 100;
+        timeUntilNextCycle += 100;
+    }
+    requestAnimationFrame(draw);
+}
+setInterval(drawingCycle, 100);
+
+document.onkeyup = ev => {
+    latestToolArgs.ctrlKey = ev.ctrlKey;
+    latestToolArgs.shiftKey = ev.shiftKey;
+    requestAnimationFrame(draw);
+};
 
 document.onkeydown = ev => {
+    latestToolArgs.ctrlKey = ev.ctrlKey;
+    latestToolArgs.shiftKey = ev.shiftKey;
     if (ev.keyCode === 32) {
         ev.preventDefault();
         surface.correct();
         surface.cycle();
-        draw();
-    } else if (ev.keyCode === 65) {
+    } else if (ev.keyCode === 'Z'.charCodeAt(0) && ev.ctrlKey && !ev.shiftKey) {
         ev.preventDefault();
-        surface.clean_areas();
-    } else if (ev.keyCode === 69) {
+        if (!revision.isAtBeginningOfHistory()) {
+            if (revision.isWorkingOnCommit) {
+                revision.commit(surface.clone());
+            }
+            surface = revision.undo().clone();
+            latestToolArgs.surface = surface;
+        }
+    } else if ((ev.keyCode === 'Z'.charCodeAt(0) && ev.ctrlKey && ev.shiftKey) ||
+            (ev.keyCode === 'Y'.charCodeAt(0) && ev.ctrlKey && !ev.shiftKey)) {
         ev.preventDefault();
-        surface.error(0.001);
+        if (!revision.isAtEndOfHistory()) {
+            surface = revision.redo().clone();
+            latestToolArgs.surface = surface;
+        }
+    } else if (ev.keyCode === 'A'.charCodeAt(0)) {
+        ev.preventDefault();
+        surface.errorOverlay.shrinkCurves();
+    } else if (ev.keyCode === 'E'.charCodeAt(0)) {
+        ev.preventDefault();
+        surface.errorOverlay.error(0.001);
+        surface.cycle();
+    } else {
+        for (let e of availableTools) {
+            if (!ev.ctrlKey && ev.keyCode === e.hotkey.charCodeAt(0)) {
+                ev.preventDefault();
+                activeTools = [e];
+            }
+        }
     }
+    requestAnimationFrame(draw);
+};
+
+canvas.onmousemove = ev => {
+    let b = canvas.getBoundingClientRect();
+    let x = (ev.x - drawOffsetX - b.left) / config.diam;
+    let y = (ev.y - drawOffsetY - b.top) / config.diam;
+    latestToolArgs.ctrlKey = ev.ctrlKey;
+    latestToolArgs.shiftKey = ev.shiftKey;
+    latestToolArgs.mousePos = [x, y];
+    requestAnimationFrame(draw);
+};
+
+canvas.onmouseout = ev => {
+    latestToolArgs.ctrlKey = ev.ctrlKey;
+    latestToolArgs.shiftKey = ev.shiftKey;
+    latestToolArgs.mousePos = undefined;
+    requestAnimationFrame(draw);
+};
+
+canvas.onmouseup = ev => {
+    let b = canvas.getBoundingClientRect();
+    let x = (ev.x - drawOffsetX - b.left) / config.diam;
+    let y = (ev.y - drawOffsetY - b.top) / config.diam;
+    latestToolArgs.ctrlKey = ev.ctrlKey;
+    latestToolArgs.shiftKey = ev.shiftKey;
+    latestToolArgs.mousePos = [x, y];
+    latestToolArgs.mouseButton = ev.button;
+
+    for (let e of activeTools) {
+        if (e.canApply(latestToolArgs)) {
+            if (revision.isWorkingOnCommit) {
+                revision.commit(surface.clone());
+            } else {
+                if (revision.isAtBeginningOfHistory()) {
+                    revision = Revision.startingAt(surface.clone());
+                } else {
+                    revision.undo();
+                    revision.commit(surface.clone());
+                }
+            }
+            revision.startedWorkingOnCommit();
+            e.applyEffect(latestToolArgs);
+            surface.cycle();
+            break;
+        }
+    }
+
+    latestToolArgs.dragStartPos = undefined;
+    latestToolArgs.mouseButton = undefined;
+    requestAnimationFrame(draw);
 };
 
 canvas.onmousedown = ev => {
     ev.preventDefault();
     let b = canvas.getBoundingClientRect();
-    let i = Math.floor((ev.x - canvas_padding - b.left) / diam);
-    let j = Math.floor((ev.y - canvas_padding - b.top) / diam);
-    if (ev.ctrlKey) {
-        if (i >= 0 && i < surface.width && j >= 0 && j < surface.height) {
-            if (ev.button === 0) {
-                surface.holes[i][j] ^= true;
-                if (surface.holes[i][j]) {
-                    surface.measure(i, j);
-                    surface.xFlips[i][j] = false;
-                    surface.zFlips[i][j] = false;
-                }
+    let x = (ev.x - drawOffsetX - b.left) / config.diam;
+    let y = (ev.y - drawOffsetY - b.top) / config.diam;
+    latestToolArgs.ctrlKey = ev.ctrlKey;
+    latestToolArgs.shiftKey = ev.shiftKey;
+    latestToolArgs.dragStartPos = [x, y];
+    latestToolArgs.mousePos = [x, y];
+    latestToolArgs.mouseButton = ev.button;
+    latestToolArgs.ctrlKey = ev.ctrlKey;
+    latestToolArgs.shiftKey = ev.shiftKey;
 
-            }
-        }
-    } else {
-        if (surface.isDataQubit(i, j)) {
-            if (ev.button === 0) {
-                surface.state.x(surface.qubits[i][j]);
-                if (!ev.altKey) {
-                    surface.xFlips[i][j] ^= true;
-                }
-            } else {
-                surface.state.z(surface.qubits[i][j]);
-                if (!ev.altKey) {
-                    surface.zFlips[i][j] ^= true;
-                }
-            }
-        }
+    requestAnimationFrame(draw);
+};
 
-        for (let xz of [false, true]) {
-            if (surface.isCheckQubit(i, j, xz)) {
-                for (let [i2, j2] of surface.neighbors(i, j)) {
-                    surface.doXZ(i2, j2, xz, ev.altKey);
-                }
-            }
-        }
+canvas.onclick = ev => {
+    ev.preventDefault();
+    let b = canvas.getBoundingClientRect();
+    let x = ev.x - b.left - config.canvasPadding;
+    let y = ev.y - b.top - config.canvasPadding;
+    if (x > toolSpacing) {
+        return;
     }
 
-    surface.cycle();
-    draw();
+    let i = Math.floor(y / toolSpacing);
+    if (i >= 0 && i < availableTools.length) {
+        activeTools = [availableTools[i]];
+    }
+
+    requestAnimationFrame(draw);
 };

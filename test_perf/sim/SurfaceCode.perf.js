@@ -17,28 +17,45 @@ import {SurfaceCode} from "src/sim/SurfaceCode.js"
 
 perfGoal(
     "surface-setup-10x10",
-    millis(3),
+    millis(1),
     () => new SurfaceCode(10, 10).cycle());
 
 perfGoal(
     "surface-setup-20x20",
-    millis(20),
+    millis(4),
     () => new SurfaceCode(20, 20).cycle());
 
 perfGoal(
+    "surface-setup-30x30",
+    millis(20),
+    () => new SurfaceCode(30, 30).cycle());
+
+perfGoal(
     "surface-cycle-10x10",
-    millis(1),
+    micros(150),
     s => s.cycle(),
     new SurfaceCode(10, 10));
 
 perfGoal(
     "surface-cycle-20x20",
-    millis(12),
+    micros(600),
     s => s.cycle(),
     new SurfaceCode(20, 20));
 
 perfGoal(
     "surface-cycle-30x30",
-    millis(150),
+    millis(2),
+    s => s.cycle(),
+    new SurfaceCode(30, 30));
+
+perfGoal(
+    "surface-cycle-40x40",
+    millis(5),
     s => s.cycle(),
     new SurfaceCode(40, 40));
+
+perfGoal(
+    "surface-cycle-50x50",
+    millis(7),
+    s => s.cycle(),
+    new SurfaceCode(50, 50));

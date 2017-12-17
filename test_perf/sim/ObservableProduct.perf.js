@@ -26,7 +26,7 @@ function productRange(prefix, count) {
 perfGoal(
     "ObservableProduct.times(10)",
     micros(10),
-    v => v[0].times_inline(v[1]),
+    v => v[0].inline_times(v[1]),
     [productRange('a', 10), productRange('b', 10).times(productRange('a', 5))]);
 
 perfGoal(
@@ -36,13 +36,13 @@ perfGoal(
     [productRange('a', 10000), productRange('b', 10000).times(productRange('a', 500))]);
 
 perfGoal(
-    "ObservableProduct.times_inline(10)",
+    "ObservableProduct.inline_times(10)",
     micros(3),
-    v => v[0].times_inline(v[1]),
+    v => v[0].inline_times(v[1]),
     [productRange('a', 10), productRange('b', 10).times(productRange('a', 5))]);
 
 perfGoal(
-    "ObservableProduct.times_inline(10000)",
+    "ObservableProduct.inline_times(10000)",
     millis(2),
-    v => v[0].times_inline(v[1]),
+    v => v[0].inline_times(v[1]),
     [productRange('a', 10000), productRange('b', 10000).times(productRange('a', 500))]);

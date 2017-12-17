@@ -63,6 +63,9 @@ module.exports = function(grunt) {
             'function _gen_package_get(key) {',
             '    if (!_gen_packages_vals.has(key)) {',
             '        _gen_packages_vals.set(key, new Map());',
+            '        if (!_gen_packages_inits.has(key)) {',
+            '            throw new Error(`Unknown import: "${key}"`);',
+            '        }',
             '        _gen_packages_inits.get(key)();',
             '    }',
             '    return _gen_packages_vals.get(key);',
@@ -83,7 +86,7 @@ module.exports = function(grunt) {
                 /\bimport (.+) from (['"].+['"])/,
                 'g'),
                 function(match, vals, key) {
-                    return 'let ' + vals + ' = _gen_package_get(' + key + ');'
+                    return 'const ' + vals + ' = _gen_package_get(' + key + ');'
                 });
 
             return '///////////////////////////////////////////////////////////////////////////////////////////////\n' +
