@@ -110,10 +110,12 @@ class StatePeekerType extends Tool {
         let x = Math.floor(args.mousePos[0]);
         let y = Math.floor(args.mousePos[1]);
         let obs = new SurfaceMultiObservable();
-        for (let [i, j] of args.surface.layout.holeDataBorders(x, y)) {
+        for (let [i, j] of args.surface.layout.holeDataBorders(x, y, axis.opposite())) {
             obs.qubitObservables.push(new SurfaceQubitObservable(i, j, axis.opposite()));
         }
-        obs.draw(ctx, args.surface);
+        if (obs.qubitObservables.length > 0) {
+            obs.draw(ctx, args.surface);
+        }
     }
 
     drawPreview(ctx, args) {
@@ -158,7 +160,7 @@ class StatePeekerType extends Tool {
         let x = Math.floor(args.dragStartPos[0]);
         let y = Math.floor(args.dragStartPos[1]);
         let obs = new SurfaceMultiObservable();
-        for (let [i, j] of args.surface.layout.holeDataBorders(x, y)) {
+        for (let [i, j] of args.surface.layout.holeDataBorders(x, y, axis.opposite())) {
             obs.qubitObservables.push(new SurfaceQubitObservable(i, j, axis.opposite()));
         }
         if (obs.qubitObservables.length > 0) {

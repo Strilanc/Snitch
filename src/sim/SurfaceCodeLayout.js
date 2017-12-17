@@ -138,14 +138,15 @@ class SurfaceCodeLayout {
      * @param {!int} i
      * @param {!int} j
      * @param {!boolean} ignoreHoles
+     * @param {!boolean} ignoreBounds
      * @returns {!Array.<![!int, !int]>}
      */
-    neighbors(i, j, ignoreHoles=false) {
+    neighbors(i, j, ignoreHoles=false, ignoreBounds=false) {
         let result = [];
         for (let [di, dj] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
             let i2 = i + di;
             let j2 = j + dj;
-            if (i2 >= 0 && i2 < this.width && j2 >= 0 && j2 < this.height && (ignoreHoles || !this.isHole(i2, j2))) {
+            if ((ignoreBounds || this.isInBounds(i2, j2)) && (ignoreHoles || !this.isHole(i2, j2))) {
                 result.push([i2, j2]);
             }
         }
@@ -178,24 +179,33 @@ class SurfaceCodeLayout {
     /**
      * @param {!int} x
      * @param {!int} y
+     * @param {!Axis} axis
      * @returns {!Array.<![!int, !int]>}
      */
-    holeDataBorders(x, y) {
+    holeDataBorders(x, y, axis) {
         let q = [[x, y]];
-        let seen = makeGrid(this.width, this.height, () => false);
+        let seen = makeGrid(this.width + 2, this.height + 2, () => false);
         let result = [];
         while (q.length > 0) {
             let [i, j] = q.pop();
-            if (seen[i][j]) {
+            if (!this.isInBounds(i, j, 1) || seen[i+1][j+1]) {
                 continue;
             }
-            seen[i][j] = true;
+            seen[i+1][j+1] = true;
 
             if (this.isDataQubit(i, j)) {
-                result.push([i, j]);
+                let matchesAxis = axis === undefined;
+                for (let [di, dj] of CARDINALS) {
+                    if (this.borderType(i, j, di, dj) === axis) {
+                        matchesAxis = true;
+                    }
+                }
+                if (matchesAxis) {
+                    result.push([i, j]);
+                }
             }
-            if (this.isInBounds(i, j, 1) && this.isHole(i, j)) {
-                for (let pt of this.neighbors(i, j, true)) {
+            if (this.isHole(i, j)) {
+                for (let pt of this.neighbors(i, j, true, true)) {
                     q.push(pt)
                 }
             }
