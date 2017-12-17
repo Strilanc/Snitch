@@ -9,6 +9,7 @@ window.onerror = function(msg, url, line, col, error) {
 
 import {DetailedError} from 'src/base/DetailedError.js'
 import {SurfaceCode} from 'src/sim/SurfaceCode.js'
+import {BorderLoc} from 'src/sim/SurfaceCodeLayout.js'
 import {CARDINALS} from 'src/sim/Util.js'
 import {ToolEffectArgs} from 'src/tools/ToolEffectArgs.js'
 import {SquareHoleMaker} from 'src/tools/SquareHoleMaker.js'
@@ -177,7 +178,7 @@ function drawQubitBlocks(ctx) {
  * @param {!int} dj
  */
 function drawSingleBorder(ctx, i, j, di, dj) {
-    let type = surface.layout.borderType(i, j, di, dj);
+    let type = surface.layout.borderType(new BorderLoc(i, j, di, dj));
     if (type === undefined) {
         return;
     }

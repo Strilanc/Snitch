@@ -35,174 +35,56 @@ class StatePeekerType extends Tool {
     }
 
     drawHoverHint(ctx, args) {
-        {
-            let i = Math.floor(args.mousePos[0]);
-            let j = Math.floor(args.mousePos[1]);
-            if (args.surface.layout.isHole(i, j)) {
-                this._drawPreviewLoop(ctx, args);
-                return;
-            }
-        }
-
-        // Show state of qubit stabilizer observables.
-        // let [i, j] = args.surface.layout.nearestDataCoord(...args.mousePos);
-        // let q = args.surface.state.qubitMap.get(args.surface.qubits[i][j]);
-        // ctx.strokeStyle = '#000';
-        // ctx.strokeRect(i*config.diam, j*config.diam, config.diam, config.diam);
-        // ctx.strokeStyle = '#000';
-        // ctx.fillStyle = '#FFF';
-        // ctx.textBaseline = 'middle';
-        // ctx.font = '12pt monospace';
-        // ctx.globalAlpha = 1.0;
-        // let xs = q.obsX.toString(5);
-        // let zs = q.obsZ.toString(5);
-        // let w = Math.max(ctx.measureText(xs).width, ctx.measureText(zs).width);
-        // ctx.strokeRect((i+1) * config.diam + 0.5, j * config.diam + 0.5, w + 6, config.diam*2);
-        // ctx.fillRect((i+1) * config.diam + 0.5, j * config.diam + 0.5, w + 6, config.diam*2);
-        // ctx.fillStyle = '#000';
-        // ctx.fillText(xs, (i+1)*config.diam+3, (j+0.5)*config.diam);
-        // ctx.fillText(zs, (i+1)*config.diam+3, (j+1.5)*config.diam);
+        this._drawPath(ctx, args, args.mousePos);
     }
 
-    _drawPreviewPath(ctx, args) {
-        let axis = Axis.zIf(!args.shiftKey);
-        let [i1, j1] = args.surface.layout.nearestCheckCoord(args.dragStartPos[0], args.dragStartPos[1], axis);
-        let [i2, j2] = args.surface.layout.nearestCheckCoord(args.mousePos[0], args.mousePos[1], axis);
-        let pathData = args.surface.layout.pathAlongCheckQubits(i1, j1, i2, j2, false);
-        let pathCheck = args.surface.layout.pathAlongCheckQubits(i1, j1, i2, j2, true);
-        let x = new ObservableProduct();
-        let z = new ObservableProduct();
-        ctx.fillStyle = axis.isX() ? config.xOnColor : config.zOnColor;
-        for (let [i, j] of pathData) {
-            if (args.surface.layout.isDataQubit(i, j)) {
-                let q = args.surface.state.qubitMap.get(args.surface.qubits[i][j]);
-                x.inline_times(q.obsX);
-                z.inline_times(q.obsZ);
-                ctx.fillRect((i + 0.3) * config.diam, (j + 0.3) * config.diam, 0.4 * config.diam, 0.4 * config.diam);
-            }
+    _drawPath(ctx, args, pt) {
+        let r = args.surface.layout.mouseSegmentToDataQubits(
+            pt[0],
+            pt[1],
+            args.mousePos[0],
+            args.mousePos[1]);
+
+        ctx.fillStyle = '#800';
+        for (let [x, y] of r.anchorPoints) {
+            ctx.fillRect((x - 0.2) * config.diam, (y - 0.2) * config.diam, config.diam * 0.4, config.diam * 0.4);
         }
-        ctx.beginPath();
-        ctx.moveTo((pathCheck[0] + 0.5) * config.diam, (pathCheck[1] + 0.5) * config.diam);
-        for (let [i, j] of pathCheck) {
-            ctx.lineTo((i + 0.5) * config.diam, (j + 0.5) * config.diam);
-            ctx.fillRect((i + 0.3) * config.diam, (j + 0.3) * config.diam, 0.4 * config.diam, 0.4 * config.diam);
-        }
-        ctx.strokeStyle = axis.isX() ? config.xOnColor : config.zOnColor;
-        ctx.lineWidth = 2;
-        ctx.stroke();
 
         ctx.strokeStyle = '#000';
-        ctx.fillStyle = '#FFF';
-        ctx.textBaseline = 'middle';
-        ctx.font = '12pt monospace';
-        ctx.globalAlpha = 0.5;
-        let xs = x.toString(5);
-        let zs = z.toString(5);
-        let w = Math.max(ctx.measureText(xs).width, ctx.measureText(zs).width);
-        ctx.strokeRect((i2 + 1) * config.diam + 0.5, j2 * config.diam + 0.5, w + 6, config.diam * 2);
-        ctx.fillRect((i2 + 1) * config.diam + 0.5, j2 * config.diam + 0.5, w + 6, config.diam * 2);
-        ctx.fillStyle = '#000';
-        ctx.fillText(xs, (i2 + 1) * config.diam + 3, (j2 + 0.5) * config.diam);
-        ctx.fillText(zs, (i2 + 1) * config.diam + 3, (j2 + 1.5) * config.diam);
-    }
+        ctx.strokeRect((r.anchorPoints[0][0]-0.5)*config.diam, (r.anchorPoints[0][1]-0.5)*config.diam,
+            config.diam, config.diam);
 
-    /**
-     * @param {!ToolEffectArgs} args
-     * @returns {undefined|!SurfaceMultiObservable}
-     */
-    _holePointToObservable(args) {
-        let closest = args.surface.layout.nearestBorderLocFromPointInHole(...args.mousePos);
-        if (closest === undefined) {
-            return undefined;
-        }
-
-        let border = args.surface.layout.fullContiguousBorderTouching(closest);
-        if (border === undefined) {
-            return undefined;
-        }
-
-        let {axis, locs} = border;
-        let obs = new SurfaceMultiObservable();
-        if (args.shiftKey) {
-            axis = axis.opposite();
-        }
-        for (let loc of locs) {
-            if (args.surface.layout.isDataQubit(loc.i, loc.j)) {
-                obs.insertOrDeleteOther(0, new SurfaceQubitObservable(loc.i, loc.j, axis));
-            }
-        }
-        if (obs.qubitObservables.length === 0) {
-            return undefined;
-        }
-        return obs;
-    }
-
-
-    /**
-     * @param {!CanvasRenderingContext2D} ctx
-     * @param {!ToolEffectArgs} args
-     */
-    _drawPreviewLoop(ctx, args) {
-        let obs = this._holePointToObservable(args);
-        if (obs !== undefined) {
+        let axis = r.pathType.opposite();
+        if (r.path !== undefined) {
+            let obs = new SurfaceMultiObservable(r.path.map(([i, j]) => new SurfaceQubitObservable(i, j, axis)));
             obs.draw(ctx, args.surface);
+        } else {
+            ctx.beginPath();
+            ctx.moveTo(r.anchorPoints[0][0]*config.diam, r.anchorPoints[0][1]*config.diam);
+            ctx.lineTo(r.anchorPoints[1][0]*config.diam, r.anchorPoints[1][1]*config.diam);
+            ctx.strokeStyle = 'red';
+            //noinspection JSUnresolvedFunction
+            ctx.setLineDash([8, 4]);
+            ctx.lineWidth = 4;
+            ctx.stroke();
         }
     }
 
     drawPreview(ctx, args) {
-        let i = Math.floor(args.dragStartPos[0]);
-        let j = Math.floor(args.dragStartPos[1]);
-        let i2 = Math.floor(args.mousePos[0]);
-        let j2 = Math.floor(args.mousePos[1]);
-
-        if (i === i2 && j === j2 && args.surface.layout.isHole(i, j)) {
-            this._drawPreviewLoop(ctx, args);
-        } else {
-            this._drawPreviewPath(ctx, args);
-        }
-    }
-
-    /**
-     * @param {!ToolEffectArgs} args
-     * @private
-     */
-    _applyEffectPath(args) {
-        let axis = Axis.zIf(!args.shiftKey);
-        let [i1, j1] = args.surface.layout.nearestCheckCoord(args.dragStartPos[0], args.dragStartPos[1], axis);
-        let [i2, j2] = args.surface.layout.nearestCheckCoord(args.mousePos[0], args.mousePos[1], axis);
-        let pathData = args.surface.layout.pathAlongCheckQubits(i1, j1, i2, j2, false);
-        let obs = new SurfaceMultiObservable();
-        for (let [i, j] of pathData) {
-            if (args.surface.layout.isDataQubit(i, j)) {
-                obs.qubitObservables.push(new SurfaceQubitObservable(i, j, axis.opposite()));
-            }
-        }
-        if (obs.qubitObservables.length > 0) {
-            args.surface.observableOverlay.observables.push(obs);
-        }
-    }
-
-    /**
-     * @param {!ToolEffectArgs} args
-     * @private
-     */
-    _applyEffectLoop(args) {
-        let obs = this._holePointToObservable(args);
-        if (obs !== undefined) {
-            args.surface.observableOverlay.observables.push(obs);
-        }
+        ctx.globalAlpha = 1 - 0.5*(1 - ctx.globalAlpha);
+        this._drawPath(ctx, args, args.dragStartPos);
     }
 
     applyEffect(args) {
-        let i = Math.floor(args.dragStartPos[0]);
-        let j = Math.floor(args.dragStartPos[1]);
-        let i2 = Math.floor(args.mousePos[0]);
-        let j2 = Math.floor(args.mousePos[1]);
-
-        if (i === i2 && j === j2 && args.surface.layout.isHole(i, j)) {
-            this._applyEffectLoop(args);
-        } else {
-            this._applyEffectPath(args);
+        let r = args.surface.layout.mouseSegmentToDataQubits(
+            args.dragStartPos[0],
+            args.dragStartPos[1],
+            args.mousePos[0],
+            args.mousePos[1]);
+        let axis = r.pathType.opposite();
+        if (r.path !== undefined) {
+            let obs = new SurfaceMultiObservable(r.path.map(([i, j]) => new SurfaceQubitObservable(i, j, axis)));
+            args.surface.observableOverlay.observables.push(obs);
         }
     }
 }

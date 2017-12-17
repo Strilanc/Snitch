@@ -243,7 +243,7 @@ class SurfaceCodeLayout {
             borderLoc.nextCounterClockwiseAroundCorner()
         ];
         for (let a of options) {
-            if (this.borderType(a.i, a.j, a.di, a.dj) === type) {
+            if (this.borderType(a) === type) {
                 return a;
             }
         }
@@ -254,10 +254,11 @@ class SurfaceCodeLayout {
      * @param {!BorderLoc} borderLoc
      * @param {!Axis} type
      * @param {!boolean} clockwise
+     * @param {!boolean} keepBorderPiecesBetweenAHoleAndACheckQubit
      * @returns {!{locs: !Array.<!BorderLoc>, cycle: !boolean}}
      * @private
      */
-    _scanBorder(borderLoc, type, clockwise) {
+    _scanBorder(borderLoc, type, clockwise, keepBorderPiecesBetweenAHoleAndACheckQubit=true) {
         let locs = [borderLoc];
         let cur = borderLoc;
         while (true) {
@@ -265,24 +266,29 @@ class SurfaceCodeLayout {
             if (cur === undefined || cur.isEqualTo(borderLoc)) {
                 break;
             }
-            locs.push(cur);
+            if (keepBorderPiecesBetweenAHoleAndACheckQubit ||
+                    this.isDataQubit(cur.i, cur.j) ||
+                    this.isDataQubit(cur.i + cur.di, cur.j + cur.dj)) {
+                locs.push(cur);
+            }
         }
         return {locs, cycle: cur !== undefined};
     }
 
     /**
      * @param {!BorderLoc} borderLoc
-     * @returns {!{locs: !Array.<!BorderLoc>, cycle: !boolean, axis: !Axis}}
+     * @param {!boolean} keepBorderPiecesBetweenAHoleAndACheckQubit
+     * @returns {undefined|!{locs: !Array.<!BorderLoc>, cycle: !boolean, axis: !Axis}}
      */
-    fullContiguousBorderTouching(borderLoc) {
-        let axis = this.borderType(borderLoc.i, borderLoc.j, borderLoc.di, borderLoc.dj);
+    fullContiguousBorderTouching(borderLoc, keepBorderPiecesBetweenAHoleAndACheckQubit=true) {
+        let axis = this.borderType(borderLoc);
         if (axis === undefined) {
             return undefined;
         }
 
-        let {locs, cycle} = this._scanBorder(borderLoc, axis, true);
+        let {locs, cycle} = this._scanBorder(borderLoc, axis, true, keepBorderPiecesBetweenAHoleAndACheckQubit);
         if (!cycle) {
-            let otherLocs = this._scanBorder(borderLoc, axis, false).locs;
+            let otherLocs = this._scanBorder(borderLoc, axis, false, keepBorderPiecesBetweenAHoleAndACheckQubit).locs;
             otherLocs.splice(0, 1);
             otherLocs.reverse();
             locs.splice(0, 0, ...otherLocs);
@@ -390,16 +396,17 @@ class SurfaceCodeLayout {
     /**
      * @param {!number} x
      * @param {!number} y
+     * @param {!boolean} keepBorderPiecesBetweenAHoleAndACheckQubit
+     * @param {undefined|!Axis} axis The desired kind of hole border, or undefined if no preference.
      * @returns {undefined|!BorderLoc}
      */
-    nearestBorderLocFromPointInHole(x, y) {
-        let i = Math.floor(x);
-        let j = Math.floor(y);
+    nearestOutsideBorderLocFromPointInHole(x, y, keepBorderPiecesBetweenAHoleAndACheckQubit=true, axis=undefined) {
+        let [i, j] = this.nearestCheckCoord(x, y, axis);
         if (!this.isHole(i, j)) {
             return undefined;
         }
 
-        let borders = this.holeBorderLocs(i, j);
+        let borders = this.holeOutsideBorderLocs(i, j, keepBorderPiecesBetweenAHoleAndACheckQubit, axis);
         if (borders.length === 0) {
             return undefined;
         }
@@ -413,9 +420,11 @@ class SurfaceCodeLayout {
     /**
      * @param {!int} x
      * @param {!int} y
+     * @param {!boolean} keepBorderPiecesBetweenAHoleAndACheckQubit
+     * @param {undefined|!Axis} axis The desired kind of hole border, or undefined if no preference.
      * @returns {!Array.<!BorderLoc>}
      */
-    holeBorderLocs(x, y) {
+    holeOutsideBorderLocs(x, y, keepBorderPiecesBetweenAHoleAndACheckQubit=true, axis=undefined) {
         if (!this.isHole(x, y)) {
             throw new DetailedError('Not a hole.', {x, y});
         }
@@ -432,8 +441,13 @@ class SurfaceCodeLayout {
 
             for (let [di, dj] of CARDINALS) {
                 q.push([i + di, j + dj]);
-                if (this.borderType(i, j, di, dj) !== undefined) {
-                    result.push(new BorderLoc(i, j, di, dj).backside());
+                let type = this.borderType(new BorderLoc(i, j, di, dj));
+                if (type !== undefined && (axis === undefined || axis === type)) {
+                    if (keepBorderPiecesBetweenAHoleAndACheckQubit ||
+                            this.isDataQubit(i, j) ||
+                            this.isDataQubit(i + di, j + dj)) {
+                        result.push(new BorderLoc(i, j, di, dj).backside());
+                    }
                 }
             }
         }
@@ -457,13 +471,21 @@ class SurfaceCodeLayout {
     }
 
     /**
-     * @param {!int} i
-     * @param {!int} j
-     * @param {!int} di
-     * @param {!int} dj
+     * @param {!BorderLoc} b1
+     * @param {!BorderLoc} b2
+     * @returns {!boolean}
+     */
+    areBorderLocsOnSameContiguousBorder(b1, b2) {
+        let r = this.fullContiguousBorderTouching(b1);
+        return r !== undefined && !r.locs.every(e => !e.isEqualTo(b2));
+    }
+
+    /**
+     * @param {!BorderLoc} loc
      * @returns {undefined|!Axis}
      */
-    borderType(i, j, di, dj) {
+    borderType(loc) {
+        let {i, j, di, dj} = loc;
         let i2 = i + di;
         let j2 = j + dj;
         let h1 = this.isHole(i, j);
@@ -554,10 +576,9 @@ class SurfaceCodeLayout {
      * @param {!int} x2
      * @param {!int} y2
      * @param {!boolean} returnCheckQubitsAlongPathInsteadOfDataQubits
-     * @param {!boolean} ignoreHoles
-     * @returns {!Array.<![!int, !int]>}
+     * @returns {undefined|!Array.<![!int, !int]>}
      */
-    pathAlongCheckQubits(x1, y1, x2, y2, returnCheckQubitsAlongPathInsteadOfDataQubits, ignoreHoles=false) {
+    pathAlongCheckQubits(x1, y1, x2, y2, returnCheckQubitsAlongPathInsteadOfDataQubits) {
         let queue = [[x1, y1, undefined]];
         let dirs = makeGrid(this.width + 2, this.height + 2, () => undefined);
         while (queue.length > 0) {
@@ -575,13 +596,17 @@ class SurfaceCodeLayout {
                 sortedBy(([di, dj]) => squaredDistanceFromLine(i + di*2, j + dj*2, x1, y1, x2, y2)).
                 toArray();
             for (let [di, dj] of pts) {
-                if (this.isDataQubit(i + di, j + dj, ignoreHoles) || this.isHole(i, j)) {
-                    queue.push([i + di*2, j + dj*2, [-di, -dj]]);
+                let i2 = i + di;
+                let j2 = j + dj;
+                let i3 = i + di*2;
+                let j3 = j + dj*2;
+                if (this.isDataQubit(i2, j2) && (this.isCheckQubit(i3, j3) || (i3 === x2 && j3 === y2))) {
+                    queue.push([i3, j3, [-di, -dj]]);
                 }
             }
         }
         if (dirs[x2+1] === undefined || dirs[x2+1][y2+1] === undefined) {
-            return [];
+            return undefined;
         }
 
         let result = [];
@@ -600,6 +625,92 @@ class SurfaceCodeLayout {
             result.push([i, j]);
         }
         return result;
+    }
+
+    /**
+     * Figures out a path or cycle of data qubits that the user is referring to via a mouse drag.
+     * @param {!number} x1
+     * @param {!number} y1
+     * @param {!number} x2
+     * @param {!number} y2
+     * @param {undefined|!Axis} axis
+     * @returns {!{
+     *     path: undefined|!Array.<![!int, !int]>,
+     *     pathType: !Axis,
+     *     anchorPoints: !Array.<![!number, !number]>,
+     *  }}
+     */
+    mouseSegmentToDataQubits(x1, y1, x2, y2, axis=undefined) {
+        let p1 = this._mousePointToAnchor(x1, y1, axis);
+        let p2 = this._mousePointToAnchor(x2, y2, p1.type);
+
+        if (p1.checkPos[0] === p2.checkPos[0] && p1.checkPos[1] === p2.checkPos[1]) {
+            // When hovering over a hole, select the entire nearest border.
+            if (p1.border !== undefined) {
+                return {
+                    path: this.fullContiguousBorderTouching(p1.border, false).locs.map(e => [e.i, e.j]),
+                    pathType: p1.type.opposite(),
+                    anchorPoints: [p1.border.center()],
+                };
+            }
+
+            // When hovering over empty area, cross the nearest data qubit.
+            let dx = x2 - p1.checkPos[0] - 0.5;
+            let dy = y2 - p1.checkPos[1] - 0.5;
+            if (Math.abs(dx) > Math.abs(dy)) {
+                dx = dx < 0 ? -1 : 1;
+                dy = 0;
+            } else {
+                dx = 0;
+                dy = dy < 0 ? -1 : 1;
+            }
+            let i = p1.checkPos[0] + dx*2;
+            let j = p1.checkPos[1] + dy*2;
+            if (this.isCheckQubit(i, j, p1.type, true, true)) {
+                return {
+                    path: this.isDataQubit(i - dx, j - dy) ? [[i - dx, j - dy]] : undefined,
+                    pathType: p1.type,
+                    anchorPoints: [
+                        [p1.checkPos[0] + 0.5, p1.checkPos[1] + 0.5],
+                        [p1.checkPos[0] + 0.5 + dx*2, p1.checkPos[1] + 0.5 + dy*2],
+                    ],
+                }
+            }
+        }
+
+        let path = this.pathAlongCheckQubits(
+            p1.checkPos[0], p1.checkPos[1], p2.checkPos[0], p2.checkPos[1], false, false);
+        return {
+            path,
+            pathType: p1.type,
+            anchorPoints: [p1, p2].
+                map(e => e.border !== undefined ? e.border.center() : e.checkPos.map(c => c + 0.5)),
+        };
+    }
+
+    /**
+     * @param {!number} x
+     * @param {!number} y
+     * @param {undefined|!Axis} axis
+     * @returns {!{border: undefined|!BorderLoc, checkPos: ![!int, !int], type: !Axis}}
+     */
+    _mousePointToAnchor(x, y, axis=undefined) {
+        let loc = this.nearestOutsideBorderLocFromPointInHole(x, y, false, axis);
+        if (loc !== undefined) {
+            let inside = loc.backside();
+            return {
+                border: loc,
+                checkPos: [inside.i, inside.j],
+                type: this.borderType(loc)
+            };
+        }
+
+        let [i, j] = this.nearestCheckCoord(x, y, axis);
+        return {
+            border: undefined,
+            checkPos: [i, j],
+            type: Axis.zIf(this.isZCheckQubit(i, j, true, true)),
+        };
     }
 
     /**

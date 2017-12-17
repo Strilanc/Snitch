@@ -177,7 +177,11 @@ class SurfaceCodeErrorOverlay {
      * @param {!Axis} axis
      */
     flipQubitsAlongPath(x1, y1, x2, y2, axis) {
-        for (let [i, j] of this.surface.layout.pathAlongCheckQubits(x1, y1, x2, y2, false)) {
+        let path = this.surface.layout.pathAlongCheckQubits(x1, y1, x2, y2, false);
+        if (path === undefined) {
+            path = [];
+        }
+        for (let [i, j] of path) {
             if (!this.surface.layout.isHole(i, j)) {
                 this.flipQubit(i, j, axis);
             }

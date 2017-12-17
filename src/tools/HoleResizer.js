@@ -2,6 +2,7 @@ import {config} from "src/config.js"
 import {Tool} from "src/tools/Tool.js"
 import {ToolEffectArgs} from "src/tools/ToolEffectArgs.js";
 import {CARDINALS} from "src/sim/Util.js";
+import {BorderLoc} from "src/sim/SurfaceCodeLayout.js";
 
 /**
  * @param {!SurfaceCodeLayout} layout
@@ -15,7 +16,7 @@ function nearestBorder(layout, x, y) {
     let bestDistance = Infinity;
     let bestDir = undefined;
     for (let [di, dj] of CARDINALS) {
-        if (layout.borderType(i, j, di, dj) !== undefined) {
+        if (layout.borderType(new BorderLoc(i, j, di, dj)) !== undefined) {
             let dx = Math.abs((x - i - 0.5 - di*0.5)*di);
             let dy = Math.abs((y - j - 0.5 - dj*0.5)*dj);
             let d = dx + dy;

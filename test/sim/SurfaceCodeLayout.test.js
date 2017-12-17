@@ -490,3 +490,47 @@ suite.test('fullContiguousBorderTouching-mixedHole', () => {
         axis: X_AXIS,
     });
 });
+
+suite.test('mouseSegmentToDataQubits', () => {
+    let layout = parseLayoutDiagram(`
+        +-+-+-+-+-+-+-+-+
+        |·|·|·|·|·|·|·|·|
+        +-+-+-+-+-+-+-+-+
+        |·|·|·|@@@|·|·|·|
+        +-+-+-+@@@+-+-+-+
+        |·|·|·|@@@|·|·|·|
+        +-+-+-+-+-+-+-+-+
+        |·|·|·|·|·|·|·|·|
+        +-+-+-+-+-+-HHH-+
+        |·|·|·|·|·|·HHH·|
+        +-+-+-+-+-+-HHH-+
+        |·|·|·|·|·|·|·|·|
+        +-+-+-+-+-+-+-+-+
+    `);
+
+    // Hover over hole.
+    assertThat(layout.mouseSegmentToDataQubits(7.6, 3.5, 8.4, 3.5)).isEqualTo({
+        path: [[7, 2], [9, 2], [10, 3], [10, 5], [9, 6], [7, 6], [6, 5], [6, 3]],
+        anchorPoints: [[7.5, 3]],
+        pathType: X_AXIS,
+    });
+
+    // Drag into hole of opposite type.
+    assertThat(layout.mouseSegmentToDataQubits(7.6, 3.5, 13.5, 9.5)).isEqualTo({
+        path: undefined,
+        anchorPoints: [[7.5, 3], [13.5, 9.5]],
+        pathType: Z_AXIS,
+    });
+
+    // Hover over area.
+    assertThat(layout.mouseSegmentToDataQubits(2.4, 2.7, 3.0, 2.9)).isEqualTo({
+        path: [[3, 2]],
+        anchorPoints: [[2.5, 2.5], [4.5, 2.5]],
+        pathType: X_AXIS,
+    });
+    assertThat(layout.mouseSegmentToDataQubits(2.4, 2.7, 2.9, 3.0)).isEqualTo({
+        path: [[2, 3]],
+        anchorPoints: [[2.5, 2.5], [2.5, 4.5]],
+        pathType: X_AXIS,
+    });
+});
