@@ -77,38 +77,11 @@ class HoleRetracterType extends Tool {
         let axis = Axis.zIf(args.surface.layout.isZCheckQubit(i, j));
         args.surface.reset(x, y, axis.opposite(), false);
 
-        let flipQubit = args.surface.squareMeasure(i, j, axis);
-        if (flipQubit) {
-            let q = args.surface.qubits[x][y];
-            if (axis.isZ()) {
-                args.surface.state.x(q);
-            } else {
-                args.surface.state.z(q);
-            }
-        }
-        args.surface.sparkles.bang(x, y, flipQubit ? 'red' : 'black', 0.5);
-
-        let flipErrorMark = false;
-        for (let [i2, j2] of args.surface.layout.neighbors(i, j)) {
-            if (args.surface.errorOverlay.flipsForAxis(axis.opposite())[i2][j2]) {
-                flipErrorMark = !flipErrorMark;
-            }
-        }
-        args.surface.errorOverlay.flipsForAxis(axis.opposite())[x][y] = flipErrorMark;
-
-        let newObs = new SurfaceQubitObservable(x, y, axis.opposite());
-        for (let obs of args.surface.observableOverlay.observables) {
-            let flipObs = false;
-            for (let [i2, j2] of args.surface.layout.neighbors(i, j)) {
-                if (obs.indexOf(new SurfaceQubitObservable(i2, j2, axis.opposite())) !== undefined) {
-                    flipObs = !flipObs;
-                }
-            }
-
-            if (flipObs) {
-                obs.insertOrDeleteOther(0, newObs);
-            }
-        }
+        args.surface.measureAndConditionalToggle(
+            [[i, j]],
+            [],
+            [new SurfaceQubitObservable(x, y, axis.opposite())]
+        );
     }
 }
 

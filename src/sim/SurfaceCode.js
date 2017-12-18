@@ -382,11 +382,10 @@ class SurfaceCode {
         }
 
         let flipErrorMarks = false;
-        for (let data of allInputs) {
-            // Same-axis error gets obsoleted by incompatible measurement.
+        for (let data of dataInputs) {
             this.errorOverlay.flipsForAxis(data.axis)[data.i][data.j] = false;
-
-            // Opposite-axis error gets moved into output toggles.
+        }
+        for (let data of allInputs) {
             if (this.errorOverlay.flipsForAxis(data.axis.opposite())[data.i][data.j]) {
                 flipErrorMarks = !flipErrorMarks;
             }
@@ -398,14 +397,15 @@ class SurfaceCode {
 
         for (let obs of this.observableOverlay.observables) {
             let flipObs = false;
-            for (let data of allInputs) {
+            for (let data of dataInputs) {
                 let k = obs.indexOf(new SurfaceQubitObservable(data.i, data.j, data.axis));
                 if (k !== undefined) {
                     obs.qubitObservables.splice(k, 1);
                 }
-
-                let k2 = obs.indexOf(new SurfaceQubitObservable(data.i, data.j, data.axis.opposite()));
-                if (k2 !== undefined) {
+            }
+            for (let data of allInputs) {
+                let k = obs.indexOf(new SurfaceQubitObservable(data.i, data.j, data.axis.opposite()));
+                if (k !== undefined) {
                     flipObs = !flipObs;
                 }
             }
