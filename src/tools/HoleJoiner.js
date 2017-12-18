@@ -68,28 +68,14 @@ class HoleJoinerType extends Tool {
 
         let border = args.surface.layout.fullContiguousBorderTouching(new BorderLoc(i, j, x1 - i, y1 - j));
         let axis = border.axis;
-        let flipQubits = args.surface.measure(i, j, axis.opposite());
-        let flipErrorMarks = args.surface.errorOverlay.flipsForAxis(axis)[i][j];
 
-        for (let loc of border.locs) {
-            args.surface.errorOverlay.flipQubit(loc.i, loc.j, axis, flipErrorMarks, flipQubits);
-        }
+        args.surface.observableOverlay.observables = args.surface.observableOverlay.observables.filter(
+            obs => obs.indexOf(new SurfaceQubitObservable(i, j, axis.opposite())) !== undefined);
 
-        let color = flipQubits ? 'red' : 'black';
-        args.surface.sparkles.bang(i, j, color, 3);
-        for (let loc of border.locs) {
-            let c = loc.center();
-            args.surface.sparkles.bang(c[0] - 0.5, c[1] - 0.5, color, 0.5);
-        }
-
-        args.surface.observableOverlay.observables = args.surface.observableOverlay.observables.
-            filter(obs => obs.indexOf(new SurfaceQubitObservable(i, j, axis)) === undefined);
-        for (let obs of args.surface.observableOverlay.observables) {
-            let k2 = obs.indexOf(new SurfaceQubitObservable(i, j, axis.opposite()));
-            if (k2 !== undefined) {
-                obs.qubitObservables.splice(k2, 1);
-            }
-        }
+        args.surface.measureAndConditionalToggle(
+            [],
+            [new SurfaceQubitObservable(i, j, axis.opposite())],
+            border.locs.map(loc => new SurfaceQubitObservable(loc.i, loc.j, axis)));
 
         args.surface.layout.holes[i][j] = true;
     }

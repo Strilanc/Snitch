@@ -181,30 +181,6 @@ class SurfaceMultiObservable {
         }
         return undefined;
     }
-
-    /**
-     * @param {!SurfaceCode} surface
-     * @param {!int} iData
-     * @param {!int} jData
-     * @param {!int} iCheck
-     * @param {!int} jCheck
-     */
-    measureDataButClearByConditionallyFlippingStabilizer(surface, iData, jData, iCheck, jCheck) {
-        let axis = surface.layout.colCheckType(iCheck);
-
-        let k2 = this.indexOf(new SurfaceQubitObservable(iData, jData, axis.opposite()));
-        if (k2 !== undefined) {
-            this.qubitObservables.splice(k2, 1);
-        }
-
-        let k = this.indexOf(new SurfaceQubitObservable(iData, jData, axis));
-        if (k === undefined) {
-            return;
-        }
-        for (let [i2, j2] of surface.layout.neighbors(iCheck, jCheck)) {
-            this.insertOrDeleteOther(k, new SurfaceQubitObservable(i2, j2, axis));
-        }
-    }
 }
 
 class SurfaceCodeObservableOverlay {
@@ -232,19 +208,6 @@ class SurfaceCodeObservableOverlay {
         let r = new SurfaceCodeObservableOverlay();
         r.observables = this.observables.map(e => e.clone());
         return r;
-    }
-
-    /**
-     * @param {!SurfaceCode} surface
-     * @param {!int} iData
-     * @param {!int} jData
-     * @param {!int} iCheck
-     * @param {!int} jCheck
-     */
-    measureDataButClearByConditionallyFlippingStabilizer(surface, iData, jData, iCheck, jCheck) {
-        for (let e of this.observables) {
-            e.measureDataButClearByConditionallyFlippingStabilizer(surface, iData, jData, iCheck, jCheck);
-        }
     }
 }
 

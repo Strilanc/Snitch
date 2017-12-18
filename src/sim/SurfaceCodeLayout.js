@@ -419,6 +419,35 @@ class SurfaceCodeLayout {
     }
 
     /**
+     * @param {!int} i
+     * @param {!int} j
+     * @param {undefined|!Axis} axis The desired kind of hole border, or undefined if no preference.
+     * @returns {undefined|!BorderLoc}
+     */
+    nearbyCheckBorderLoc(i, j, axis=undefined) {
+        let covered = makeGrid(this.width, this.height, () => false);
+        let q = [[i, j]];
+        while (q.length > 0) {
+            let [x, y] = q.pop();
+            if (covered[x][y] || !this.isInBounds(x, y)) {
+                continue;
+            }
+            covered[x][y] = true;
+
+            for (let [di, dj] of CARDINALS) {
+                let type = this.borderType(new BorderLoc(x, y, di, dj));
+                if (type === undefined) {
+                    q.splice(0, 0, [x + di, y + dj]);
+                } else if ((axis === undefined || axis === type) && this.isDataQubit(x, y)) {
+                    return new BorderLoc(x, y, di, dj).backside();
+                }
+            }
+        }
+
+        return undefined;
+    }
+
+    /**
      * @param {!int} x
      * @param {!int} y
      * @param {!boolean} keepBorderPiecesBetweenAHoleAndACheckQubit

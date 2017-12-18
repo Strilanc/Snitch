@@ -188,19 +188,6 @@ class SurfaceCodeErrorOverlay {
         }
     }
 
-    /**
-     * @param {!int} iData
-     * @param {!int} jData
-     * @param {!int} iCheck
-     * @param {!int} jCheck
-     */
-    measureDataButClearByConditionallyFlippingStabilizer(iData, jData, iCheck, jCheck) {
-        let axis = this.surface.layout.colCheckType(iCheck);
-        let marked = this.flipsForAxis(axis)[iData][jData];
-        let on = this.surface.measure(iData, jData, axis.opposite());
-        this.flipStabilizer(iCheck, jCheck, marked, on);
-    }
-
     clearFlips() {
         this.xFlips = makeGrid(this.surface.layout.width, this.surface.layout.height, () => false);
         this.zFlips = makeGrid(this.surface.layout.width, this.surface.layout.height, () => false);
