@@ -20,13 +20,11 @@ class HoleExtenderType extends Tool {
     }
 
     canApply(args) {
-        if (args.mousePos === undefined ||
-                args.dragStartPos === undefined ||
-                args.mouseButton !== 0) {
+        if (args.mouseButton !== 0) {
             return false;
         }
-        let [i, j] = args.surface.layout.nearestDataCoord(...args.dragStartPos);
-        let [i2, j2] = args.surface.layout.nearestDataCoord(...args.mousePos);
+        let [i, j] = args.surface.layout.nearestDataCoord(...args.startPos);
+        let [i2, j2] = args.surface.layout.nearestDataCoord(...args.endPos);
         if (i !== i2 || j !== j2 || !args.surface.layout.isDataQubit(i, j)) {
             return false;
         }
@@ -36,12 +34,7 @@ class HoleExtenderType extends Tool {
     }
 
     canHoverHint(args) {
-        if (args.mousePos === undefined ||
-                args.dragStartPos !== undefined ||
-                args.mouseButton !== undefined) {
-            return false;
-        }
-        let [i, j] = args.surface.layout.nearestDataCoord(...args.mousePos);
+        let [i, j] = args.surface.layout.nearestDataCoord(...args.endPos);
         if (!args.surface.layout.isDataQubit(i, j)) {
             return false;
         }
@@ -51,7 +44,7 @@ class HoleExtenderType extends Tool {
     }
 
     drawHoverHint(ctx, args) {
-        let [i, j] = args.surface.layout.nearestDataCoord(...args.mousePos);
+        let [i, j] = args.surface.layout.nearestDataCoord(...args.endPos);
         let [x, y] = args.surface.layout.neighbors(i, j, true, true).filter(pt => args.surface.layout.isHole(...pt))[0];
         let di = i - x;
         let dj = j - y;
@@ -68,7 +61,7 @@ class HoleExtenderType extends Tool {
     }
 
     applyEffect(args) {
-        let [i, j] = args.surface.layout.nearestDataCoord(...args.mousePos);
+        let [i, j] = args.surface.layout.nearestDataCoord(...args.endPos);
         let [x, y] = args.surface.layout.neighbors(i, j, true, true).filter(pt => args.surface.layout.isHole(...pt))[0];
         let di = i - x;
         let dj = j - y;

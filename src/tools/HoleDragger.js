@@ -38,10 +38,8 @@ class HoleDraggerType extends Tool {
     }
 
     canApply(args) {
-        return args.mousePos !== undefined &&
-            args.dragStartPos !== undefined &&
-            args.mouseButton === 0 &&
-            args.surface.layout.isHole(Math.floor(args.dragStartPos[0]), Math.floor(args.dragStartPos[1]));
+        return args.mouseButton === 0 &&
+            args.surface.layout.isHole(Math.floor(args.startPos[0]), Math.floor(args.startPos[1]));
     }
 
     canHoverHint(args) {
@@ -49,8 +47,8 @@ class HoleDraggerType extends Tool {
     }
 
     drawHoverHint(ctx, args) {
-        // let i = Math.floor(args.mousePos[0]);
-        // let j = Math.floor(args.mousePos[1]);
+        // let i = Math.floor(args.endPos[0]);
+        // let j = Math.floor(args.endPos[1]);
         // ctx.strokeStyle = '#000';
         // ctx.lineWidth = 3;
         // ctx.strokeRect(i * config.diam + 0.5, j * config.diam + 0.5, config.diam, config.diam);
@@ -69,10 +67,10 @@ class HoleDraggerType extends Tool {
      * @private
      */
     _argsToUseful(args) {
-        let i = Math.floor(args.dragStartPos[0]);
-        let j = Math.floor(args.dragStartPos[1]);
-        let di = roundWithDeadZone(args.mousePos[0] - i - 0.5, 0.5, 2);
-        let dj = roundWithDeadZone(args.mousePos[1] - j - 0.5, 0.5, 2);
+        let i = Math.floor(args.startPos[0]);
+        let j = Math.floor(args.startPos[1]);
+        let di = roundWithDeadZone(args.endPos[0] - i - 0.5, 0.5, 2);
+        let dj = roundWithDeadZone(args.endPos[1] - j - 0.5, 0.5, 2);
         if (Math.abs(di) > Math.abs(dj)) {
             dj = 0;
         } else {

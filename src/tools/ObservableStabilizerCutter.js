@@ -29,21 +29,14 @@ class ObservableStabilizerCutterType extends Tool {
     }
 
     canApply(args) {
-        return args.mousePos !== undefined &&
-            args.dragStartPos !== undefined &&
-            args.mouseButton === 0 &&
+        return args.mouseButton === 0 &&
             args.surface.layout.isDataQubit(...args.surface.layout.nearestDataCoord(
-                args.mousePos[0],
-                args.mousePos[1]));
+                args.endPos[0],
+                args.endPos[1]));
     }
 
     canHoverHint(args) {
-        return args.mousePos !== undefined &&
-            args.dragStartPos === undefined &&
-            args.mouseButton === undefined &&
-            args.surface.layout.isDataQubit(...args.surface.layout.nearestDataCoord(
-                args.mousePos[0],
-                args.mousePos[1]));
+        return args.surface.layout.isDataQubit(...args.surface.layout.nearestDataCoord(args.endPos[0], args.endPos[1]));
     }
 
     /**
@@ -94,8 +87,8 @@ class ObservableStabilizerCutterType extends Tool {
     drawHoverHint(ctx, args) {
         let axis = Axis.zIf(!args.shiftKey);
         let [x, y] = args.surface.layout.nearestDataCoord(
-            args.mousePos[0],
-            args.mousePos[1]);
+            args.endPos[0],
+            args.endPos[1]);
 
         ctx.strokeStyle = 'red';
         ctx.strokeRect(x*config.diam, y*config.diam, config.diam, config.diam);
@@ -120,8 +113,8 @@ class ObservableStabilizerCutterType extends Tool {
     applyEffect(args) {
         let axis = Axis.zIf(!args.shiftKey);
         let [x, y] = args.surface.layout.nearestDataCoord(
-            args.mousePos[0],
-            args.mousePos[1]);
+            args.endPos[0],
+            args.endPos[1]);
 
         let relevantObservables = args.surface.observableOverlay.observables.
             filter(obs => obs.indexOf(new SurfaceQubitObservable(x, y, axis.opposite())) !== undefined);

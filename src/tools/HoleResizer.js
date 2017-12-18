@@ -83,15 +83,15 @@ class HoleResizerType extends Tool {
     }
 
     canApply(args) {
-        return args.dragStartPos !== undefined && args.mousePos !== undefined && args.mouseButton === 0;
+        return args.mouseButton === 0;
     }
 
     canHoverHint(args) {
-        return args.dragStartPos === undefined && args.mousePos !== undefined && args.mouseButton === undefined;
+        return true;
     }
 
     drawHoverHint(ctx, args) {
-        let border = nearestBorder(args.surface.layout, ...args.mousePos);
+        let border = nearestBorder(args.surface.layout, ...args.endPos);
         if (border === undefined) {
             return;
         }
@@ -115,15 +115,15 @@ class HoleResizerType extends Tool {
     }
 
     drawPreview(ctx, args) {
-        let border = nearestBorder(args.surface.layout, ...args.dragStartPos);
+        let border = nearestBorder(args.surface.layout, ...args.startPos);
         if (border === undefined) {
             return;
         }
         let {boundary, normal: [di, dj]} = border;
         args.mousePointerOut = di !== 0 ? 'col-resize' : 'row-resize';
 
-        let dx = args.mousePos[0] - args.dragStartPos[0];
-        let dy = args.mousePos[1] - args.dragStartPos[1];
+        let dx = args.endPos[0] - args.startPos[0];
+        let dy = args.endPos[1] - args.startPos[1];
         let dMax = (Math.round(dx / 2) * di + Math.round(dy / 2) * dj) * 2;
 
         if (dMax < 0) {
@@ -163,14 +163,14 @@ class HoleResizerType extends Tool {
     }
 
     applyEffect(args) {
-        let border = nearestBorder(args.surface.layout, ...args.dragStartPos);
+        let border = nearestBorder(args.surface.layout, ...args.startPos);
         if (border === undefined) {
             return;
         }
         let {boundary, normal: [di, dj]} = border;
 
-        let dx = args.mousePos[0] - args.dragStartPos[0];
-        let dy = args.mousePos[1] - args.dragStartPos[1];
+        let dx = args.endPos[0] - args.startPos[0];
+        let dy = args.endPos[1] - args.startPos[1];
         let dMax = (Math.round(dx / 2) * di + Math.round(dy / 2) * dj) * 2;
 
         if (dMax < 0) {

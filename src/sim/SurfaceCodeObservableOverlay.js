@@ -145,9 +145,9 @@ class SurfaceMultiObservable {
             ctx.font = '16pt monospace';
             let w = ctx.measureText(state).width;
             ctx.strokeRect(px + 0.5, py + 0.5, w + 6, config.diam);
-            ctx.globalAlpha = 0.8;
+            ctx.globalAlpha *= 0.5;
             ctx.fillRect(px + 0.5, py + 0.5, w + 6, config.diam);
-            ctx.globalAlpha = 1.0;
+            ctx.globalAlpha /= 0.5;
             ctx.fillStyle = '#000';
             ctx.fillText(state, px + 3, py + config.diam*0.5);
         } finally {

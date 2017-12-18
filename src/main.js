@@ -109,15 +109,23 @@ function drawMouseHint(ctx) {
     try {
 
         latestToolArgs.mousePointerOut = 'default';
-        for (let e of activeTools) {
-            if (e.canApply(latestToolArgs)) {
-                ctx.globalAlpha *= 0.6;
-                e.drawPreview(ctx, latestToolArgs);
-                break;
-            } else if (e.canHoverHint(latestToolArgs)) {
-                ctx.globalAlpha *= 0.3;
-                e.drawHoverHint(ctx, latestToolArgs);
-                break;
+        if (latestToolArgs.startPos !== undefined && latestToolArgs.endPos !== undefined) {
+            if (latestToolArgs.mouseButton !== undefined) {
+                for (let e of activeTools) {
+                    if (e.canApply(latestToolArgs)) {
+                        ctx.globalAlpha *= 0.6;
+                        e.drawPreview(ctx, latestToolArgs);
+                        break;
+                    }
+                }
+            } else {
+                for (let e of activeTools) {
+                    if (e.canHoverHint(latestToolArgs)) {
+                        ctx.globalAlpha *= 0.3;
+                        e.drawHoverHint(ctx, latestToolArgs);
+                        break;
+                    }
+                }
             }
         }
         canvas.style.cursor = latestToolArgs.mousePointerOut;
@@ -296,14 +304,20 @@ canvas.onmousemove = ev => {
     let y = (ev.y - drawOffsetY - b.top) / config.diam;
     latestToolArgs.ctrlKey = ev.ctrlKey;
     latestToolArgs.shiftKey = ev.shiftKey;
-    latestToolArgs.mousePos = [x, y];
+    latestToolArgs.endPos = [x, y];
+    if (latestToolArgs.mouseButton === undefined) {
+        latestToolArgs.startPos = latestToolArgs.endPos;
+    }
     requestAnimationFrame(draw);
 };
 
 canvas.onmouseout = ev => {
     latestToolArgs.ctrlKey = ev.ctrlKey;
     latestToolArgs.shiftKey = ev.shiftKey;
-    latestToolArgs.mousePos = undefined;
+    latestToolArgs.endPos = undefined;
+    if (latestToolArgs.mouseButton === undefined) {
+        latestToolArgs.startPos = latestToolArgs.endPos;
+    }
     requestAnimationFrame(draw);
 };
 
@@ -313,29 +327,30 @@ canvas.onmouseup = ev => {
     let y = (ev.y - drawOffsetY - b.top) / config.diam;
     latestToolArgs.ctrlKey = ev.ctrlKey;
     latestToolArgs.shiftKey = ev.shiftKey;
-    latestToolArgs.mousePos = [x, y];
+    latestToolArgs.endPos = [x, y];
     latestToolArgs.mouseButton = ev.button;
 
-    for (let e of activeTools) {
-        if (e.canApply(latestToolArgs)) {
-            if (revision.isWorkingOnCommit) {
-                revision.commit(surface.clone());
-            } else {
-                if (revision.isAtBeginningOfHistory()) {
-                    revision = Revision.startingAt(surface.clone());
-                } else {
-                    revision.undo();
+    if (latestToolArgs.startPos !== undefined && latestToolArgs.endPos !== undefined) {
+        for (let e of activeTools) {
+            if (e.canApply(latestToolArgs)) {
+                if (revision.isWorkingOnCommit) {
                     revision.commit(surface.clone());
+                } else {
+                    if (revision.isAtBeginningOfHistory()) {
+                        revision = Revision.startingAt(surface.clone());
+                    } else {
+                        revision.undo();
+                        revision.commit(surface.clone());
+                    }
                 }
+                revision.startedWorkingOnCommit();
+                e.applyEffect(latestToolArgs);
+                surface.cycle();
+                break;
             }
-            revision.startedWorkingOnCommit();
-            e.applyEffect(latestToolArgs);
-            surface.cycle();
-            break;
         }
     }
 
-    latestToolArgs.dragStartPos = undefined;
     latestToolArgs.mouseButton = undefined;
     requestAnimationFrame(draw);
 };
@@ -347,8 +362,8 @@ canvas.onmousedown = ev => {
     let y = (ev.y - drawOffsetY - b.top) / config.diam;
     latestToolArgs.ctrlKey = ev.ctrlKey;
     latestToolArgs.shiftKey = ev.shiftKey;
-    latestToolArgs.dragStartPos = [x, y];
-    latestToolArgs.mousePos = [x, y];
+    latestToolArgs.startPos = [x, y];
+    latestToolArgs.endPos = [x, y];
     latestToolArgs.mouseButton = ev.button;
     latestToolArgs.ctrlKey = ev.ctrlKey;
     latestToolArgs.shiftKey = ev.shiftKey;

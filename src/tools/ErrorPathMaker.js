@@ -23,34 +23,23 @@ class ErrorPathMakerType extends Tool {
     }
 
     canApply(args) {
-        return args.mousePos !== undefined &&
-            args.dragStartPos !== undefined &&
-            args.mouseButton === 0;
+        return args.mouseButton === 0;
     }
 
     canHoverHint(args) {
-        return args.mousePos !== undefined &&
-            args.dragStartPos === undefined &&
-            args.mouseButton === undefined;
+        return true;
     }
 
     drawHoverHint(ctx, args) {
-        this._drawSegment(ctx, args,
-            args.mousePos[0],
-            args.mousePos[1],
-            args.mousePos[0],
-            args.mousePos[1]);
-    }
-
-    _drawSegment(ctx, args, x1, y1, x2, y2) {
-        let r = args.surface.layout.mouseSegmentToDataQubits(x1, y1, x2, y2);
+        let r = args.surface.layout.mouseSegmentToDataQubits(
+            args.startPos[0], args.startPos[1], args.endPos[0], args.endPos[1]);
         let axis = r.pathType;
         let path = r.path;
 
-        ctx.fillStyle = '#800';
-        for (let [x, y] of r.anchorPoints) {
-            ctx.fillRect((x - 0.2) * config.diam, (y - 0.2) * config.diam, config.diam * 0.4, config.diam * 0.4);
-        }
+        // ctx.fillStyle = '#800';
+        // for (let [x, y] of r.anchorPoints) {
+        //     ctx.fillRect((x - 0.2) * config.diam, (y - 0.2) * config.diam, config.diam * 0.4, config.diam * 0.4);
+        // }
 
         ctx.strokeStyle = '#000';
         ctx.strokeRect((r.anchorPoints[0][0]-0.5)*config.diam, (r.anchorPoints[0][1]-0.5)*config.diam,
@@ -80,19 +69,15 @@ class ErrorPathMakerType extends Tool {
     }
 
     drawPreview(ctx, args) {
-        this._drawSegment(ctx, args,
-            args.dragStartPos[0],
-            args.dragStartPos[1],
-            args.mousePos[0],
-            args.mousePos[1]);
+        this.drawHoverHint(ctx, args);
     }
 
     applyEffect(args) {
         let r = args.surface.layout.mouseSegmentToDataQubits(
-            args.dragStartPos[0],
-            args.dragStartPos[1],
-            args.mousePos[0],
-            args.mousePos[1]);
+            args.startPos[0],
+            args.startPos[1],
+            args.endPos[0],
+            args.endPos[1]);
         let flipAxis = r.pathType.opposite();
         let path = r.path;
         if (path !== undefined) {

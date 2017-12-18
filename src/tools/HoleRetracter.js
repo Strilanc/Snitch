@@ -22,13 +22,11 @@ class HoleRetracterType extends Tool {
     }
 
     canApply(args) {
-        if (args.mousePos === undefined ||
-                args.dragStartPos === undefined ||
-                args.mouseButton !== 0) {
+        if (args.mouseButton !== 0) {
             return false;
         }
-        let [i, j] = args.surface.layout.nearestCheckCoord(...args.dragStartPos);
-        let [i2, j2] = args.surface.layout.nearestCheckCoord(...args.mousePos);
+        let [i, j] = args.surface.layout.nearestCheckCoord(...args.startPos);
+        let [i2, j2] = args.surface.layout.nearestCheckCoord(...args.endPos);
         if (i !== i2 ||
                 j !== j2 ||
                 !args.surface.layout.isHole(i, j) ||
@@ -43,12 +41,7 @@ class HoleRetracterType extends Tool {
     }
 
     canHoverHint(args) {
-        if (args.mousePos === undefined ||
-                args.dragStartPos !== undefined ||
-                args.mouseButton !== undefined) {
-            return false;
-        }
-        let [i, j] = args.surface.layout.nearestCheckCoord(...args.mousePos);
+        let [i, j] = args.surface.layout.nearestCheckCoord(...args.endPos);
         if (!args.surface.layout.isHole(i, j) ||
             !args.surface.layout.isCheckQubit(i, j, undefined, true, false)) {
             return false;
@@ -61,7 +54,7 @@ class HoleRetracterType extends Tool {
     }
 
     drawHoverHint(ctx, args) {
-        let [i, j] = args.surface.layout.nearestCheckCoord(...args.mousePos);
+        let [i, j] = args.surface.layout.nearestCheckCoord(...args.endPos);
         let [x, y] = args.surface.layout.neighbors(i, j, true, true).filter(pt => args.surface.layout.isHole(...pt))[0];
         ctx.fillStyle = 'white';
         ctx.strokeStyle = 'white';
@@ -76,7 +69,7 @@ class HoleRetracterType extends Tool {
     }
 
     applyEffect(args) {
-        let [i, j] = args.surface.layout.nearestCheckCoord(...args.mousePos);
+        let [i, j] = args.surface.layout.nearestCheckCoord(...args.endPos);
         let [x, y] = args.surface.layout.neighbors(i, j, true, true).filter(pt => args.surface.layout.isHole(...pt))[0];
 
         args.surface.layout.holes[i][j] = false;
