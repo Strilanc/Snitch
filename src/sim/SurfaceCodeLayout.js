@@ -567,6 +567,20 @@ class SurfaceCodeLayout {
      * @param {!int} j
      * @param {!boolean} ignoreHole
      * @param {!boolean} ignoreBounds
+     * @returns {undefined|!Axis}
+     */
+    checkAxis(i, j, ignoreHole=false, ignoreBounds=false) {
+        if (!this.isCheckQubit(i, j, undefined, ignoreHole, ignoreBounds)) {
+            return undefined;
+        }
+        return Axis.zIf(this.isZCheckQubit(i, j, ignoreHole, ignoreBounds));
+    }
+
+    /**
+     * @param {!int} i
+     * @param {!int} j
+     * @param {!boolean} ignoreHole
+     * @param {!boolean} ignoreBounds
      * @returns {!boolean}
      */
     isXCheckQubit(i, j, ignoreHole=false, ignoreBounds=false) {

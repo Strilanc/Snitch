@@ -12,6 +12,7 @@ import {HoleRetracter} from 'src/tools/HoleRetracter.js'
 import {HoleJoiner} from 'src/tools/HoleJoiner.js'
 import {HoleSplitter} from 'src/tools/HoleSplitter.js'
 import {ValleyCloser} from 'src/tools/ValleyCloser.js'
+import {ValleyOpener} from 'src/tools/ValleyOpener.js'
 
 /** @type {!Array.<!Tool>} */
 const ALL_TOOLS = [
@@ -29,6 +30,7 @@ const ALL_TOOLS = [
     ObservableStabilizerCutter,
     HoleDestroyer,
     ValleyCloser,
+    ValleyOpener,
 ];
 
 export {ALL_TOOLS}
