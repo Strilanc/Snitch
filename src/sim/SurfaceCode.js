@@ -13,6 +13,7 @@ import {SurfaceCodeErrorOverlay} from "src/sim/SurfaceCodeErrorOverlay.js";
 import {Axis, AXES, Z_AXIS, X_AXIS} from "src/sim/Util.js";
 import {SurfaceCodeObservableOverlay, SurfaceQubitObservable} from "src/sim/SurfaceCodeObservableOverlay.js";
 import {SurfaceCodeSparkles} from "src/sim/SurfaceCodeSparkles.js";
+import {config} from "src/config.js";
 
 
 function* _checkQubitsWithResultVsExpected(surface, axis, result) {
@@ -363,8 +364,10 @@ class SurfaceCode {
             if (b) {
                 flipQubits = !flipQubits;
             }
-            let color = b ? 'red' : 'black';
-            this.sparkles.bang(i, j, color, 3);
+            if (config.measureAndConditionalToggleBang) {
+                let color = b ? 'red' : 'black';
+                this.sparkles.bang(i, j, color, 3);
+            }
         }
 
         for (let data of dataInputs) {
@@ -372,13 +375,17 @@ class SurfaceCode {
             if (b) {
                 flipQubits = !flipQubits;
             }
-            let color = b ? 'red' : 'black';
-            this.sparkles.bang(data.i, data.j, color, 3);
+            if (config.measureAndConditionalToggleBang) {
+                let color = b ? 'red' : 'black';
+                this.sparkles.bang(data.i, data.j, color, 3);
+            }
         }
 
-        let color = flipQubits ? 'red' : 'black';
-        for (let {i, j} of parityTargets) {
-            this.sparkles.bang(i, j, color, 0.5);
+        if (config.measureAndConditionalToggleBang) {
+            let color = flipQubits ? 'red' : 'black';
+            for (let {i, j} of parityTargets) {
+                this.sparkles.bang(i, j, color, 0.5);
+            }
         }
 
         let flipErrorMarks = false;

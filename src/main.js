@@ -12,45 +12,19 @@ import {SurfaceCode} from 'src/sim/SurfaceCode.js'
 import {BorderLoc} from 'src/sim/SurfaceCodeLayout.js'
 import {CARDINALS} from 'src/sim/Util.js'
 import {ToolEffectArgs} from 'src/tools/ToolEffectArgs.js'
-import {SquareHoleMaker} from 'src/tools/SquareHoleMaker.js'
-import {SquareStabilizerFlipper} from 'src/tools/SquareStabilizerFlipper.js'
-import {HoleDestroyer} from 'src/tools/HoleDestroyer.js'
-import {ObservableStabilizerFlipper} from 'src/tools/ObservableStabilizerFlipper.js'
-import {ObservableStabilizerCutter} from 'src/tools/ObservableStabilizerCutter.js'
-import {HoleDragger} from 'src/tools/HoleDragger.js'
-import {ErrorPathMaker} from 'src/tools/ErrorPathMaker.js'
-import {StatePeeker} from 'src/tools/StatePeeker.js'
-import {HoleResizer} from 'src/tools/HoleResizer.js'
-import {HoleExtender} from 'src/tools/HoleExtender.js'
-import {HoleRetracter} from 'src/tools/HoleRetracter.js'
-import {HoleJoiner} from 'src/tools/HoleJoiner.js'
-import {HoleSplitter} from 'src/tools/HoleSplitter.js'
 import {describe} from "src/base/Describe.js";
 import {config} from "src/config.js"
 import {Revision} from "src/base/Revision.js";
 import {strokeErrorCurveAt} from "src/draw/Common.js";
 import {AXES, X_AXIS, Z_AXIS} from "src/sim/Util.js";
 import {Axis} from "src/sim/Util.js";
+import {ALL_TOOLS} from "src/tools/AllTools.js";
 
 let canvas = /** @type {!HTMLCanvasElement} */ document.getElementById('main-canvas');
 /** @type {!Array.<!Tool>} */
-let availableTools = [
-    SquareHoleMaker,
-    ErrorPathMaker,
-    SquareStabilizerFlipper,
-    HoleDragger,
-    StatePeeker,
-    HoleResizer,
-    HoleExtender,
-    HoleJoiner,
-    HoleSplitter,
-    HoleRetracter,
-    ObservableStabilizerFlipper,
-    ObservableStabilizerCutter,
-    HoleDestroyer,
-];
+let availableTools = ALL_TOOLS;
 /** @type {!Array.<!Tool>} */
-let activeTools = [SquareHoleMaker];
+let activeTools = [ALL_TOOLS[0]];
 
 /** @type {!SurfaceCode} */
 let surface = new SurfaceCode(50, 30);
