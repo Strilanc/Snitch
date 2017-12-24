@@ -35,12 +35,7 @@ class HoleExtenderType extends Tool {
 
     canHoverHint(args) {
         let [i, j] = args.surface.layout.nearestDataCoord(...args.endPos);
-        if (!args.surface.layout.isDataQubit(i, j)) {
-            return false;
-        }
-
-        let holes = args.surface.layout.neighbors(i, j, true, true).filter(pt => args.surface.layout.isHole(...pt));
-        return holes.length === 1;
+        return args.surface.canExtendPole(i, j);
     }
 
     drawHoverHint(ctx, args) {
@@ -62,10 +57,7 @@ class HoleExtenderType extends Tool {
 
     applyEffect(args) {
         let [i, j] = args.surface.layout.nearestDataCoord(...args.endPos);
-        let [x, y] = args.surface.layout.neighbors(i, j, true, true).filter(pt => args.surface.layout.isHole(...pt))[0];
-        let di = i - x;
-        let dj = j - y;
-        args.surface.extendHole(i + di, j + dj, [-di, -dj]);
+        args.surface.extendPole(i, j);
     }
 }
 

@@ -201,28 +201,23 @@ class HoleResizerType extends Tool {
     }
 
     grow(args, dMax, boundary, di, dj) {
-        let d = 0;
-        while (d < dMax) {
-            if (!boundary.every(([i, j]) => !args.surface.layout.isHole(i + d*di + di, j + d*dj + dj))) {
-                break;
+        // Grow poles.
+        for (let [i, j] of boundary) {
+            for (let d = 1; d < dMax; d += 2) {
+                if (!args.surface.extendPole(i + di * d, j + dj * d)) {
+                    break;
+                }
             }
-            if (!boundary.every(([i, j]) => !args.surface.layout.isHole(i + d*di + di*2, j + d*dj + dj*2))) {
-                break;
-            }
-            let d1 = d + 1;
-            let d2 = d + 2;
-            for (let [i, j] of boundary) {
-                args.surface.extendHole(i + di*d2, j + dj*d2);
-            }
-            for (let [i, j] of boundary) {
-                args.surface.extendHole(i + di*d1, j + dj*d1);
-            }
-            d += 2;
         }
 
-        // TODO: also shrink holes
-        // TODO: prevent side merging
-        // TODO: when expanding an inside edge past an outside edge, avoid creating opposite type hole in extension
+        // Retract valleys.
+        for (let [i, j] of boundary) {
+            for (let d = 1; d <= dMax; d++) {
+                if (!args.surface.retractValley(i + di * d, j + dj * d)) {
+                    break;
+                }
+            }
+        }
     }
 }
 

@@ -127,6 +127,42 @@ class SurfaceCode {
      * @param {!int} j
      * @returns {!boolean}
      */
+    canRetractValley(i, j) {
+        if (this.layout.isCheckQubit(i, j)) {
+            return this.layout.neighbors(i, j).length <= 1;
+        }
+        if (this.layout.isDataQubit(i, j)) {
+            return this.layout.neighbors(i, j).length === 1;
+        }
+        return false;
+    }
+
+    /**
+     * @param {!int} i
+     * @param {!int} j
+     * @returns {!boolean}
+     */
+    retractValley(i, j) {
+        if (!this.canRetractValley(i, j)) {
+            return false;
+        }
+        if (this.layout.isDataQubit(i, j)) {
+            let [x, y] = this.layout.neighbors(i, j)[0];
+            let axis = this.layout.checkAxis(x, y, true, true);
+            this.measureAndConditionalToggle(
+                [],
+                [new SurfaceQubitObservable(i, j, axis)],
+                [new SurfaceQubitObservable(i, j, axis.opposite())]);
+        }
+        this.layout.holes[i][j] = true;
+        return true;
+    }
+
+    /**
+     * @param {!int} i
+     * @param {!int} j
+     * @returns {!boolean}
+     */
     retractPole(i, j) {
         if (!this.canRetractPole(i, j)) {
             return false;
@@ -391,6 +427,38 @@ class SurfaceCode {
                 this.errorOverlay.flipQubitsAlongPath(x1, y1, x2, y2, axis.opposite());
             }
         }
+    }
+
+    /**
+     * @param {!int} i
+     * @param {!int} j
+     * @returns {!boolean}
+     */
+    canExtendPole(i, j) {
+        if (!this.layout.isDataQubit(i, j)) {
+            return false;
+        }
+
+        let holes = this.layout.neighbors(i, j, true, true).filter(pt => this.layout.isHole(...pt));
+        return holes.length === 1;
+    }
+
+    /**
+     * @param {!int} i
+     * @param {!int} j
+     * @returns {!boolean}
+     */
+    extendPole(i, j) {
+        if (!this.canExtendPole(i, j)) {
+            return false;
+        }
+
+        let [x, y] = this.layout.neighbors(i, j, true, true).filter(pt => this.layout.isHole(...pt))[0];
+        let di = i - x;
+        let dj = j - y;
+        this.extendHole(i + di, j + dj, [-di, -dj]);
+
+        return true;
     }
 
     /**
