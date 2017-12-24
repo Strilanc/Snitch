@@ -174,8 +174,33 @@ class HoleResizerType extends Tool {
         let dMax = (Math.round(dx / 2) * di + Math.round(dy / 2) * dj) * 2;
 
         if (dMax < 0) {
-            return;
+            this.shrink(args, -dMax, boundary, -di, -dj);
+        } else {
+            this.grow(args, dMax, boundary, di, dj);
         }
+    }
+
+    shrink(args, dMax, boundary, di, dj) {
+        // Grow valleys, leaving poles behind.
+        for (let [i, j] of boundary) {
+            for (let d = 0; d < dMax; d++) {
+                if (!args.surface.growValley(i + di * d, j + dj * d)) {
+                    break;
+                }
+            }
+        }
+
+        // Retract poles.
+        for (let [i, j] of boundary) {
+            for (let d = 0; d < dMax; d += 2) {
+                if (!args.surface.retractPole(i + di * d, j + dj * d)) {
+                    break;
+                }
+            }
+        }
+    }
+
+    grow(args, dMax, boundary, di, dj) {
         let d = 0;
         while (d < dMax) {
             if (!boundary.every(([i, j]) => !args.surface.layout.isHole(i + d*di + di, j + d*dj + dj))) {

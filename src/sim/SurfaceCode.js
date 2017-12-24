@@ -61,6 +61,93 @@ class SurfaceCode {
     }
 
     /**
+     * @param {!int} i
+     * @param {!int} j
+     * @returns {!boolean}
+     */
+    canGrowValley(i, j) {
+        if (!this.layout.isInBounds(i, j) || !this.layout.isHole(i, j)) {
+            return false;
+        }
+
+        let axis = this.layout.checkAxis(i, j, true);
+        if (axis === undefined) {
+            return this.layout.neighbors(i, j).length === 1;
+        }
+
+        let dataNeighbors = this.layout.neighbors(i, j);
+        return dataNeighbors.length <= 1 && dataNeighbors.every(([i2, j2]) =>
+            this.layout.neighbors(i2, j2).every(([i3, j3]) =>
+                this.layout.checkAxis(i3, j3, true) === axis));
+    }
+
+    /**
+     * @param {!int} i
+     * @param {!int} j
+     * @returns {!boolean}
+     */
+    growValley(i, j) {
+        if (!this.canGrowValley(i, j)) {
+            return false;
+        }
+
+        this.layout.holes[i][j] = false;
+        if (this.layout.isDataQubit(i, j)) {
+            let [x, y] = this.layout.neighbors(i, j)[0];
+            let axis = Axis.zIf(this.layout.isZCheckQubit(x, y, true, true));
+            this.reset(i, j, axis);
+
+            // Drag error curves along for the ride.
+            this.measureAndConditionalToggle(
+                [[x, y]],
+                [],
+                [new SurfaceQubitObservable(i, j, axis.opposite())]);
+        }
+        return true;
+    }
+
+    /**
+     * @param {!int} i
+     * @param {!int} j
+     * @returns {!boolean}
+     */
+    canRetractPole(i, j) {
+        if (!this.layout.isHole(i, j) ||
+            !this.layout.isCheckQubit(i, j, undefined, true, false)) {
+            return false;
+        }
+        let holes = this.layout.neighbors(i, j, true, true).
+        filter(pt => this.layout.isHole(...pt) &&
+        this.layout.isDataQubit(pt[0], pt[1], true, false));
+        return holes.length === 1;
+    }
+
+    /**
+     * @param {!int} i
+     * @param {!int} j
+     * @returns {!boolean}
+     */
+    retractPole(i, j) {
+        if (!this.canRetractPole(i, j)) {
+            return false;
+        }
+
+        let [x, y] = this.layout.neighbors(i, j, true, true).filter(pt => this.layout.isHole(...pt))[0];
+
+        this.layout.holes[i][j] = false;
+        this.layout.holes[x][y] = false;
+        let axis = Axis.zIf(this.layout.isZCheckQubit(i, j));
+        this.reset(x, y, axis.opposite(), false);
+
+        this.measureAndConditionalToggle(
+            [[i, j]],
+            [],
+            [new SurfaceQubitObservable(x, y, axis.opposite())]
+        );
+        return true;
+    }
+
+    /**
      * @param {!Axis} axis
      * @param {!boolean} result
      * @returns {!Iterable.<![!int, !int]>}

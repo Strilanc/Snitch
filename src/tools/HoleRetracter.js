@@ -27,30 +27,12 @@ class HoleRetracterType extends Tool {
         }
         let [i, j] = args.surface.layout.nearestCheckCoord(...args.startPos);
         let [i2, j2] = args.surface.layout.nearestCheckCoord(...args.endPos);
-        if (i !== i2 ||
-                j !== j2 ||
-                !args.surface.layout.isHole(i, j) ||
-                !args.surface.layout.isCheckQubit(i, j, undefined, true, false)) {
-            return false;
-        }
-
-        let holes = args.surface.layout.neighbors(i, j, true, true).
-            filter(pt => args.surface.layout.isHole(...pt) &&
-                    args.surface.layout.isDataQubit(pt[0], pt[1], true, false));
-        return holes.length === 1;
+        return i === i2 && j === j2 && args.surface.canRetractPole(i, j);
     }
 
     canHoverHint(args) {
         let [i, j] = args.surface.layout.nearestCheckCoord(...args.endPos);
-        if (!args.surface.layout.isHole(i, j) ||
-            !args.surface.layout.isCheckQubit(i, j, undefined, true, false)) {
-            return false;
-        }
-
-        let holes = args.surface.layout.neighbors(i, j, true, true).
-            filter(pt => args.surface.layout.isHole(...pt) &&
-                    args.surface.layout.isDataQubit(pt[0], pt[1], true, false));
-        return holes.length === 1;
+        return args.surface.canRetractPole(i, j);
     }
 
     drawHoverHint(ctx, args) {
@@ -70,18 +52,7 @@ class HoleRetracterType extends Tool {
 
     applyEffect(args) {
         let [i, j] = args.surface.layout.nearestCheckCoord(...args.endPos);
-        let [x, y] = args.surface.layout.neighbors(i, j, true, true).filter(pt => args.surface.layout.isHole(...pt))[0];
-
-        args.surface.layout.holes[i][j] = false;
-        args.surface.layout.holes[x][y] = false;
-        let axis = Axis.zIf(args.surface.layout.isZCheckQubit(i, j));
-        args.surface.reset(x, y, axis.opposite(), false);
-
-        args.surface.measureAndConditionalToggle(
-            [[i, j]],
-            [],
-            [new SurfaceQubitObservable(x, y, axis.opposite())]
-        );
+        args.surface.retractPole(i, j);
     }
 }
 
