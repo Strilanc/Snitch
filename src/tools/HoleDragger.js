@@ -1,6 +1,8 @@
 import {config} from "src/config.js"
 import {Tool} from "src/tools/Tool.js"
-import {ToolEffectArgs} from "src/tools/ToolEffectArgs.js";
+import {ToolEffectArgs} from "src/tools/ToolEffectArgs.js"
+import {seq} from "src/base/Seq.js"
+import {BorderLoc} from "src/sim/SurfaceCodeLayout.js"
 
 function roundWithDeadZone(v, d, r) {
     let s = v < 0 ? -1 : +1;
@@ -110,12 +112,76 @@ class HoleDraggerType extends Tool {
     }
 
     applyEffect(args) {
-        let {startArea, endArea} = this._argsToUseful(args);
-        for (let [i, j] of startArea) {
-            args.surface.layout.holes[i][j] = false;
+        let i = Math.floor(args.startPos[0]);
+        let j = Math.floor(args.startPos[1]);
+        let di = roundWithDeadZone(args.endPos[0] - i - 0.5, 0.5, 2);
+        let dj = roundWithDeadZone(args.endPos[1] - j - 0.5, 0.5, 2);
+        let dMax = 0;
+        if (Math.abs(di) > Math.abs(dj)) {
+            dMax = Math.abs(di);
+            di = Math.sign(di);
+            dj = 0;
+        } else {
+            dMax = Math.abs(dj);
+            dj = Math.sign(dj);
+            di = 0;
         }
-        for (let [i, j] of endArea) {
-            args.surface.layout.holes[i][j] = true;
+
+        let border = seq(args.surface.layout.holeFloodFill(i, j)).
+            flatMap(([x, y]) => BorderLoc.allSides(x, y)).
+            filter(loc => args.surface.layout.borderType(loc) !== undefined).
+            filter(loc => loc.di * di + loc.dj * dj !== 0).
+            groupBy(loc => loc.i*di + loc.j*dj);
+
+        let keys = seq(border.keys()).sortedBy(e => -e).toArray();
+        for (let key of keys) {
+            for (let loc of border.get(key)) {
+                if (loc.di === di && loc.dj === dj) {
+                    let x = loc.i;
+                    let y = loc.j;
+                    for (let d = 1; d <= dMax; d += 2) {
+                        if (!args.surface.extendPole(x + di * d, y + dj * d)) {
+                            break;
+                        }
+                    }
+                }
+            }
+
+            for (let loc of border.get(key)) {
+                if (loc.di === di && loc.dj === dj) {
+                    let x = loc.i;
+                    let y = loc.j;
+                    for (let d = 1; d <= dMax; d++) {
+                        if (!args.surface.retractValley(x + di * d, y + dj * d)) {
+                            break;
+                        }
+                    }
+                }
+            }
+
+            for (let loc of border.get(key)) {
+                if (loc.di === -di && loc.dj === -dj) {
+                    let x = loc.i;
+                    let y = loc.j;
+                    for (let d = 0; d < dMax; d++) {
+                        if (!args.surface.growValley(x + di * d, y + dj * d)) {
+                            break;
+                        }
+                    }
+                }
+            }
+
+            for (let loc of border.get(key)) {
+                if (loc.di === -di && loc.dj === -dj) {
+                    let x = loc.i;
+                    let y = loc.j;
+                    for (let d = 0; d < dMax; d += 2) {
+                        if (!args.surface.retractPole(x + di * d, y + dj * d)) {
+                            break;
+                        }
+                    }
+                }
+            }
         }
     }
 }

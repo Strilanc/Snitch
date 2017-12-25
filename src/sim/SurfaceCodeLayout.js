@@ -130,6 +130,15 @@ class BorderLoc {
     }
 
     /**
+     * @param {!int} i
+     * @param {!int} j
+     * @returns {!Array.<!BorderLoc>}
+     */
+    static allSides(i, j) {
+        return CARDINALS.map(([di, dj]) => new BorderLoc(i, j, di, dj));
+    }
+
+    /**
      * @param {!BorderLoc|*} other
      * @returns {!boolean}
      */
