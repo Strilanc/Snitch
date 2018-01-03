@@ -161,6 +161,45 @@ class SurfaceCode {
     /**
      * @param {!int} i
      * @param {!int} j
+     * @param {!Axis} axis
+     * @returns {!boolean}
+     */
+    canJoinBorders(i, j, axis) {
+        let bs = this.layout.bordersOfType(i, j, axis);
+        return bs.length === 2 &&
+            this.layout.bordersOfType(i, j, axis.opposite()).length === 0 &&
+            !this.layout.areBorderLocsOnSameContiguousBorder(bs[0], bs[1]);
+    }
+
+    /**
+     * @param {!int} i
+     * @param {!int} j
+     * @param {!Axis} axis
+     * @returns {!boolean}
+     */
+    joinBorders(i, j, axis) {
+        if (!this.canJoinBorders(i, j, axis)) {
+            return false;
+        }
+
+        let localBorders = this.layout.bordersOfType(i, j, axis);
+        let fullBorder1 = this.layout.fullContiguousBorderTouching(localBorders[0]);
+
+        this.observableOverlay.observables = this.observableOverlay.observables.filter(
+            obs => obs.indexOf(new SurfaceQubitObservable(i, j, axis.opposite())) !== undefined);
+
+        this.measureAndConditionalToggle(
+            [],
+            [new SurfaceQubitObservable(i, j, axis.opposite())],
+            fullBorder1.locs.map(loc => new SurfaceQubitObservable(loc.i, loc.j, axis)));
+
+        this.layout.holes[i][j] = true;
+        return true;
+    }
+
+    /**
+     * @param {!int} i
+     * @param {!int} j
      * @returns {!boolean}
      */
     retractPole(i, j) {

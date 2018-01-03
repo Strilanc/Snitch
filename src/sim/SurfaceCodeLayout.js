@@ -395,6 +395,16 @@ class SurfaceCodeLayout {
     /**
      * @param {!int} i
      * @param {!int} j
+     * @param {!Axis} axis
+     * @returns {!Array.<!BorderLoc>}
+     */
+    bordersOfType(i, j, axis) {
+        return BorderLoc.allSides(i, j).filter(e => this.borderType(e) === axis);
+    }
+
+    /**
+     * @param {!int} i
+     * @param {!int} j
      * @param {undefined|!Axis} axis
      * @param {!boolean} ignoreHole
      * @param {!boolean} ignoreBounds
