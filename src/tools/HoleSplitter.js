@@ -1,6 +1,6 @@
 import {config} from "src/config.js"
 import {Tool} from "src/tools/Tool.js"
-import {Axis} from "src/sim/Util.js";
+import {Axis} from "src/sim/Axis.js";
 
 class HoleSplitterType extends Tool {
     constructor() {

@@ -2,7 +2,8 @@ import {seq} from "src/base/Seq.js";
 import {squaredDistanceFromLine, makeGrid, cloneGrid} from 'src/sim/Util.js'
 import {DetailedError} from 'src/base/DetailedError.js'
 import {CARDINALS} from 'src/sim/Util.js'
-import {Axis, X_AXIS, Z_AXIS} from "src/sim/Util.js";
+import {Axis} from "src/sim/Axis.js";
+import {BorderLoc} from "src/sim/BorderLoc.js";
 
 
 /**
@@ -49,155 +50,6 @@ function* _checkQubits(layout, axis) {
     }
 }
 
-/**
- * The location of one of the edges beside a qubit in the surface code.
- */
-class BorderLoc {
-    /**
-     * @param {!number} i
-     * @param {!number} j
-     * @param {!number} di
-     * @param {!number} dj
-     */
-    constructor(i, j, di, dj) {
-        if ((di !== 0 && dj !== 0) || (Math.abs(di) !== 1 && Math.abs(dj) !== 1)) {
-            throw new DetailedError('[di, dj] must be an axis-aligned unit vector.', {i, j, di, dj});
-        }
-
-        this.i = i;
-        this.j = j;
-        this.di = di;
-        this.dj = dj;
-    }
-
-    toString() {
-        let label = ['left', 'top', 'right', 'bottom'][this.di === -1 ? 0 : this.dj + 2];
-        return `${label}(${this.i}, ${this.j})`
-    }
-
-    /**
-     * @returns {![!number, !number]}
-     */
-    center() {
-        return [this.i + 0.5 + this.di * 0.5, this.j + 0.5 + this.dj * 0.5];
-    }
-
-    /**
-     * @param {!int} i
-     * @param {!int} j
-     * @returns {!BorderLoc}
-     */
-    static left(i, j) {
-        return new BorderLoc(i, j, -1, 0);
-    }
-
-    /**
-     * @param {!int} i
-     * @param {!int} j
-     * @returns {!BorderLoc}
-     */
-    static right(i, j) {
-        return new BorderLoc(i, j, +1, 0);
-    }
-
-    /**
-     * Warning: this is the top *when drawing* and *making diagrams*, not in the sense of larger-y-coordinate.
-     *
-     * @param {!int} i
-     * @param {!int} j
-     * @returns {!BorderLoc}
-     */
-    static top(i, j) {
-        return new BorderLoc(i, j, 0, -1);
-    }
-
-    /**
-     * Warning: this is the bottom *when drawing* and *making diagrams*, not in the sense of lesser-y-coordinate.
-     *
-     * @param {!int} i
-     * @param {!int} j
-     * @returns {!BorderLoc}
-     */
-    static bottom(i, j) {
-        return new BorderLoc(i, j, 0, +1);
-    }
-
-    /**
-     * @returns {!BorderLoc}
-     */
-    backside() {
-        return new BorderLoc(this.i + this.di, this.j + this.dj, -this.di, -this.dj);
-    }
-
-    /**
-     * @param {!int} i
-     * @param {!int} j
-     * @returns {!Array.<!BorderLoc>}
-     */
-    static allSides(i, j) {
-        return CARDINALS.map(([di, dj]) => new BorderLoc(i, j, di, dj));
-    }
-
-    /**
-     * @param {!BorderLoc|*} other
-     * @returns {!boolean}
-     */
-    isEqualTo(other) {
-        return other instanceof BorderLoc &&
-            this.i === other.i &&
-            this.j === other.j &&
-            this.di === other.di &&
-            this.dj === other.dj;
-    }
-
-    /**
-     * @returns {!BorderLoc}
-     */
-    nextCounterClockwiseWithinSameCell() {
-        return new BorderLoc(this.i, this.j, -this.dj, this.di);
-    }
-
-    /**
-     * @returns {!BorderLoc}
-     */
-    nextCounterClockwiseAlongWall() {
-        return new BorderLoc(this.i - this.dj, this.j + this.di, this.di, this.dj);
-    }
-
-    /**
-     * @returns {!BorderLoc}
-     */
-    nextCounterClockwiseAroundCorner() {
-        return this.nextCounterClockwiseAlongWall().
-            nextClockwiseWithinSameCell().
-            nextCounterClockwiseAlongWall();
-    }
-
-    /**
-     * @returns {!BorderLoc}
-     */
-    nextClockwiseWithinSameCell() {
-        return new BorderLoc(this.i, this.j, this.dj, -this.di);
-    }
-
-    /**
-     * @returns {!BorderLoc}
-     */
-    nextClockwiseAlongWall() {
-        return new BorderLoc(this.i + this.dj, this.j - this.di, this.di, this.dj);
-    }
-
-    /**
-     * @returns {!BorderLoc}
-     */
-    nextClockwiseAroundCorner() {
-        return this.nextClockwiseAlongWall().
-            nextCounterClockwiseWithinSameCell().
-            nextClockwiseAlongWall();
-    }
-}
-
-
 class SurfaceCodeLayout {
     /**
      * @param {!int} width
@@ -243,13 +95,13 @@ class SurfaceCodeLayout {
      */
     _nextBorder(borderLoc, type, clockwise) {
         let options = clockwise ? [
-            borderLoc.nextClockwiseWithinSameCell(),
-            borderLoc.nextClockwiseAlongWall(),
-            borderLoc.nextClockwiseAroundCorner()
+            borderLoc.nextRightHandWithinSameCell(),
+            borderLoc.nextRightHandAlongWall(),
+            borderLoc.nextRightHandAroundCorner()
         ] : [
-            borderLoc.nextCounterClockwiseWithinSameCell(),
-            borderLoc.nextCounterClockwiseAlongWall(),
-            borderLoc.nextCounterClockwiseAroundCorner()
+            borderLoc.nextLeftHandWithinSameCell(),
+            borderLoc.nextLeftHandAlongWall(),
+            borderLoc.nextLeftHandAroundCorner()
         ];
         for (let a of options) {
             if (this.borderType(a) === type) {
@@ -310,7 +162,7 @@ class SurfaceCodeLayout {
      * @returns {!Axis}
      */
     colCheckType(col) {
-        return ((col & 1) === 0) !== this.firstColIsX ? Z_AXIS : X_AXIS;
+        return ((col & 1) === 0) !== this.firstColIsX ? Axis.Z : Axis.X;
     }
 
     /**
@@ -318,7 +170,7 @@ class SurfaceCodeLayout {
      * @returns {!Axis}
      */
     rowCheckType(row) {
-        return ((row & 1) === 0) !== this.firstRowIsX ? Z_AXIS : X_AXIS;
+        return ((row & 1) === 0) !== this.firstRowIsX ? Axis.Z : Axis.X;
     }
 
     /**
@@ -568,7 +420,7 @@ class SurfaceCodeLayout {
      * @returns {!boolean}
      */
     isZCheckQubit(i, j, ignoreHole=false, ignoreBounds=false) {
-        return this.isCheckQubit(i, j, Z_AXIS, ignoreHole, ignoreBounds);
+        return this.isCheckQubit(i, j, Axis.Z, ignoreHole, ignoreBounds);
     }
 
     /**
@@ -593,7 +445,7 @@ class SurfaceCodeLayout {
      * @returns {!boolean}
      */
     isXCheckQubit(i, j, ignoreHole=false, ignoreBounds=false) {
-        return this.isCheckQubit(i, j, X_AXIS, ignoreHole, ignoreBounds);
+        return this.isCheckQubit(i, j, Axis.X, ignoreHole, ignoreBounds);
     }
 
     /**

@@ -1,7 +1,5 @@
 import {config} from "src/config.js"
 import {Tool} from "src/tools/Tool.js"
-import {Axis} from "src/sim/Util.js";
-import {ObservableProduct} from "src/sim/ObservableProduct.js";
 import {SurfaceMultiObservable, SurfaceQubitObservable} from "src/sim/SurfaceCodeObservableOverlay.js";
 
 class StatePeekerType extends Tool {

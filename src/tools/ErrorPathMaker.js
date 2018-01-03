@@ -1,7 +1,6 @@
 import {config} from "src/config.js"
 import {strokeErrorCurveAt} from "src/draw/Common.js";
 import {Tool} from "src/tools/Tool.js"
-import {Axis} from "src/sim/Util.js";
 
 class ErrorPathMakerType extends Tool {
     constructor() {

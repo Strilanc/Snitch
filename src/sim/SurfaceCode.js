@@ -10,7 +10,7 @@ import {StabilizerCircuitState} from 'src/sim/StabilizerCircuitState.js'
 import {makeGrid, cloneGrid} from 'src/sim/Util.js'
 import {SurfaceCodeLayout} from "src/sim/SurfaceCodeLayout.js";
 import {SurfaceCodeErrorOverlay} from "src/sim/SurfaceCodeErrorOverlay.js";
-import {Axis, AXES, Z_AXIS, X_AXIS} from "src/sim/Util.js";
+import {Axis} from "src/sim/Axis.js";
 import {SurfaceCodeObservableOverlay, SurfaceQubitObservable} from "src/sim/SurfaceCodeObservableOverlay.js";
 import {SurfaceCodeSparkles} from "src/sim/SurfaceCodeSparkles.js";
 import {config} from "src/config.js";
@@ -237,7 +237,7 @@ class SurfaceCode {
      * @param {!Axis} axis
      * @returns {!boolean}
      */
-    measure(i, j, axis=Z_AXIS) {
+    measure(i, j, axis=Axis.Z) {
         let q = this.qubits[i][j];
         if (axis.isX()) {
             this.state.h(q);
@@ -255,7 +255,7 @@ class SurfaceCode {
      * @param {!boolean} val
      * @param {!Axis} axis
      */
-    reset(i, j, axis=Z_AXIS, val=false) {
+    reset(i, j, axis=Axis.Z, val=false) {
         let q = this.qubits[i][j];
         this.state.measure(q, true);
         if (val) {
@@ -338,9 +338,9 @@ class SurfaceCode {
         for (let i = 0; i < this.layout.width; i++) {
             for (let j = 0; j < this.layout.height; j++) {
                 if (this.layout.isXCheckQubit(i, j)) {
-                    this.last_result[i][j] = this.squareMeasure(i, j, X_AXIS);
+                    this.last_result[i][j] = this.squareMeasure(i, j, Axis.X);
                 } else if (this.layout.isZCheckQubit(i, j)) {
-                    this.last_result[i][j] = this.squareMeasure(i, j, Z_AXIS);
+                    this.last_result[i][j] = this.squareMeasure(i, j, Axis.Z);
                 }
             }
         }
@@ -414,7 +414,7 @@ class SurfaceCode {
     }
 
     correct() {
-        for (let axis of AXES) {
+        for (let axis of Axis.XZ) {
             let points = [];
             for (let [i, j] of this.layout.checkQubits(axis)) {
                 if (this.last_result[i][j] !== this.expected_result[i][j]) {

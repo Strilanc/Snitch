@@ -2,7 +2,8 @@ import {config} from "src/config.js"
 import {strokeErrorCurveAt} from "src/draw/Common.js";
 import {Tool} from "src/tools/Tool.js"
 import {ToolEffectArgs} from "src/tools/ToolEffectArgs.js";
-import {Axis, X_AXIS, makeGrid} from "src/sim/Util.js";
+import {makeGrid} from "src/sim/Util.js";
+import {Axis} from "src/sim/Axis.js";
 
 function roundWithDeadZone(v, d, r) {
     let s = v < 0 ? -1 : +1;

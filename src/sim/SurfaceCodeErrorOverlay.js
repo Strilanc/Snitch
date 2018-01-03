@@ -1,6 +1,6 @@
 import {CARDINALS} from 'src/sim/Util.js'
 import {makeGrid} from 'src/sim/Util.js'
-import {Axis, AXES, Z_AXIS, X_AXIS} from "src/sim/Util.js";
+import {Axis} from "src/sim/Axis.js";
 
 
 class SurfaceCodeErrorOverlay {
@@ -28,10 +28,10 @@ class SurfaceCodeErrorOverlay {
         for (let [i, j] of this.surface.layout.dataPoints()) {
             if (Math.random() < p) {
                 if (Math.random() < 0.5) {
-                    this.flipQubit(i, j, X_AXIS);
+                    this.flipQubit(i, j, Axis.X);
                 }
                 if (Math.random() < 0.5) {
-                    this.flipQubit(i, j, Z_AXIS);
+                    this.flipQubit(i, j, Axis.Z);
                 }
             }
         }
@@ -125,7 +125,7 @@ class SurfaceCodeErrorOverlay {
 
     shrinkCurves() {
         let layout = this.surface.layout;
-        for (let axis of AXES) {
+        for (let axis of Axis.XZ) {
             let flips = this.flipsForAxis(axis.opposite());
             let reps = this._getClosedCurveRegionRepresentatives(axis);
             for (let [i, j] of reps) {

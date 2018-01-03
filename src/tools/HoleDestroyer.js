@@ -1,9 +1,7 @@
 import {config} from "src/config.js"
 import {Tool} from "src/tools/Tool.js"
-import {ToolEffectArgs} from "src/tools/ToolEffectArgs.js";
 import {SurfaceQubitObservable} from "src/sim/SurfaceCodeObservableOverlay.js";
-import {BorderLoc} from "src/sim/SurfaceCodeLayout.js";
-import {Axis} from "src/sim/Util.js";
+import {Axis} from "src/sim/Axis.js";
 
 class HoleDestroyerType extends Tool {
     constructor() {

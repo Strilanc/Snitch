@@ -9,15 +9,14 @@ window.onerror = function(msg, url, line, col, error) {
 
 import {DetailedError} from 'src/base/DetailedError.js'
 import {SurfaceCode} from 'src/sim/SurfaceCode.js'
-import {BorderLoc} from 'src/sim/SurfaceCodeLayout.js'
+import {BorderLoc} from 'src/sim/BorderLoc.js'
 import {CARDINALS} from 'src/sim/Util.js'
 import {ToolEffectArgs} from 'src/tools/ToolEffectArgs.js'
 import {describe} from "src/base/Describe.js";
 import {config} from "src/config.js"
 import {Revision} from "src/base/Revision.js";
 import {strokeErrorCurveAt} from "src/draw/Common.js";
-import {AXES, X_AXIS, Z_AXIS} from "src/sim/Util.js";
-import {Axis} from "src/sim/Util.js";
+import {Axis} from "src/sim/Axis.js";
 import {ALL_TOOLS} from "src/tools/AllTools.js";
 
 let canvas = /** @type {!HTMLCanvasElement} */ document.getElementById('main-canvas');
@@ -136,10 +135,10 @@ function drawQubitBlocksOfType(ctx, points, color) {
 function drawQubitBlocks(ctx) {
     ctx.fillStyle = config.dataQubitColor;
     ctx.fillRect(0, 0, surface.layout.width * config.diam, surface.layout.height * config.diam);
-    drawQubitBlocksOfType(ctx, surface.checkQubitsWithResultVsExpected(X_AXIS, false), config.xOffColor);
-    drawQubitBlocksOfType(ctx, surface.checkQubitsWithResultVsExpected(X_AXIS, true), config.xOnColor);
-    drawQubitBlocksOfType(ctx, surface.checkQubitsWithResultVsExpected(Z_AXIS, false), config.zOffColor);
-    drawQubitBlocksOfType(ctx, surface.checkQubitsWithResultVsExpected(Z_AXIS, true), config.zOnColor);
+    drawQubitBlocksOfType(ctx, surface.checkQubitsWithResultVsExpected(Axis.X, false), config.xOffColor);
+    drawQubitBlocksOfType(ctx, surface.checkQubitsWithResultVsExpected(Axis.X, true), config.xOnColor);
+    drawQubitBlocksOfType(ctx, surface.checkQubitsWithResultVsExpected(Axis.Z, false), config.zOffColor);
+    drawQubitBlocksOfType(ctx, surface.checkQubitsWithResultVsExpected(Axis.Z, true), config.zOnColor);
     drawQubitBlocksOfType(ctx, surface.layout.holePoints(0), config.holeColor);
 
     ctx.beginPath();
@@ -196,7 +195,7 @@ function drawHoleBorders(ctx) {
  * @param {!CanvasRenderingContext2D} ctx
  */
 function drawErrorCurves(ctx) {
-    for (let axis of AXES) {
+    for (let axis of Axis.XZ) {
         ctx.beginPath();
         let flips = surface.errorOverlay.flipsForAxis(axis.opposite());
         for (let [i, j] of surface.layout.dataPoints(true)) {

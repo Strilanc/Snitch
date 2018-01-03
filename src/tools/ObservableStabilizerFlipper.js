@@ -1,8 +1,7 @@
 import {config} from "src/config.js"
 import {strokeErrorCurveAt} from "src/draw/Common.js";
 import {Tool} from "src/tools/Tool.js"
-import {ToolEffectArgs} from "src/tools/ToolEffectArgs.js";
-import {Axis, X_AXIS, makeGrid} from "src/sim/Util.js";
+import {Axis} from "src/sim/Axis.js";
 import {SurfaceQubitObservable} from "src/sim/SurfaceCodeObservableOverlay.js";
 
 class ObservableStabilizerFlipperType extends Tool {

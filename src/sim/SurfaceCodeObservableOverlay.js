@@ -1,6 +1,5 @@
-import {CARDINALS} from 'src/sim/Util.js'
 import {makeGrid} from 'src/sim/Util.js'
-import {Axis, AXES, Z_AXIS, X_AXIS} from "src/sim/Util.js";
+import {Axis} from "src/sim/Axis.js";
 import {ObservableProduct} from "src/sim/ObservableProduct.js";
 import {config} from "src/config.js";
 

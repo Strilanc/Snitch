@@ -1,8 +1,5 @@
 import {config} from "src/config.js"
 import {Tool} from "src/tools/Tool.js"
-import {ToolEffectArgs} from "src/tools/ToolEffectArgs.js";
-import {Axis} from "src/sim/Util.js";
-import {SurfaceQubitObservable} from "src/sim/SurfaceCodeObservableOverlay.js";
 
 class HoleRetracterType extends Tool {
     constructor() {

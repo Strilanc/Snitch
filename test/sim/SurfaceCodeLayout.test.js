@@ -13,8 +13,9 @@
 // limitations under the License.
 
 import {Suite, assertThat, assertThrows, assertTrue, assertFalse} from 'test/TestUtil.js'
-import {BorderLoc, SurfaceCodeLayout} from 'src/sim/SurfaceCodeLayout.js'
-import {X_AXIS, Z_AXIS} from "src/sim/Util.js";
+import {BorderLoc} from 'src/sim/BorderLoc.js'
+import {SurfaceCodeLayout} from 'src/sim/SurfaceCodeLayout.js'
+import {Axis} from "src/sim/Axis.js";
 
 let suite = new Suite('StabilizerQubit');
 
@@ -214,23 +215,23 @@ suite.test('data-vs-check-types', () => {
 
     assertFalse(s.isDataQubit(0, 0));
     assertTrue(s.isCheckQubit(0, 0));
-    assertTrue(s.isCheckQubit(0, 0, Z_AXIS));
-    assertFalse(s.isCheckQubit(0, 0, X_AXIS));
+    assertTrue(s.isCheckQubit(0, 0, Axis.Z));
+    assertFalse(s.isCheckQubit(0, 0, Axis.X));
 
     assertTrue(s.isDataQubit(0, 1));
     assertFalse(s.isCheckQubit(0, 1));
-    assertFalse(s.isCheckQubit(0, 1, Z_AXIS));
-    assertFalse(s.isCheckQubit(0, 1, X_AXIS));
+    assertFalse(s.isCheckQubit(0, 1, Axis.Z));
+    assertFalse(s.isCheckQubit(0, 1, Axis.X));
 
     assertTrue(s.isDataQubit(1, 0));
     assertFalse(s.isCheckQubit(1, 0));
-    assertFalse(s.isCheckQubit(1, 0, Z_AXIS));
-    assertFalse(s.isCheckQubit(1, 0, X_AXIS));
+    assertFalse(s.isCheckQubit(1, 0, Axis.Z));
+    assertFalse(s.isCheckQubit(1, 0, Axis.X));
 
     assertFalse(s.isDataQubit(1, 1));
     assertTrue(s.isCheckQubit(1, 1));
-    assertFalse(s.isCheckQubit(1, 1, Z_AXIS));
-    assertTrue(s.isCheckQubit(1, 1, X_AXIS));
+    assertFalse(s.isCheckQubit(1, 1, Axis.Z));
+    assertTrue(s.isCheckQubit(1, 1, Axis.X));
 });
 
 suite.test('nearestDataCoord', () => {
@@ -274,14 +275,14 @@ suite.test('nearestCheckCoord-xz', () => {
     let s = new SurfaceCodeLayout(4, 4);
 
     // Round to nearest Z.
-    assertThat(s.nearestCheckCoord(0.52, 0.52, Z_AXIS)).isEqualTo([0, 0]);
-    assertThat(s.nearestCheckCoord(1.48, 0.52, Z_AXIS)).isEqualTo([0, 0]);
-    assertThat(s.nearestCheckCoord(1.52, 0.52, Z_AXIS)).isEqualTo([2, 0]);
+    assertThat(s.nearestCheckCoord(0.52, 0.52, Axis.Z)).isEqualTo([0, 0]);
+    assertThat(s.nearestCheckCoord(1.48, 0.52, Axis.Z)).isEqualTo([0, 0]);
+    assertThat(s.nearestCheckCoord(1.52, 0.52, Axis.Z)).isEqualTo([2, 0]);
 
     // Round to nearest X.
-    assertThat(s.nearestCheckCoord(0.52, 0.52, X_AXIS)).isEqualTo([1, 1]);
-    assertThat(s.nearestCheckCoord(0.52, 2.48, X_AXIS)).isEqualTo([1, 1]);
-    assertThat(s.nearestCheckCoord(0.52, 2.52, X_AXIS)).isEqualTo([1, 3]);
+    assertThat(s.nearestCheckCoord(0.52, 0.52, Axis.X)).isEqualTo([1, 1]);
+    assertThat(s.nearestCheckCoord(0.52, 2.48, Axis.X)).isEqualTo([1, 1]);
+    assertThat(s.nearestCheckCoord(0.52, 2.52, Axis.X)).isEqualTo([1, 3]);
 });
 
 suite.test('fullContiguousBorderTouching-invalids', () => {
@@ -331,7 +332,7 @@ suite.test('fullContiguousBorderTouching-insideUnitHole', () => {
             BorderLoc.bottom(1, 1)
         ],
         cycle: true,
-        axis: Z_AXIS,
+        axis: Axis.Z,
     });
 
     // Outside of hole cycle goes clockwise.
@@ -343,7 +344,7 @@ suite.test('fullContiguousBorderTouching-insideUnitHole', () => {
             BorderLoc.top(1, 1).backside()
         ],
         cycle: true,
-        axis: Z_AXIS,
+        axis: Axis.Z,
     });
 });
 
@@ -359,7 +360,7 @@ suite.test('fullContiguousBorderTouching-borderUnitHole', () => {
             BorderLoc.top(0, 2),
         ],
         cycle: false,
-        axis: X_AXIS,
+        axis: Axis.X,
     });
 
     let borderHoleOfSameType = parseLayoutDiagram(`
@@ -387,7 +388,7 @@ suite.test('fullContiguousBorderTouching-borderUnitHole', () => {
             BorderLoc.bottom(1, 1),
         ],
         cycle: true,
-        axis: X_AXIS,
+        axis: Axis.X,
     });
 
     let borderHoleOfSameTypeAsOneWall = parseLayoutDiagram(`
@@ -410,7 +411,7 @@ suite.test('fullContiguousBorderTouching-borderUnitHole', () => {
             BorderLoc.right(-1, 0),
         ],
         cycle: false,
-        axis: X_AXIS,
+        axis: Axis.X,
     });
 });
 
@@ -443,7 +444,7 @@ suite.test('fullContiguousBorderTouching-biggerHole', () => {
             BorderLoc.top(1, 1),
         ],
         cycle: true,
-        axis: Z_AXIS,
+        axis: Axis.Z,
     });
 });
 
@@ -466,7 +467,7 @@ suite.test('fullContiguousBorderTouching-mixedHole', () => {
             BorderLoc.left(3, 1),
         ],
         cycle: false,
-        axis: X_AXIS,
+        axis: Axis.X,
     });
 
     let holePartiallyCutByOtherHole = parseLayoutDiagram(`
@@ -487,7 +488,7 @@ suite.test('fullContiguousBorderTouching-mixedHole', () => {
             BorderLoc.left(3, 1),
         ],
         cycle: false,
-        axis: X_AXIS,
+        axis: Axis.X,
     });
 });
 
@@ -512,25 +513,25 @@ suite.test('mouseSegmentToDataQubits', () => {
     assertThat(layout.mouseSegmentToDataQubits(7.6, 3.5, 8.4, 3.5)).isEqualTo({
         path: [[7, 2], [9, 2], [10, 3], [10, 5], [9, 6], [7, 6], [6, 5], [6, 3]],
         anchorPoints: [[7.5, 3]],
-        pathType: X_AXIS,
+        pathType: Axis.X,
     });
 
     // Drag into hole of opposite type.
     assertThat(layout.mouseSegmentToDataQubits(7.6, 3.5, 13.5, 9.5)).isEqualTo({
         path: undefined,
         anchorPoints: [[7.5, 3], [13.5, 9.5]],
-        pathType: Z_AXIS,
+        pathType: Axis.Z,
     });
 
     // Hover over area.
     assertThat(layout.mouseSegmentToDataQubits(2.4, 2.7, 3.0, 2.9)).isEqualTo({
         path: [[3, 2]],
         anchorPoints: [[2.5, 2.5], [4.5, 2.5]],
-        pathType: X_AXIS,
+        pathType: Axis.X,
     });
     assertThat(layout.mouseSegmentToDataQubits(2.4, 2.7, 2.9, 3.0)).isEqualTo({
         path: [[2, 3]],
         anchorPoints: [[2.5, 2.5], [2.5, 4.5]],
-        pathType: X_AXIS,
+        pathType: Axis.X,
     });
 });
