@@ -7,7 +7,7 @@ import {Axis} from "src/sim/Axis.js";
 
 class HoleJoinerType extends Tool {
     constructor() {
-        super('J');
+        super('L');
     }
 
     drawButtonContents(ctx, w, h, active, axis) {
@@ -40,9 +40,7 @@ class HoleJoinerType extends Tool {
         if (!args.surface.layout.isDataQubit(i, j)) {
             return false;
         }
-
-        let holes = args.surface.layout.neighbors(i, j, true, true).filter(pt => args.surface.layout.isHole(...pt));
-        return holes.length === 2 && (holes[0][0] === holes[1][0] || holes[0][1] === holes[1][1]);
+        return args.surface.canJoinBorders(i, j, Axis.X) || args.surface.canJoinBorders(i, j, Axis.Z);
     }
 
     drawHoverHint(ctx, args) {

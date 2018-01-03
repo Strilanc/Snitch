@@ -490,10 +490,9 @@ class SurfaceCodeLayout {
      * @param {!int} y1
      * @param {!int} x2
      * @param {!int} y2
-     * @param {!boolean} returnCheckQubitsAlongPathInsteadOfDataQubits
-     * @returns {undefined|!Array.<![!int, !int]>}
+     * @returns {undefined|!{dataQubits: !Array.<![!int, !int]>, checkQubits: !Array.<![!int, !int]>}}
      */
-    pathAlongCheckQubits(x1, y1, x2, y2, returnCheckQubitsAlongPathInsteadOfDataQubits) {
+    pathAlongCheckQubits(x1, y1, x2, y2) {
         let queue = [[x1, y1, undefined]];
         let dirs = makeGrid(this.width + 2, this.height + 2, () => undefined);
         while (queue.length > 0) {
@@ -524,22 +523,18 @@ class SurfaceCodeLayout {
             return undefined;
         }
 
-        let result = [];
+        let pathDataQubits = [];
+        let pathCheckQubits = [];
         let [i, j] = [x2, y2];
         while (i !== x1 || j !== y1) {
             let [di, dj] = dirs[i+1][j+1];
-            if (returnCheckQubitsAlongPathInsteadOfDataQubits) {
-                result.push([i, j]);
-            } else {
-                result.push([i + di, j + dj]);
-            }
+            pathCheckQubits.push([i, j]);
+            pathDataQubits.push([i + di, j + dj]);
             i += di*2;
             j += dj*2;
         }
-        if (returnCheckQubitsAlongPathInsteadOfDataQubits) {
-            result.push([i, j]);
-        }
-        return result;
+        pathCheckQubits.push([i, j]);
+        return {checkQubits: pathCheckQubits, dataQubits: pathDataQubits};
     }
 
     /**
@@ -594,9 +589,9 @@ class SurfaceCodeLayout {
         }
 
         let path = this.pathAlongCheckQubits(
-            p1.checkPos[0], p1.checkPos[1], p2.checkPos[0], p2.checkPos[1], false, false);
+            p1.checkPos[0], p1.checkPos[1], p2.checkPos[0], p2.checkPos[1]);
         return {
-            path,
+            path: path === undefined ? undefined : path.dataQubits,
             pathType: p1.type,
             anchorPoints: [p1, p2].
                 map(e => e.border !== undefined ? e.border.center() : e.checkPos.map(c => c + 0.5)),

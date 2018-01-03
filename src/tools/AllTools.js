@@ -9,6 +9,7 @@ import {StatePeeker} from 'src/tools/StatePeeker.js'
 import {HoleResizer} from 'src/tools/HoleResizer.js'
 import {HoleExtender} from 'src/tools/HoleExtender.js'
 import {HoleRetracter} from 'src/tools/HoleRetracter.js'
+import {HoleDragJoiner} from 'src/tools/HoleDragJoiner.js'
 import {HoleJoiner} from 'src/tools/HoleJoiner.js'
 import {HoleSplitter} from 'src/tools/HoleSplitter.js'
 import {ValleyCloser} from 'src/tools/ValleyCloser.js'
@@ -23,6 +24,7 @@ const ALL_TOOLS = [
     StatePeeker,
     HoleResizer,
     HoleExtender,
+    HoleDragJoiner,
     HoleJoiner,
     HoleSplitter,
     HoleRetracter,

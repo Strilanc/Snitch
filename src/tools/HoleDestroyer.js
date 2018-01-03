@@ -69,7 +69,7 @@ class HoleDestroyerType extends Tool {
             // TODO: when does this happen?
             return;
         }
-        let path = args.surface.layout.pathAlongCheckQubits(i, j, nearby.i, nearby.j, false);
+        let path = args.surface.layout.pathAlongCheckQubits(i, j, nearby.i, nearby.j);
         if (path === undefined) {
             // TODO: when does this happen?
             return;
@@ -78,7 +78,7 @@ class HoleDestroyerType extends Tool {
         args.surface.measureAndConditionalToggle(
             [[i, j]],
             [],
-            path.map(([x, y]) => new SurfaceQubitObservable(x, y, axis.opposite())));
+            path.dataQubits.map(([x, y]) => new SurfaceQubitObservable(x, y, axis.opposite())));
     }
 }
 

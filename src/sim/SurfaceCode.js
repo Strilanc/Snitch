@@ -175,15 +175,19 @@ class SurfaceCode {
      * @param {!int} i
      * @param {!int} j
      * @param {!Axis} axis
+     * @param {undefined|!BorderLoc} errorTaker
      * @returns {!boolean}
      */
-    joinBorders(i, j, axis) {
+    joinBorders(i, j, axis, errorTaker=undefined) {
         if (!this.canJoinBorders(i, j, axis)) {
             return false;
         }
 
         let localBorders = this.layout.bordersOfType(i, j, axis);
-        let fullBorder1 = this.layout.fullContiguousBorderTouching(localBorders[0]);
+        if (errorTaker === undefined) {
+            errorTaker = localBorders[0];
+        }
+        let errorBorder = this.layout.fullContiguousBorderTouching(errorTaker);
 
         this.observableOverlay.observables = this.observableOverlay.observables.filter(
             obs => obs.indexOf(new SurfaceQubitObservable(i, j, axis.opposite())) !== undefined);
@@ -191,7 +195,7 @@ class SurfaceCode {
         this.measureAndConditionalToggle(
             [],
             [new SurfaceQubitObservable(i, j, axis.opposite())],
-            fullBorder1.locs.map(loc => new SurfaceQubitObservable(loc.i, loc.j, axis)));
+            errorBorder.locs.map(loc => new SurfaceQubitObservable(loc.i, loc.j, axis)));
 
         this.layout.holes[i][j] = true;
         return true;
