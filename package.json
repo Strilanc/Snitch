@@ -18,7 +18,7 @@
     "karma-firefox-launcher": "~1.0.1"
   },
   "scripts": {
-    "build": "grunt build-src",
+    "build": "grunt build-debug",
     "test": "grunt test",
     "test-chrome": "grunt test-chrome",
     "test-firefox": "grunt test-firefox",
