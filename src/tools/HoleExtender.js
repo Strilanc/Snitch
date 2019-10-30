@@ -20,13 +20,11 @@ class HoleExtenderType extends Tool {
     }
 
     canApply(args) {
-        if (args.mousePos === undefined ||
-                args.dragStartPos === undefined ||
-                args.mouseButton !== 0) {
+        if (args.mouseButton !== 0) {
             return false;
         }
-        let [i, j] = args.surface.layout.nearestDataCoord(...args.dragStartPos);
-        let [i2, j2] = args.surface.layout.nearestDataCoord(...args.mousePos);
+        let [i, j] = args.surface.layout.nearestDataCoord(...args.startPos);
+        let [i2, j2] = args.surface.layout.nearestDataCoord(...args.endPos);
         if (i !== i2 || j !== j2 || !args.surface.layout.isDataQubit(i, j)) {
             return false;
         }
@@ -36,22 +34,12 @@ class HoleExtenderType extends Tool {
     }
 
     canHoverHint(args) {
-        if (args.mousePos === undefined ||
-                args.dragStartPos !== undefined ||
-                args.mouseButton !== undefined) {
-            return false;
-        }
-        let [i, j] = args.surface.layout.nearestDataCoord(...args.mousePos);
-        if (!args.surface.layout.isDataQubit(i, j)) {
-            return false;
-        }
-
-        let holes = args.surface.layout.neighbors(i, j, true, true).filter(pt => args.surface.layout.isHole(...pt));
-        return holes.length === 1;
+        let [i, j] = args.surface.layout.nearestDataCoord(...args.endPos);
+        return args.surface.canExtendPole(i, j);
     }
 
     drawHoverHint(ctx, args) {
-        let [i, j] = args.surface.layout.nearestDataCoord(...args.mousePos);
+        let [i, j] = args.surface.layout.nearestDataCoord(...args.endPos);
         let [x, y] = args.surface.layout.neighbors(i, j, true, true).filter(pt => args.surface.layout.isHole(...pt))[0];
         let di = i - x;
         let dj = j - y;
@@ -68,11 +56,8 @@ class HoleExtenderType extends Tool {
     }
 
     applyEffect(args) {
-        let [i, j] = args.surface.layout.nearestDataCoord(...args.mousePos);
-        let [x, y] = args.surface.layout.neighbors(i, j, true, true).filter(pt => args.surface.layout.isHole(...pt))[0];
-        let di = i - x;
-        let dj = j - y;
-        args.surface.extendHole(i + di, j + dj, [-di, -dj]);
+        let [i, j] = args.surface.layout.nearestDataCoord(...args.endPos);
+        args.surface.extendPole(i, j);
     }
 }
 

@@ -9,46 +9,21 @@ window.onerror = function(msg, url, line, col, error) {
 
 import {DetailedError} from 'src/base/DetailedError.js'
 import {SurfaceCode} from 'src/sim/SurfaceCode.js'
-import {BorderLoc} from 'src/sim/SurfaceCodeLayout.js'
+import {BorderLoc} from 'src/sim/BorderLoc.js'
 import {CARDINALS} from 'src/sim/Util.js'
 import {ToolEffectArgs} from 'src/tools/ToolEffectArgs.js'
-import {SquareHoleMaker} from 'src/tools/SquareHoleMaker.js'
-import {SquareStabilizerFlipper} from 'src/tools/SquareStabilizerFlipper.js'
-import {ObservableStabilizerFlipper} from 'src/tools/ObservableStabilizerFlipper.js'
-import {ObservableStabilizerCutter} from 'src/tools/ObservableStabilizerCutter.js'
-import {HoleDragger} from 'src/tools/HoleDragger.js'
-import {ErrorPathMaker} from 'src/tools/ErrorPathMaker.js'
-import {StatePeeker} from 'src/tools/StatePeeker.js'
-import {HoleResizer} from 'src/tools/HoleResizer.js'
-import {HoleExtender} from 'src/tools/HoleExtender.js'
-import {HoleRetracter} from 'src/tools/HoleRetracter.js'
-import {HoleJoiner} from 'src/tools/HoleJoiner.js'
-import {HoleSplitter} from 'src/tools/HoleSplitter.js'
 import {describe} from "src/base/Describe.js";
 import {config} from "src/config.js"
 import {Revision} from "src/base/Revision.js";
 import {strokeErrorCurveAt} from "src/draw/Common.js";
-import {AXES, X_AXIS, Z_AXIS} from "src/sim/Util.js";
-import {Axis} from "src/sim/Util.js";
+import {Axis} from "src/sim/Axis.js";
+import {ALL_TOOLS} from "src/tools/AllTools.js";
 
 let canvas = /** @type {!HTMLCanvasElement} */ document.getElementById('main-canvas');
 /** @type {!Array.<!Tool>} */
-let availableTools = [
-    SquareHoleMaker,
-    ErrorPathMaker,
-    SquareStabilizerFlipper,
-    HoleDragger,
-    StatePeeker,
-    HoleResizer,
-    HoleExtender,
-    HoleJoiner,
-    HoleSplitter,
-    HoleRetracter,
-    ObservableStabilizerFlipper,
-    ObservableStabilizerCutter,
-];
+let availableTools = ALL_TOOLS;
 /** @type {!Array.<!Tool>} */
-let activeTools = [SquareHoleMaker];
+let activeTools = [ALL_TOOLS[0]];
 
 /** @type {!SurfaceCode} */
 let surface = new SurfaceCode(50, 30);
@@ -109,15 +84,23 @@ function drawMouseHint(ctx) {
     try {
 
         latestToolArgs.mousePointerOut = 'default';
-        for (let e of activeTools) {
-            if (e.canApply(latestToolArgs)) {
-                ctx.globalAlpha *= 0.6;
-                e.drawPreview(ctx, latestToolArgs);
-                break;
-            } else if (e.canHoverHint(latestToolArgs)) {
-                ctx.globalAlpha *= 0.3;
-                e.drawHoverHint(ctx, latestToolArgs);
-                break;
+        if (latestToolArgs.startPos !== undefined && latestToolArgs.endPos !== undefined) {
+            if (latestToolArgs.mouseButton !== undefined) {
+                for (let e of activeTools) {
+                    if (e.canApply(latestToolArgs)) {
+                        ctx.globalAlpha *= 0.6;
+                        e.drawPreview(ctx, latestToolArgs);
+                        break;
+                    }
+                }
+            } else {
+                for (let e of activeTools) {
+                    if (e.canHoverHint(latestToolArgs)) {
+                        ctx.globalAlpha *= 0.3;
+                        e.drawHoverHint(ctx, latestToolArgs);
+                        break;
+                    }
+                }
             }
         }
         canvas.style.cursor = latestToolArgs.mousePointerOut;
@@ -152,10 +135,10 @@ function drawQubitBlocksOfType(ctx, points, color) {
 function drawQubitBlocks(ctx) {
     ctx.fillStyle = config.dataQubitColor;
     ctx.fillRect(0, 0, surface.layout.width * config.diam, surface.layout.height * config.diam);
-    drawQubitBlocksOfType(ctx, surface.checkQubitsWithResultVsExpected(X_AXIS, false), config.xOffColor);
-    drawQubitBlocksOfType(ctx, surface.checkQubitsWithResultVsExpected(X_AXIS, true), config.xOnColor);
-    drawQubitBlocksOfType(ctx, surface.checkQubitsWithResultVsExpected(Z_AXIS, false), config.zOffColor);
-    drawQubitBlocksOfType(ctx, surface.checkQubitsWithResultVsExpected(Z_AXIS, true), config.zOnColor);
+    drawQubitBlocksOfType(ctx, surface.checkQubitsWithResultVsExpected(Axis.X, false), config.xOffColor);
+    drawQubitBlocksOfType(ctx, surface.checkQubitsWithResultVsExpected(Axis.X, true), config.xOnColor);
+    drawQubitBlocksOfType(ctx, surface.checkQubitsWithResultVsExpected(Axis.Z, false), config.zOffColor);
+    drawQubitBlocksOfType(ctx, surface.checkQubitsWithResultVsExpected(Axis.Z, true), config.zOnColor);
     drawQubitBlocksOfType(ctx, surface.layout.holePoints(0), config.holeColor);
 
     ctx.beginPath();
@@ -212,7 +195,7 @@ function drawHoleBorders(ctx) {
  * @param {!CanvasRenderingContext2D} ctx
  */
 function drawErrorCurves(ctx) {
-    for (let axis of AXES) {
+    for (let axis of Axis.XZ) {
         ctx.beginPath();
         let flips = surface.errorOverlay.flipsForAxis(axis.opposite());
         for (let [i, j] of surface.layout.dataPoints(true)) {
@@ -296,14 +279,20 @@ canvas.onmousemove = ev => {
     let y = (ev.y - drawOffsetY - b.top) / config.diam;
     latestToolArgs.ctrlKey = ev.ctrlKey;
     latestToolArgs.shiftKey = ev.shiftKey;
-    latestToolArgs.mousePos = [x, y];
+    latestToolArgs.endPos = [x, y];
+    if (latestToolArgs.mouseButton === undefined) {
+        latestToolArgs.startPos = latestToolArgs.endPos;
+    }
     requestAnimationFrame(draw);
 };
 
 canvas.onmouseout = ev => {
     latestToolArgs.ctrlKey = ev.ctrlKey;
     latestToolArgs.shiftKey = ev.shiftKey;
-    latestToolArgs.mousePos = undefined;
+    latestToolArgs.endPos = undefined;
+    if (latestToolArgs.mouseButton === undefined) {
+        latestToolArgs.startPos = latestToolArgs.endPos;
+    }
     requestAnimationFrame(draw);
 };
 
@@ -313,29 +302,30 @@ canvas.onmouseup = ev => {
     let y = (ev.y - drawOffsetY - b.top) / config.diam;
     latestToolArgs.ctrlKey = ev.ctrlKey;
     latestToolArgs.shiftKey = ev.shiftKey;
-    latestToolArgs.mousePos = [x, y];
+    latestToolArgs.endPos = [x, y];
     latestToolArgs.mouseButton = ev.button;
 
-    for (let e of activeTools) {
-        if (e.canApply(latestToolArgs)) {
-            if (revision.isWorkingOnCommit) {
-                revision.commit(surface.clone());
-            } else {
-                if (revision.isAtBeginningOfHistory()) {
-                    revision = Revision.startingAt(surface.clone());
-                } else {
-                    revision.undo();
+    if (latestToolArgs.startPos !== undefined && latestToolArgs.endPos !== undefined) {
+        for (let e of activeTools) {
+            if (e.canApply(latestToolArgs)) {
+                if (revision.isWorkingOnCommit) {
                     revision.commit(surface.clone());
+                } else {
+                    if (revision.isAtBeginningOfHistory()) {
+                        revision = Revision.startingAt(surface.clone());
+                    } else {
+                        revision.undo();
+                        revision.commit(surface.clone());
+                    }
                 }
+                revision.startedWorkingOnCommit();
+                e.applyEffect(latestToolArgs);
+                surface.cycle();
+                break;
             }
-            revision.startedWorkingOnCommit();
-            e.applyEffect(latestToolArgs);
-            surface.cycle();
-            break;
         }
     }
 
-    latestToolArgs.dragStartPos = undefined;
     latestToolArgs.mouseButton = undefined;
     requestAnimationFrame(draw);
 };
@@ -347,8 +337,8 @@ canvas.onmousedown = ev => {
     let y = (ev.y - drawOffsetY - b.top) / config.diam;
     latestToolArgs.ctrlKey = ev.ctrlKey;
     latestToolArgs.shiftKey = ev.shiftKey;
-    latestToolArgs.dragStartPos = [x, y];
-    latestToolArgs.mousePos = [x, y];
+    latestToolArgs.startPos = [x, y];
+    latestToolArgs.endPos = [x, y];
     latestToolArgs.mouseButton = ev.button;
     latestToolArgs.ctrlKey = ev.ctrlKey;
     latestToolArgs.shiftKey = ev.shiftKey;

@@ -13,6 +13,8 @@ let config = {
     
     dataQubitColor: '#FFF',
     holeColor: '#000',
+
+    measureAndConditionalToggleBang: false,
 };
 
 export {config}

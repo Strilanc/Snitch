@@ -83,15 +83,15 @@ class HoleResizerType extends Tool {
     }
 
     canApply(args) {
-        return args.dragStartPos !== undefined && args.mousePos !== undefined && args.mouseButton === 0;
+        return args.mouseButton === 0;
     }
 
     canHoverHint(args) {
-        return args.dragStartPos === undefined && args.mousePos !== undefined && args.mouseButton === undefined;
+        return true;
     }
 
     drawHoverHint(ctx, args) {
-        let border = nearestBorder(args.surface.layout, ...args.mousePos);
+        let border = nearestBorder(args.surface.layout, ...args.endPos);
         if (border === undefined) {
             return;
         }
@@ -115,15 +115,15 @@ class HoleResizerType extends Tool {
     }
 
     drawPreview(ctx, args) {
-        let border = nearestBorder(args.surface.layout, ...args.dragStartPos);
+        let border = nearestBorder(args.surface.layout, ...args.startPos);
         if (border === undefined) {
             return;
         }
         let {boundary, normal: [di, dj]} = border;
         args.mousePointerOut = di !== 0 ? 'col-resize' : 'row-resize';
 
-        let dx = args.mousePos[0] - args.dragStartPos[0];
-        let dy = args.mousePos[1] - args.dragStartPos[1];
+        let dx = args.endPos[0] - args.startPos[0];
+        let dy = args.endPos[1] - args.startPos[1];
         let dMax = (Math.round(dx / 2) * di + Math.round(dy / 2) * dj) * 2;
 
         if (dMax < 0) {
@@ -163,41 +163,61 @@ class HoleResizerType extends Tool {
     }
 
     applyEffect(args) {
-        let border = nearestBorder(args.surface.layout, ...args.dragStartPos);
+        let border = nearestBorder(args.surface.layout, ...args.startPos);
         if (border === undefined) {
             return;
         }
         let {boundary, normal: [di, dj]} = border;
 
-        let dx = args.mousePos[0] - args.dragStartPos[0];
-        let dy = args.mousePos[1] - args.dragStartPos[1];
+        let dx = args.endPos[0] - args.startPos[0];
+        let dy = args.endPos[1] - args.startPos[1];
         let dMax = (Math.round(dx / 2) * di + Math.round(dy / 2) * dj) * 2;
 
         if (dMax < 0) {
-            return;
+            this.shrink(args, -dMax, boundary, -di, -dj);
+        } else {
+            this.grow(args, dMax, boundary, di, dj);
         }
-        let d = 0;
-        while (d < dMax) {
-            if (!boundary.every(([i, j]) => !args.surface.layout.isHole(i + d*di + di, j + d*dj + dj))) {
-                break;
+    }
+
+    shrink(args, dMax, boundary, di, dj) {
+        // Grow valleys, leaving poles behind.
+        for (let [i, j] of boundary) {
+            for (let d = 0; d < dMax; d++) {
+                if (!args.surface.growValley(i + di * d, j + dj * d)) {
+                    break;
+                }
             }
-            if (!boundary.every(([i, j]) => !args.surface.layout.isHole(i + d*di + di*2, j + d*dj + dj*2))) {
-                break;
-            }
-            let d1 = d + 1;
-            let d2 = d + 2;
-            for (let [i, j] of boundary) {
-                args.surface.extendHole(i + di*d2, j + dj*d2);
-            }
-            for (let [i, j] of boundary) {
-                args.surface.extendHole(i + di*d1, j + dj*d1);
-            }
-            d += 2;
         }
 
-        // TODO: also shrink holes
-        // TODO: prevent side merging
-        // TODO: when expanding an inside edge past an outside edge, avoid creating opposite type hole in extension
+        // Retract poles.
+        for (let [i, j] of boundary) {
+            for (let d = 0; d < dMax; d += 2) {
+                if (!args.surface.retractPole(i + di * d, j + dj * d)) {
+                    break;
+                }
+            }
+        }
+    }
+
+    grow(args, dMax, boundary, di, dj) {
+        // Grow poles.
+        for (let [i, j] of boundary) {
+            for (let d = 1; d < dMax; d += 2) {
+                if (!args.surface.extendPole(i + di * d, j + dj * d)) {
+                    break;
+                }
+            }
+        }
+
+        // Retract valleys.
+        for (let [i, j] of boundary) {
+            for (let d = 1; d <= dMax; d++) {
+                if (!args.surface.retractValley(i + di * d, j + dj * d)) {
+                    break;
+                }
+            }
+        }
     }
 }
 

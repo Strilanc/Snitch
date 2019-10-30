@@ -6,15 +6,15 @@ class ToolEffectArgs {
      * @param {!SurfaceCode} surface
      * @param {undefined|![!number, !number]} mousePos
      * @param {undefined|!int}mouseButton
-     * @param {undefined|![!number, !number]} dragStartPos
+     * @param {undefined|![!number, !number]} startPos
      * @param {!boolean} ctrlKey
      * @param {!boolean} shiftKey
      */
-    constructor(surface, mousePos, mouseButton, dragStartPos, ctrlKey, shiftKey) {
+    constructor(surface, mousePos, mouseButton, startPos, ctrlKey, shiftKey) {
         this.surface = surface;
-        this.mousePos = mousePos;
+        this.endPos = mousePos;
         this.mouseButton = mouseButton;
-        this.dragStartPos = dragStartPos;
+        this.startPos = startPos;
         this.ctrlKey = ctrlKey;
         this.shiftKey = shiftKey;
         this.mousePointerOut = undefined;

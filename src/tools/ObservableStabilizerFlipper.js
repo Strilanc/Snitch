@@ -1,8 +1,7 @@
 import {config} from "src/config.js"
 import {strokeErrorCurveAt} from "src/draw/Common.js";
 import {Tool} from "src/tools/Tool.js"
-import {ToolEffectArgs} from "src/tools/ToolEffectArgs.js";
-import {Axis, X_AXIS, makeGrid} from "src/sim/Util.js";
+import {Axis} from "src/sim/Axis.js";
 import {SurfaceQubitObservable} from "src/sim/SurfaceCodeObservableOverlay.js";
 
 class ObservableStabilizerFlipperType extends Tool {
@@ -24,30 +23,25 @@ class ObservableStabilizerFlipperType extends Tool {
     }
 
     canApply(args) {
-        return args.mousePos !== undefined &&
-            args.dragStartPos !== undefined &&
-            args.mouseButton === 0 &&
+        return args.mouseButton === 0 &&
             args.surface.layout.isCheckQubit(...args.surface.layout.nearestCheckCoord(
-                args.mousePos[0],
-                args.mousePos[1],
+                args.endPos[0],
+                args.endPos[1],
                 Axis.zIf(args.shiftKey)));
     }
 
     canHoverHint(args) {
-        return args.mousePos !== undefined &&
-            args.dragStartPos === undefined &&
-            args.mouseButton === undefined &&
-            args.surface.layout.isCheckQubit(...args.surface.layout.nearestCheckCoord(
-                args.mousePos[0],
-                args.mousePos[1],
+        return args.surface.layout.isCheckQubit(...args.surface.layout.nearestCheckCoord(
+                args.endPos[0],
+                args.endPos[1],
                 Axis.zIf(args.shiftKey)));
     }
 
     drawHoverHint(ctx, args) {
         let axis = Axis.zIf(!args.shiftKey);
         let [x, y] = args.surface.layout.nearestCheckCoord(
-            args.mousePos[0],
-            args.mousePos[1],
+            args.endPos[0],
+            args.endPos[1],
             axis.opposite());
 
         let matches = [];
@@ -79,8 +73,8 @@ class ObservableStabilizerFlipperType extends Tool {
     applyEffect(args) {
         let axis = Axis.zIf(!args.shiftKey);
         let [x, y] = args.surface.layout.nearestCheckCoord(
-            args.mousePos[0],
-            args.mousePos[1],
+            args.endPos[0],
+            args.endPos[1],
             axis.opposite());
 
         let matches = [];

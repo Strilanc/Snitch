@@ -1,6 +1,5 @@
-import {CARDINALS} from 'src/sim/Util.js'
 import {makeGrid} from 'src/sim/Util.js'
-import {Axis, AXES, Z_AXIS, X_AXIS} from "src/sim/Util.js";
+import {Axis} from "src/sim/Axis.js";
 import {ObservableProduct} from "src/sim/ObservableProduct.js";
 import {config} from "src/config.js";
 
@@ -145,9 +144,9 @@ class SurfaceMultiObservable {
             ctx.font = '16pt monospace';
             let w = ctx.measureText(state).width;
             ctx.strokeRect(px + 0.5, py + 0.5, w + 6, config.diam);
-            ctx.globalAlpha = 0.8;
+            ctx.globalAlpha *= 0.5;
             ctx.fillRect(px + 0.5, py + 0.5, w + 6, config.diam);
-            ctx.globalAlpha = 1.0;
+            ctx.globalAlpha /= 0.5;
             ctx.fillStyle = '#000';
             ctx.fillText(state, px + 3, py + config.diam*0.5);
         } finally {
@@ -181,30 +180,6 @@ class SurfaceMultiObservable {
         }
         return undefined;
     }
-
-    /**
-     * @param {!SurfaceCode} surface
-     * @param {!int} iData
-     * @param {!int} jData
-     * @param {!int} iCheck
-     * @param {!int} jCheck
-     */
-    measureDataButClearByConditionallyFlippingStabilizer(surface, iData, jData, iCheck, jCheck) {
-        let axis = surface.layout.colCheckType(iCheck);
-
-        let k2 = this.indexOf(new SurfaceQubitObservable(iData, jData, axis.opposite()));
-        if (k2 !== undefined) {
-            this.qubitObservables.splice(k2, 1);
-        }
-
-        let k = this.indexOf(new SurfaceQubitObservable(iData, jData, axis));
-        if (k === undefined) {
-            return;
-        }
-        for (let [i2, j2] of surface.layout.neighbors(iCheck, jCheck)) {
-            this.insertOrDeleteOther(k, new SurfaceQubitObservable(i2, j2, axis));
-        }
-    }
 }
 
 class SurfaceCodeObservableOverlay {
@@ -232,19 +207,6 @@ class SurfaceCodeObservableOverlay {
         let r = new SurfaceCodeObservableOverlay();
         r.observables = this.observables.map(e => e.clone());
         return r;
-    }
-
-    /**
-     * @param {!SurfaceCode} surface
-     * @param {!int} iData
-     * @param {!int} jData
-     * @param {!int} iCheck
-     * @param {!int} jCheck
-     */
-    measureDataButClearByConditionallyFlippingStabilizer(surface, iData, jData, iCheck, jCheck) {
-        for (let e of this.observables) {
-            e.measureDataButClearByConditionallyFlippingStabilizer(surface, iData, jData, iCheck, jCheck);
-        }
     }
 }
 

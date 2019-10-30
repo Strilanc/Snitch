@@ -1,6 +1,6 @@
 import {CARDINALS} from 'src/sim/Util.js'
 import {makeGrid} from 'src/sim/Util.js'
-import {Axis, AXES, Z_AXIS, X_AXIS} from "src/sim/Util.js";
+import {Axis} from "src/sim/Axis.js";
 
 
 class SurfaceCodeErrorOverlay {
@@ -28,10 +28,10 @@ class SurfaceCodeErrorOverlay {
         for (let [i, j] of this.surface.layout.dataPoints()) {
             if (Math.random() < p) {
                 if (Math.random() < 0.5) {
-                    this.flipQubit(i, j, X_AXIS);
+                    this.flipQubit(i, j, Axis.X);
                 }
                 if (Math.random() < 0.5) {
-                    this.flipQubit(i, j, Z_AXIS);
+                    this.flipQubit(i, j, Axis.Z);
                 }
             }
         }
@@ -125,7 +125,7 @@ class SurfaceCodeErrorOverlay {
 
     shrinkCurves() {
         let layout = this.surface.layout;
-        for (let axis of AXES) {
+        for (let axis of Axis.XZ) {
             let flips = this.flipsForAxis(axis.opposite());
             let reps = this._getClosedCurveRegionRepresentatives(axis);
             for (let [i, j] of reps) {
@@ -177,28 +177,13 @@ class SurfaceCodeErrorOverlay {
      * @param {!Axis} axis
      */
     flipQubitsAlongPath(x1, y1, x2, y2, axis) {
-        let path = this.surface.layout.pathAlongCheckQubits(x1, y1, x2, y2, false);
-        if (path === undefined) {
-            path = [];
-        }
+        let path = this.surface.layout.pathAlongCheckQubits(x1, y1, x2, y2);
+        path = path === undefined ? [] : path.dataQubits;
         for (let [i, j] of path) {
             if (!this.surface.layout.isHole(i, j)) {
                 this.flipQubit(i, j, axis);
             }
         }
-    }
-
-    /**
-     * @param {!int} iData
-     * @param {!int} jData
-     * @param {!int} iCheck
-     * @param {!int} jCheck
-     */
-    measureDataButClearByConditionallyFlippingStabilizer(iData, jData, iCheck, jCheck) {
-        let axis = this.surface.layout.colCheckType(iCheck);
-        let marked = this.flipsForAxis(axis)[iData][jData];
-        let on = this.surface.measure(iData, jData, axis.opposite());
-        this.flipStabilizer(iCheck, jCheck, marked, on);
     }
 
     clearFlips() {

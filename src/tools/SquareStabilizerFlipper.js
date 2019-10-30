@@ -2,7 +2,8 @@ import {config} from "src/config.js"
 import {strokeErrorCurveAt} from "src/draw/Common.js";
 import {Tool} from "src/tools/Tool.js"
 import {ToolEffectArgs} from "src/tools/ToolEffectArgs.js";
-import {Axis, X_AXIS, makeGrid} from "src/sim/Util.js";
+import {makeGrid} from "src/sim/Util.js";
+import {Axis} from "src/sim/Axis.js";
 
 function roundWithDeadZone(v, d, r) {
     let s = v < 0 ? -1 : +1;
@@ -59,30 +60,25 @@ class SquareStabilizerFlipperType extends Tool {
     }
 
     canApply(args) {
-        return args.mousePos !== undefined &&
-            args.dragStartPos !== undefined &&
-            args.mouseButton === 0 &&
+        return args.mouseButton === 0 &&
             args.surface.layout.isCheckQubit(...args.surface.layout.nearestCheckCoord(
-                args.dragStartPos[0],
-                args.dragStartPos[1],
+                args.startPos[0],
+                args.startPos[1],
                 Axis.zIf(args.shiftKey)));
     }
 
     canHoverHint(args) {
-        return args.mousePos !== undefined &&
-            args.dragStartPos === undefined &&
-            args.mouseButton === undefined &&
-            args.surface.layout.isCheckQubit(...args.surface.layout.nearestCheckCoord(
-                args.mousePos[0],
-                args.mousePos[1],
+        return args.surface.layout.isCheckQubit(...args.surface.layout.nearestCheckCoord(
+                args.endPos[0],
+                args.endPos[1],
                 Axis.zIf(args.shiftKey)));
     }
 
     drawHoverHint(ctx, args) {
         let axis = Axis.zIf(!args.shiftKey);
         let [x, y] = args.surface.layout.nearestCheckCoord(
-            args.mousePos[0],
-            args.mousePos[1],
+            args.endPos[0],
+            args.endPos[1],
             axis.opposite());
 
         ctx.beginPath();
@@ -107,11 +103,11 @@ class SquareStabilizerFlipperType extends Tool {
     argsToUseful(args) {
         let axis = Axis.zIf(!args.shiftKey);
         let [i1, j1] = args.surface.layout.nearestCheckCoord(
-            args.dragStartPos[0],
-            args.dragStartPos[1],
+            args.startPos[0],
+            args.startPos[1],
             axis.opposite());
-        let i2 = roundWithDeadZone(args.mousePos[0] - i1 - 0.5, 0.5, 2) + i1;
-        let j2 = roundWithDeadZone(args.mousePos[1] - j1 - 0.5, 0.5, 2) + j1;
+        let i2 = roundWithDeadZone(args.endPos[0] - i1 - 0.5, 0.5, 2) + i1;
+        let j2 = roundWithDeadZone(args.endPos[1] - j1 - 0.5, 0.5, 2) + j1;
         let i = Math.min(i1, i2);
         let j = Math.min(j1, j2);
         return {

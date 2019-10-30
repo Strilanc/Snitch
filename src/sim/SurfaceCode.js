@@ -10,9 +10,10 @@ import {StabilizerCircuitState} from 'src/sim/StabilizerCircuitState.js'
 import {makeGrid, cloneGrid} from 'src/sim/Util.js'
 import {SurfaceCodeLayout} from "src/sim/SurfaceCodeLayout.js";
 import {SurfaceCodeErrorOverlay} from "src/sim/SurfaceCodeErrorOverlay.js";
-import {Axis, AXES, Z_AXIS, X_AXIS} from "src/sim/Util.js";
-import {SurfaceCodeObservableOverlay} from "src/sim/SurfaceCodeObservableOverlay.js";
+import {Axis} from "src/sim/Axis.js";
+import {SurfaceCodeObservableOverlay, SurfaceQubitObservable} from "src/sim/SurfaceCodeObservableOverlay.js";
 import {SurfaceCodeSparkles} from "src/sim/SurfaceCodeSparkles.js";
+import {config} from "src/config.js";
 
 
 function* _checkQubitsWithResultVsExpected(surface, axis, result) {
@@ -23,6 +24,7 @@ function* _checkQubitsWithResultVsExpected(surface, axis, result) {
         }
     }
 }
+
 
 class SurfaceCode {
     /**
@@ -56,6 +58,172 @@ class SurfaceCode {
         r.observableOverlay = this.observableOverlay.clone();
         r.sparkles = this.sparkles.clone();
         return r;
+    }
+
+    /**
+     * @param {!int} i
+     * @param {!int} j
+     * @returns {!boolean}
+     */
+    canGrowValley(i, j) {
+        if (!this.layout.isInBounds(i, j) || !this.layout.isHole(i, j)) {
+            return false;
+        }
+
+        let axis = this.layout.checkAxis(i, j, true);
+        if (axis === undefined) {
+            return this.layout.neighbors(i, j).length === 1;
+        }
+
+        let dataNeighbors = this.layout.neighbors(i, j);
+        return dataNeighbors.length <= 1 && dataNeighbors.every(([i2, j2]) =>
+            this.layout.neighbors(i2, j2).every(([i3, j3]) =>
+                this.layout.checkAxis(i3, j3, true) === axis));
+    }
+
+    /**
+     * @param {!int} i
+     * @param {!int} j
+     * @returns {!boolean}
+     */
+    growValley(i, j) {
+        if (!this.canGrowValley(i, j)) {
+            return false;
+        }
+
+        this.layout.holes[i][j] = false;
+        if (this.layout.isDataQubit(i, j)) {
+            let [x, y] = this.layout.neighbors(i, j)[0];
+            let axis = Axis.zIf(this.layout.isZCheckQubit(x, y, true, true));
+            this.reset(i, j, axis);
+
+            // Drag error curves along for the ride.
+            this.measureAndConditionalToggle(
+                [[x, y]],
+                [],
+                [new SurfaceQubitObservable(i, j, axis.opposite())]);
+        }
+        return true;
+    }
+
+    /**
+     * @param {!int} i
+     * @param {!int} j
+     * @returns {!boolean}
+     */
+    canRetractPole(i, j) {
+        if (!this.layout.isHole(i, j) ||
+            !this.layout.isCheckQubit(i, j, undefined, true, false)) {
+            return false;
+        }
+        let holes = this.layout.neighbors(i, j, true, true).
+        filter(pt => this.layout.isHole(...pt) &&
+        this.layout.isDataQubit(pt[0], pt[1], true, false));
+        return holes.length === 1;
+    }
+
+    /**
+     * @param {!int} i
+     * @param {!int} j
+     * @returns {!boolean}
+     */
+    canRetractValley(i, j) {
+        if (this.layout.isCheckQubit(i, j)) {
+            return this.layout.neighbors(i, j).length <= 1;
+        }
+        if (this.layout.isDataQubit(i, j)) {
+            return this.layout.neighbors(i, j).length === 1;
+        }
+        return false;
+    }
+
+    /**
+     * @param {!int} i
+     * @param {!int} j
+     * @returns {!boolean}
+     */
+    retractValley(i, j) {
+        if (!this.canRetractValley(i, j)) {
+            return false;
+        }
+        if (this.layout.isDataQubit(i, j)) {
+            let [x, y] = this.layout.neighbors(i, j)[0];
+            let axis = this.layout.checkAxis(x, y, true, true);
+            this.measureAndConditionalToggle(
+                [],
+                [new SurfaceQubitObservable(i, j, axis)],
+                [new SurfaceQubitObservable(i, j, axis.opposite())]);
+        }
+        this.layout.holes[i][j] = true;
+        return true;
+    }
+
+    /**
+     * @param {!int} i
+     * @param {!int} j
+     * @param {!Axis} axis
+     * @returns {!boolean}
+     */
+    canJoinBorders(i, j, axis) {
+        let bs = this.layout.bordersOfType(i, j, axis);
+        return bs.length === 2 &&
+            this.layout.bordersOfType(i, j, axis.opposite()).length === 0 &&
+            !this.layout.areBorderLocsOnSameContiguousBorder(bs[0], bs[1]);
+    }
+
+    /**
+     * @param {!int} i
+     * @param {!int} j
+     * @param {!Axis} axis
+     * @param {undefined|!BorderLoc} errorTaker
+     * @returns {!boolean}
+     */
+    joinBorders(i, j, axis, errorTaker=undefined) {
+        if (!this.canJoinBorders(i, j, axis)) {
+            return false;
+        }
+
+        let localBorders = this.layout.bordersOfType(i, j, axis);
+        if (errorTaker === undefined) {
+            errorTaker = localBorders[0];
+        }
+        let errorBorder = this.layout.fullContiguousBorderTouching(errorTaker);
+
+        this.observableOverlay.observables = this.observableOverlay.observables.filter(
+            obs => obs.indexOf(new SurfaceQubitObservable(i, j, axis.opposite())) !== undefined);
+
+        this.measureAndConditionalToggle(
+            [],
+            [new SurfaceQubitObservable(i, j, axis.opposite())],
+            errorBorder.locs.map(loc => new SurfaceQubitObservable(loc.i, loc.j, axis)));
+
+        this.layout.holes[i][j] = true;
+        return true;
+    }
+
+    /**
+     * @param {!int} i
+     * @param {!int} j
+     * @returns {!boolean}
+     */
+    retractPole(i, j) {
+        if (!this.canRetractPole(i, j)) {
+            return false;
+        }
+
+        let [x, y] = this.layout.neighbors(i, j, true, true).filter(pt => this.layout.isHole(...pt))[0];
+
+        this.layout.holes[i][j] = false;
+        this.layout.holes[x][y] = false;
+        let axis = Axis.zIf(this.layout.isZCheckQubit(i, j));
+        this.reset(x, y, axis.opposite(), false);
+
+        this.measureAndConditionalToggle(
+            [[i, j]],
+            [],
+            [new SurfaceQubitObservable(x, y, axis.opposite())]
+        );
+        return true;
     }
 
     /**
@@ -112,7 +280,7 @@ class SurfaceCode {
      * @param {!Axis} axis
      * @returns {!boolean}
      */
-    measure(i, j, axis=Z_AXIS) {
+    measure(i, j, axis=Axis.Z) {
         let q = this.qubits[i][j];
         if (axis.isX()) {
             this.state.h(q);
@@ -130,7 +298,7 @@ class SurfaceCode {
      * @param {!boolean} val
      * @param {!Axis} axis
      */
-    reset(i, j, axis=Z_AXIS, val=false) {
+    reset(i, j, axis=Axis.Z, val=false) {
         let q = this.qubits[i][j];
         this.state.measure(q, true);
         if (val) {
@@ -213,9 +381,9 @@ class SurfaceCode {
         for (let i = 0; i < this.layout.width; i++) {
             for (let j = 0; j < this.layout.height; j++) {
                 if (this.layout.isXCheckQubit(i, j)) {
-                    this.last_result[i][j] = this.squareMeasure(i, j, X_AXIS);
+                    this.last_result[i][j] = this.squareMeasure(i, j, Axis.X);
                 } else if (this.layout.isZCheckQubit(i, j)) {
-                    this.last_result[i][j] = this.squareMeasure(i, j, Z_AXIS);
+                    this.last_result[i][j] = this.squareMeasure(i, j, Axis.Z);
                 }
             }
         }
@@ -289,7 +457,7 @@ class SurfaceCode {
     }
 
     correct() {
-        for (let axis of AXES) {
+        for (let axis of Axis.XZ) {
             let points = [];
             for (let [i, j] of this.layout.checkQubits(axis)) {
                 if (this.last_result[i][j] !== this.expected_result[i][j]) {
@@ -307,6 +475,38 @@ class SurfaceCode {
     /**
      * @param {!int} i
      * @param {!int} j
+     * @returns {!boolean}
+     */
+    canExtendPole(i, j) {
+        if (!this.layout.isDataQubit(i, j)) {
+            return false;
+        }
+
+        let holes = this.layout.neighbors(i, j, true, true).filter(pt => this.layout.isHole(...pt));
+        return holes.length === 1;
+    }
+
+    /**
+     * @param {!int} i
+     * @param {!int} j
+     * @returns {!boolean}
+     */
+    extendPole(i, j) {
+        if (!this.canExtendPole(i, j)) {
+            return false;
+        }
+
+        let [x, y] = this.layout.neighbors(i, j, true, true).filter(pt => this.layout.isHole(...pt))[0];
+        let di = i - x;
+        let dj = j - y;
+        this.extendHole(i + di, j + dj, [-di, -dj]);
+
+        return true;
+    }
+
+    /**
+     * @param {!int} i
+     * @param {!int} j
      * @param {undefined|![!int, !int]} dir
      */
     extendHole(i, j, dir=undefined) {
@@ -314,16 +514,114 @@ class SurfaceCode {
             return;
         }
 
+        let axis = this.layout.colCheckType(i);
         for (let [di, dj] of dir === undefined ? CARDINALS : [dir]) {
             let i2 = i + di;
             let j2 = j + dj;
             if (this.layout.isDataQubit(i2, j2) && this.layout.isHole(i + di*2, j + dj*2)) {
-                this.errorOverlay.measureDataButClearByConditionallyFlippingStabilizer(i2, j2, i, j);
-                this.observableOverlay.measureDataButClearByConditionallyFlippingStabilizer(this, i2, j2, i, j);
+                this.measureAndConditionalToggle(
+                    [],
+                    [new SurfaceQubitObservable(i2, j2, axis.opposite())],
+                    this.layout.neighbors(i, j).map(([x, y]) => new SurfaceQubitObservable(x, y, axis)));
                 this.layout.holes[i2][j2] = true;
             }
         }
         this.layout.holes[i][j] = true;
+    }
+
+    /**
+     * @param {!Array.<![!int, !int]>} checkInputs
+     * @param {!Array.<!SurfaceQubitObservable>} dataInputs
+     * @returns {!Array.<!SurfaceQubitObservable>}
+     * @private
+     */
+    _stabilizersAndDataToJustData(checkInputs, dataInputs) {
+        let result = [];
+        for (let [i, j] of checkInputs) {
+            let axis = Axis.zIf(this.layout.isZCheckQubit(i, j, true, true));
+            for (let [x, y] of this.layout.neighbors(i, j)) {
+                result.push(new SurfaceQubitObservable(x, y, axis));
+            }
+        }
+        result.push(...dataInputs);
+        return result;
+    }
+
+    /**
+     * @param {!Array.<![!int, !int]>} checkInputs
+     * @param {!Array.<!SurfaceQubitObservable>} dataInputs
+     * @param {!Array.<!SurfaceQubitObservable>} parityTargets
+     */
+    measureAndConditionalToggle(checkInputs, dataInputs, parityTargets) {
+        let allInputs = this._stabilizersAndDataToJustData(checkInputs, dataInputs);
+
+        let flipQubits = false;
+        for (let [i, j] of checkInputs) {
+            let axis = Axis.zIf(this.layout.isZCheckQubit(i, j, true, true));
+            let b = this.squareMeasure(i, j, axis);
+            if (b) {
+                flipQubits = !flipQubits;
+            }
+            if (config.measureAndConditionalToggleBang) {
+                let color = b ? 'red' : 'black';
+                this.sparkles.bang(i, j, color, 3);
+            }
+        }
+
+        for (let data of dataInputs) {
+            let b = this.measure(data.i, data.j, data.axis);
+            if (b) {
+                flipQubits = !flipQubits;
+            }
+            if (config.measureAndConditionalToggleBang) {
+                let color = b ? 'red' : 'black';
+                this.sparkles.bang(data.i, data.j, color, 3);
+            }
+        }
+
+        if (config.measureAndConditionalToggleBang) {
+            let color = flipQubits ? 'red' : 'black';
+            for (let {i, j} of parityTargets) {
+                this.sparkles.bang(i, j, color, 0.5);
+            }
+        }
+
+        let flipErrorMarks = false;
+        for (let data of dataInputs) {
+            this.errorOverlay.flipsForAxis(data.axis)[data.i][data.j] = false;
+        }
+        for (let data of allInputs) {
+            if (this.errorOverlay.flipsForAxis(data.axis.opposite())[data.i][data.j]) {
+                flipErrorMarks = !flipErrorMarks;
+            }
+        }
+
+        for (let target of parityTargets) {
+            this.errorOverlay.flipQubit(target.i, target.j, target.axis, flipErrorMarks, flipQubits);
+        }
+
+        for (let obs of this.observableOverlay.observables) {
+            let flipObs = false;
+            for (let data of dataInputs) {
+                let k = obs.indexOf(new SurfaceQubitObservable(data.i, data.j, data.axis));
+                if (k !== undefined) {
+                    obs.qubitObservables.splice(k, 1);
+                }
+            }
+            for (let data of allInputs) {
+                let k = obs.indexOf(new SurfaceQubitObservable(data.i, data.j, data.axis.opposite()));
+                if (k !== undefined) {
+                    flipObs = !flipObs;
+                }
+            }
+
+            if (flipObs) {
+                for (let target of parityTargets) {
+                    console.log(target.toString());
+                    obs.insertOrDeleteOther(0, target);
+                }
+            }
+        }
     }
 }
 
